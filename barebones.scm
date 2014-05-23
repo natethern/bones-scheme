@@ -478,7 +478,7 @@
 	 (set! opts (cons* 'output-file: out opts))
 	 (loop more))
 	(("-L" path . more)
-	 (set! opts (append (map (cut list 'library-path: <>) (string-split path ":")) opts))
+	 (set! opts (append (append-map (cut list 'library-path: <>) (string-split path ":")) opts))
 	 (loop more))
 	(("-feature" f . more)
 	 (set! opts (cons* 'feature: (string->symbol f) opts))
