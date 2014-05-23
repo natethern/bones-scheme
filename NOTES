@@ -1,0 +1,134 @@
+BONES                                                                               -*- Org -*-
+
+
+* TODO move code to bitbucket?
+* TODO make code word-size independent and port to i386
+  - needs special casing of integer-ops on flonums.
+  - needs alignment of flonum-blocks.
+* TODO something is wrong with musl's "sprintf" implementation
+  - "(number->string (expt 2.1 3))" returns "nan".
+  - ok with glibc.
+* TODO implement some sort of known value optimization
+  - beta-contraction (needs knowledge about FVs).
+  - direct-calls (implies loops).
+  - perhaps a bit of constant-propagation.
+* TODO report errors where appropriate
+  - file-errors (input/output and opening files).
+  - reader errors.
+* TODO consider using libgc as 2nd heap generation
+  - needs write-barrier to record assignments of heap-data into non-heap objects
+* TODO "(if X S1 S2)" can be computed more efficiently
+  - use "cmovCC" if S1, S2 are simple-expressions.
+* TODO allow running without libc
+  - will need to drop a number of primitives.
+  - needs hand-rolled str<->num conversion.
+* TODO go for R7RS support?
+  - modulo libraries.
+  - exn-handling could use code from http://srfi.schemers.org/srfi-34/srfi-34.html to
+    implement dynamic-env required spaghetti.
+* TODO code for "asin"
+  - http://forums.codeguru.com/showthread.php?262979-How-to-compute-asin
+    fld   st(0)             ;copy sine value
+    fmul  st,st(0)          ;sin^2
+    fld1
+    fsubr                   ;1-sin^2 = cos^2
+    fsqrt                   ;->cos
+    fpatan                  ;i.e. arctan(sin/cos) = arcsin
+  - more
+    Function ArcSin(X As Double) As Double
+	ArcSin = Atn(X / Sqr(-X * X + 1))
+    End Function
+
+    Function ArcCos(X As Double) As Double
+	ArcCos = Atn(-X / Sqr(-X * X + 1)) + 2 * Atn(1)
+    End Function
+
+    Private Sub Command1_Click()
+	' replace the 0.5 below with the degree (in radians) that
+	' you want to calculate its ArcSin or ArcCos value
+	MsgBox "ArcSin(0.5) = " & ArcSin(0.5)
+	MsgBox "ArcCos(0.5) = " & ArcCos(0.5)
+    End Sub
+* TODO we need some sort of register-allocation
+* TODO log: "fld1; fld XXX; fyl2x"
+* R5RS support
+** TODO missing
+   asin acos
+** TODO broken
+   log
+** Unimplemented
+   numerator, denominator
+   make-rectangular, make-polar, real-part, imag-part, magnitude, angle
+   rationalize
+   complex?
+   load, eval
+   transcript-on, transcript-off
+   interaction-environment, scheme-report-environment, null-environment
+   char-ready?
+* TODO write detailed list of differences to R5RS
+  - no overflow-detection.
+  - max/min do not change exactness (well, not always - identify cases).
+  - primitives are not necessarily "eq?"
+  - "set!" of primitive might not necessarily work ("define" is ok, though).
+  - 3rd arg to "substring" is optional.
+  - behaviour of transcendental functions with regard to nan/inf may be wrong.
+  - and more
+** Non-standard extensions
+*** Alexpander extensions
+*** Primitives
+   current-process-id
+   current-error-port
+   current-directory
+   read-string
+   eof-object
+   void
+   nan?
+   port?
+   bitwise-and bitwise-ior bitwise-xor bitwise-not arithmetic-shift
+   finite?
+   system
+   exit
+   open-input-string open-output-string get-output-string
+   open-append-output-file
+   write-string
+   reclaim
+   current-second
+   get-environment-variable
+   file-exists?
+   delete-file
+   define-syntax-rule
+   define-values
+   cut
+   when unless
+   fluid-let
+   optional let-optionals
+   begin0
+   receive
+   assert
+   cond-expand
+   call/cc
+   current-jiffies
+   jiffies-per-second
+   case-sensitive
+   command-line
+   error
+   add1 sub1
+   print
+   list-of fold-of
+* Issues
+** "inexact->exact" uses "fisttp", so needs SSE3
+** i don't fully trust that "integer?" handles all cases correctly
+   - is the exponent overflow-test correct?
+** align flonums so that block-data is at 16-byte boundary
+   - this is supposed to be faster.
+   - but needs to be handled in GC (skip padding bytes).
+* Referencess
+  - FPU instructions: http://www.pmzone.org/appendixF.html
+  - FPU tutorial: http://www.website.masmforum.com/tutorials/fptute/fpuchap10.htm
+  - x86 reference: http://www.fermimn.gov.it/linux/quarta/x86/index.htm
+  - SSE: http://softpixel.com/~cwright/programming/simd/sse.php
+  - General information: file:/archive/optimizing_assembly.pdf
+  - x86-64 ABI: file:/archive/x86-64-abi.pdf
+* Notes
+** the write barrier can be disabled by defining DISABLE_WRITE_BARRIER
+** enable GC logging with -DENABLE_GC_LOGGING

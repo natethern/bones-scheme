@@ -1,0 +1,260 @@
+;;;; operations on source expressions - BONES-specific version of the one found in grass-lib
+
+
+(define (parse-lambda-list llist)	; -> vars argc rest
+  (let loop ((ll llist) (vars '()))
+    (cond ((null? ll) 
+	   (values (reverse vars) (length vars) #f))
+	  ((symbol? ll) 
+	   (values (reverse (cons ll vars)) (length vars) ll))
+	  ((pair? ll) 
+	   (loop (cdr ll) (cons (car ll) vars)))
+	  (else (error "invalid lambda-list" llist)))))
+
+(define (build-lambda-list vars argc rest)
+  (append (take argc vars) (or rest '())))
+
+
+(define (fragment exp . depth)
+  (let ((depth (optional depth 3)))
+    (define (walk x d)
+      (if (> d depth)
+	  '...
+	  (cond ((vector? x) (list->vector (walk (vector->list x) d)))
+		((pair? x)
+		 (let loop ((x x) (n depth))
+		   (cond ((null? x) '())
+			 ((zero? n) '(...))
+			 ((pair? x) (cons (walk (car x) (add1 d)) (loop (cdr x) (sub1 n))))
+			 (else x))))
+		(else x))))
+    (walk exp 1)))
+
+
+(define (has-side-effects? form)
+  (let walk ((x form))
+    (match x
+      ((or ('quote _)
+	   (? symbol?)
+	   ('$lambda . _)
+	   ('$undefined)
+	   ('$uninitialized)
+	   ('$primitive _))
+       #f)
+      (('let ((vars vals) ...) . body)
+       (any walk (append vals body)))
+      (((or 'if '$label '$label* '$variant) xs ...) 
+       (any walk xs))
+      (('$goto _ x) (walk x))
+      (('$dispatch x (_ xs) ...)
+       (or (walk x) (any walk xs)))
+      (_ #t))))
+
+
+;; note: also returns #f for '$call, '$restart and '$call-leaf
+(define (procedure-call-expression? exp)
+  (and (pair? exp) 
+       (not (memq (car exp)
+		  '($inline $allocate if begin $primitive quote letrec* let define set!
+			    $lambda $undefined $uninitialized)))))
+
+
+;; Convert to canonical form
+;
+; - convert 2-arg if to 3-arg form.
+; - quote all literals.
+; - expand calls to "manifest" lambdas into "let" bindings.
+; - "begin" forms only have 2 subforms.
+; - does a few simplifications (empty bindings, begin-flattening, etc.)
+; - marks "lambda" forms with id (converting them to "$lambda").
+; - also marks user lambdas as 'user entries in LDB.
+; - does alpha-conversion.
+
+(define lambda-id-counter 0)
+
+(define (canonicalize-expression form)	; expects expanded form
+  (define (resolve var env)
+    (cond ((assq var env) => cdr)
+	  (else var)))
+  (let walk ((x form) (env '()))
+    (match x
+      ((or (? boolean?) (? number?) (? char?) (? string?) (? vector?)) `',x)
+      ((? symbol?) (resolve x env))
+      (('quote _) x)
+      ((('lambda llist body ...) args ...)
+       (let loop ((vars llist) (args args) (bs '()))
+	 (cond ((null? vars)
+		(if (null? args)
+		    (walk `(let ,(reverse bs) ,@body) env)
+		    (error "too many arguments in manifest lambda call" x)))
+	       ((symbol? vars)
+		(walk `(let ,(append (reverse bs) `((,vars (%list ,@args)))) ,@body)
+		      env))
+	       ((null? args)
+		(error "too few arguments in manifest lambda call" x))
+	       ((pair? vars)
+		(loop (cdr vars) (cdr args) (cons (list (car vars) (car args)) bs)))
+	       (else (error "invalid lambda list" llist)))))
+      (((or 'letrec* 'let) () body ...)
+       (walk `(begin ,@body) env))
+      (('letrec* ((vars vals) ...) body ...)
+       (let* ((rvars (map (lambda (var) (cons var (rename-var var))) vars))
+	      (env (append rvars env)))
+	 `(,(car x) ,(map (lambda (rvar val) (list (cdr rvar) (walk val env))) rvars vals)
+	   ,(walk `(begin ,@body) (append rvars env)))))
+      (('let ((vars vals) ...) body ...)
+       (let ((rvars (map (lambda (var) (cons var (rename-var var))) vars)))
+	 `(,(car x) ,(map (lambda (rvar val) (list (cdr rvar) (walk val env))) rvars vals)
+	   ,(walk `(begin ,@body) (append rvars env)))))
+      (('begin ('begin xs1 ...) more ...)
+       (walk `(begin ,@xs1 ,@more) env))
+      (('$primitive name) x)
+      (('$inline name xs ...)
+       `($inline ,name ,@(map (cut walk <> env) xs)))
+      (('$allocate t s xs ...)
+       `($allocate ,t ,s ,@(map (cut walk <> env) xs)))
+      (('begin x) (walk x env))
+      (('begin x1 xs ...)
+       `(begin ,(walk x1 env) ,(walk `(begin ,@xs) env)))
+      (('lambda llist body ...)
+       (let* ((id (inc! lambda-id-counter))
+	      (vars argc rest (parse-lambda-list llist))
+	      (rvars (map (lambda (var) (cons var (rename-var var))) vars)))
+	 `($lambda ,id ,(build-lambda-list 
+			 (map cdr rvars)
+			 argc
+			 (and rest (cdr (last rvars))))
+		   ,(walk `(begin ,@body) (append rvars env)))))
+      (('if x y) (walk `(if ,x ,y ($undefined)) env))
+      (('if x y z) `(if ,(walk x env) ,(walk y env) ,(walk z env)))
+      (('set! var x)
+       (let ((x (walk x env)))
+	 `(set! ,(resolve var env) ,x)))
+      (('define v x) `(define ,v ,(walk x env)))
+      ((op args ...) (map (cut walk <> env) x))
+      (_ (error "invalid expression" x)))))
+
+
+;; detect unused local variables
+(define (detect-unused-variables form)	; expects expanded + canonicalized form
+  (define (used var env)
+    (cond ((assq var env) => (cut set-cdr! <> #t)))
+    var)
+  (define (used? var env)
+    (cond ((assq var env) => cdr)
+	  (else #f)))
+  (let walk ((x form) (env '()))
+    (match x
+      ((? symbol?) (used x env))
+      (('quote _) x)
+      (((or 'letrec* 'let) ((vars vals) ...) body)
+       (let* ((env2 (append (map (cut cons <> #f) vars) env))
+	      (body (walk body env2))
+	      (eenv (if (eq? 'letrec* (car x)) env2 env))
+	      (vals (map (cut walk <> eenv) vals)))
+	 (list (car x) 
+	       (map (lambda (var val)
+		      (list (if (used? var env2) var '$unused)
+			    val))
+		    vars vals)
+	       body)))
+      (('begin x) (walk x env))
+      (('begin x1 xs ...)
+       `(begin ,(walk x1 env) ,(walk `(begin ,@xs) env)))
+      (('$lambda id llist body)
+       (let* ((vars argc rest (parse-lambda-list llist))
+	      (env2 (append (map (cut cons <> #f) vars) env))
+	      (body (walk body env2)))
+	 `($lambda ,id ,(build-lambda-list 
+			 (map (lambda (var) (if (used? var env2) var '$unused)) vars)
+			 argc
+			 (and rest
+			      (if (used? rest env2) rest '$unused)))
+		   ,body)))
+      (('if x y z) `(if ,(walk x env) ,(walk y env) ,(walk z env)))
+      (('set! var x)
+       (used var env)
+       (let ((x (walk x env)))
+	 `(set! ,var ,x)))
+      (('define v x) `(define ,v ,(walk x env)))
+      (('$primitive n) x)
+      (('$inline n xs ...)
+       `($inline ,n ,@(map (cut walk <> env) xs)))
+      (('$allocate t s xs ...)
+       `($allocate ,t ,s ,@(map (cut walk <> env) xs)))
+      ((op args ...) (map (cut walk <> env) x))
+      (_ (error "invalid expression" x)))))
+
+
+;; separate definitions and toplevel forms
+(define (extract-definitions form)
+  (let ((defs '())
+	(toplevel '()))
+    (define (walktop x)
+      (match x
+	(('define v val)
+	 (push! x defs))
+	(('begin x)
+	 (walktop x))
+	(('begin x1 xs ...)
+	 (walktop x1)
+	 (walktop `(begin ,@xs)))
+	(_ (push! x toplevel))))
+    (walktop form)
+    (values (reverse defs) `(begin ,@(reverse toplevel)))))
+
+
+;; variable renaming
+(define rename-counter 1)
+(define renamed-variables '())		; ((ALIAS1 . ORIG1) ...)
+
+(define (rename-var v)
+  (let ((var (string->symbol (string-append (symbol->string v) "^" (number->string rename-counter)))))
+    (inc! rename-counter)
+    (push! (cons var v) renamed-variables)
+    var))
+
+(define (genvar) (genvar/prefix ""))
+
+(define (genvar/prefix prefix)
+  (let ((var (string->symbol (string-append prefix "^" (number->string rename-counter)))))
+    (inc! rename-counter)
+    var))
+
+(define (genvars lst)			; yes, any list is fine
+  (map (lambda _ (genvar)) lst))
+
+
+;;; dump expressions, optionally in "lambda" format
+
+(define (dump-expressions form ldump . port)
+  (let ((port (optional port (current-output-port))))
+    (if (not ldump)
+	(pp form port)
+	(let ((ls (list form)))
+	  (define (prepare x)
+	    (match x
+	      ((or (? boolean?) (? number?) (? char?) (? string?) ('quote _) (? symbol?))
+	       x)
+	      (('$lambda id . _)
+	       (push! x ls)
+	       `($lambda ,id ...))
+	      (('$closure id . _)
+	       (push! x ls)
+	       `($closure ,id ...))
+	      (((and op (or 'let 'letrec*)) ((vars vals) ...) xs ...)
+	       (cons* op (map (lambda (var val) (list var (prepare val))) vars vals)
+		      (map prepare xs)))
+	      (_ (map prepare x))))
+	  (do () ((null? ls))
+	    (let ((ls1 (reverse ls)))
+	      (set! ls '())
+	      (for-each
+	       (match-lambda
+		(('$lambda id llist xs ...)
+		 (pp `($lambda ,id ,llist ,@(map prepare xs)) port))
+		(('$closure id cap llist body)
+		 (pp `($closure ,id ,cap ,llist ,(prepare body)) port))
+		(form
+		 (pp (prepare form) port)))
+	       ls1)))))))
