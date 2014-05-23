@@ -68,10 +68,14 @@
   (make-tags "."))
 
 (define (compile+run fname)
-  (and (zero? (run* (./bones ,(string-append fname ".scm") -o ,(string-append fname ".s"))))
-       (zero? (run* (nasm -f elf64 -g -F dwarf ,(string-append fname ".s") -o ,(string-append fname ".o"))))
-       (zero? (run* (bin/musl-gcc ,(string-append fname ".o") -o ,fname)))
-       (zero? (run* (,fname)))))
+  (run (mkdir -p tmp))
+  (let ((sname (string-append "tmp/" fname ".s"))
+	(oname (string-append "tmp/" fname ".o"))
+	(xname (string-append "tmp/" fname)))
+    (and (zero? (run* (./bones ,(string-append fname ".scm") -o ,sname)))
+	 (zero? (run* (nasm -f elf64 -g -F dwarf ,sname -o ,oname)))
+	 (zero? (run* (bin/musl-gcc ,oname -o ,xname)))
+	 (zero? (run* (,xname))))))
 
 (define (check)
   (bones)
