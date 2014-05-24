@@ -683,8 +683,8 @@ subtract_2:
   jz .l3
   ; rax = !fixnum, rbx = fixnum
   FIX2INT rbx
-  cvtsi2sd xmm0, rbx
-  movsd xmm1, [rax + CELLS(1)]
+  cvtsi2sd xmm1, rbx
+  movsd xmm0, [rax + CELLS(1)]
   subsd xmm0, xmm1
 .done:
   movsd [temporary_flonum + CELLS(1)], xmm0
