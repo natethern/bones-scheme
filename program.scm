@@ -7,7 +7,9 @@
 ;
 ; CLAUSE = (requires REQ ...)                      tests whether features are available
 ;        | (files FILE ...)                        include files
+;        | (provide ID ...)                        define features visible to later clauses
 ;        | (code EXPR ...)                         include code
+;        | (include FILE ...)                      include other program clauses
 ;        | (feature-cond (REQ CLAUSE ...) ... [(else CLAUSE ...)])   process clauses depending on available features
 ;        | (cond-expand (REQ CLAUSE ...) ... [(else CLAUSE ...)])   alias for "feature-cond"
 ;
@@ -78,6 +80,14 @@
 	    ,@(map (lambda (fn) (read-forms (localize fn) read)) fns)))
 	(('code exps ...)
 	 `(begin ,@exps))
+	(('provide ids ...)
+	 (set! implementation-features (append ids implementation-features))
+	 '(begin #t))
+	(('include fns ...)
+	 `(begin
+	    ,@(map (lambda (fn)
+		     `(begin ,@(map expand-clause (read-file (localize fn)))))
+		   fns)))
 	(((or 'cond-expand 'feature-cond) clauses ...)
 	 (let loop ((cs clauses))
 	   (match cs
