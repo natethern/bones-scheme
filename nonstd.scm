@@ -76,9 +76,13 @@
 	    (string-append (%char->string pc) str)
 	    str)))))
 
+(define (write-string str . p)
+  (let ((p (optional p %standard-output-port)))
+    ((%slot-ref p 3) p str)))
+
 (define (current-directory . dir)
   (if (null? dir)
-      ($inline "call syscall_getcwd")
+      ($inline "call syscall_getcwd")	;XXX file-error
       (let ((r ($inline "call syscall_chdir" (car dir))))
 	r)))				;XXX file-error
 
@@ -87,15 +91,11 @@
 (define-inline (current-second) ($inline "call syscall_time"))
 (define-inline (current-process-id) ($inline "call syscall_getpid"))
 
-(define (write-string str . p)
-  (let ((p (optional p %standard-output-port)))
-    ((%slot-ref p 3) p str)))
-
 (define-inline (get-environment-variable str) ($inline "call syscall_getenv" str))
 (define-inline (delete-file str) ($inline "call syscall_delete_file" str))
 (define-inline (file-exists? str) (and ($inline "call syscall_file_exists" str) str))
 
-(define-inline (current-jiffies) ($inline "call syscall_clock"))
+(define-inline (current-jiffy) ($inline "call syscall_clock"))
 (define-inline (jiffies-per-second) 1000000)
 
 (define-syntax call/cc call-with-current-continuation)
@@ -110,8 +110,8 @@
 (define (exit . code)
   ($inline "call syscall_exit" (if (null? code) 0 (car code))))
 
-(define (add1 x) (+ x 1))
-(define (sub1 x) (- x 1))
+(define-inline (add1 x) (+ x 1))
+(define-inline (sub1 x) (- x 1))
 
 (define (print . args)
   (for-each display args)

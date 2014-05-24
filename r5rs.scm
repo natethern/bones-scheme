@@ -326,7 +326,7 @@
    #t fd
    (lambda (p)
      (%slot-set! p 4 #f)
-     ($inline "call syscall_close" (%slot-ref p 0)))
+     ($inline "call syscall_close" (%slot-ref p 0))) ;XXX file-error
    (lambda (p n) 
      (let* ((str (%allocate-block #x11 n #f n #f #f))
 	    (nr ($inline "call syscall_read" str (%slot-ref p 0) n)))
@@ -335,16 +335,16 @@
 	      (let ((str2 (%allocate-block #x11 nr #f nr #f #f)))
 		($inline "call copy_bytes" (cons str 0) (cons str2 0) nr)
 		str2))
-	     (else #f))))		;XXX error
+	     (else #f))))		;XXX file-error
    #f))
 
 (define (%make-file-output-port fd)
   (%make-port 
    #f fd
    (lambda (p)
-     ($inline "call syscall_close" (%slot-ref p 0)))
+     ($inline "call syscall_close" (%slot-ref p 0))) ;XXX file-error
    (lambda (p str)
-     ($inline "call syscall_write" str (%slot-ref p 0) (string-length str))) ;XXX check for errors
+     ($inline "call syscall_write" str (%slot-ref p 0) (string-length str))) ;XXX filke-error
    #f))
 
 (define %standard-input-port (%make-file-input-port 0))
@@ -367,13 +367,11 @@
       (set! %standard-error-port (car p))))
 
 (define (open-input-file name)
-  (let ((fd ($inline "call syscall_open_input" name)))
-    ;;XXX check for error
+  (let ((fd ($inline "call syscall_open_input" name))) ;XXX file-error
     (%make-file-input-port fd)))
 
 (define (open-output-file name)
-  (let ((fd ($inline "call syscall_open_output" name)))
-    ;;XXX check for error
+  (let ((fd ($inline "call syscall_open_output" name))) ;XXX file-error
     (%make-file-output-port fd)))
 
 (define-inline (close-input-port p) ((%slot-ref p 2) p))
@@ -930,7 +928,7 @@
     (lambda p
       (let ((port (optional p %standard-input-port))
 	    (cs (case-sensitive))
-	    (eol (lambda (c) (%error 'read "unexpected delimiter" c))))
+	    (eol (lambda (c) (%error 'read "unexpected delimiter" c)))) ;XXX read-error
 	(define (parse-token t)
 	  (or (string->number t)
 	      (string->symbol t)))
@@ -972,7 +970,7 @@
 	(define (read-sharp)
 	  (let ((c (read-char port)))
 	    (if (eof-object? c)
-		(%error 'read "unexpected EOF after `#'")
+		(%error 'read "unexpected EOF after `#'") ;XXX read-error
 		(case c
 		  ((#\f #\F) #f)
 		  ((#\t #\T) #t)
@@ -982,13 +980,13 @@
 		  ((#\i #\I) 
 		   (let* ((tok (read-token '() #f))
 			  (n (string->number tok)))
-		     (cond ((not (number? n)) (%error 'read "invalid number syntax" tok))
+		     (cond ((not (number? n)) (%error 'read "invalid number syntax" tok)) ;XXX read-error
 			   ((inexact? n) n)
 			   (else (exact->inexact n)))))
 		  ((#\e #\E) 
 		   (let* ((tok (read-token '() #f))
 			  (n (string->number tok)))
-		     (cond ((not (number? n)) (%error 'read "invalid number syntax" tok))
+		     (cond ((not (number? n)) (%error 'read "invalid number syntax" tok)) ;XXX read-error
 			   ((exact? n) n)
 			   (else (inexact->exact n)))))
 		  ((#\() (list->vector (read-list #\))))
@@ -1005,7 +1003,7 @@
 			    (read-char port))
 			   (else (string-ref t 0)))))
 		  ((#\') `(syntax ,(read1))) ; for...whatever
-		  (else (%error 'read "invalid `#' syntax" c))))))
+		  (else (%error 'read "invalid `#' syntax" c)))))) ;XXX read-error
 	(define (read-list delim)
 	  (call-with-current-continuation
 	   (lambda (return)
@@ -1016,11 +1014,11 @@
 		   (set! eol old)
 		   (if (eqv? c delim)
 		       (return (reverse lst))
-		       (%error 'read "missing closing delimiter" delim))))
+		       (%error 'read "missing closing delimiter" delim)))) ;XXX read-error
 	       (let loop ()
 		 (let ((c (skip-whitespace)))
 		   (cond ((eof-object? c)
-			  (%error 'read "unexpected EOF while reading list"))
+			  (%error 'read "unexpected EOF while reading list")) ;XXX read-error
 			 ((char=? c delim)
 			  (read-char port)
 			  (set! eol old)
@@ -1034,7 +1032,7 @@
 				      (set! eol old)
 				      (if (eqv? (read-char port) delim)
 					  (return (append (reverse lst) rest))
-					  (%error 'read "missing closing delimiter" delim)))
+					  (%error 'read "missing closing delimiter" delim))) ;XXX read-error
 				    (set! lst (cons (parse-token t) lst))))
 			      (set! lst (cons (read1) lst)))
 			  (loop)))))))))
@@ -1042,13 +1040,13 @@
 	  (let loop ((lst '()))
 	    (let ((c (read-char port)))
 	      (cond ((eof-object? c)
-		     (%error 'read "unexpected EOF while reading delimited token"))
+		     (%error 'read "unexpected EOF while reading delimited token")) ;XXX read-error
 		    ((char=? delim c) 
 		     (list->string (reverse lst)))
 		    ((char=? #\\ c)
 		     (let ((c (read-char port)))
 		       (if (eof-object? c)
-			   (%error 'read "unexpected EOF while reading delimited token")
+			   (%error 'read "unexpected EOF while reading delimited token") ;XXX read-error
 			   (case c
 			     ((#\n) (loop (cons #\newline lst)))
 			     ((#\a) (loop (cons (integer->char 9) lst)))
@@ -1058,7 +1056,7 @@
 			      (let loop2 ((v 0) (i 0))
 				(let ((c (read-char port)))
 				  (cond ((eof-object? c)
-					 (%error 'read "unexpected EOF while reading delimited token"))
+					 (%error 'read "unexpected EOF while reading delimited token")) ;XXX read-error
 					((char=? #\; c) 
 					 (loop (cons (integer->char v) lst)))
 					((and (char>=? c #\0) (char<=? c #\9))
@@ -1067,7 +1065,7 @@
 					 (loop2 (%fx+ (arithmetic-shift v 4) (%fx- (char->integer c) 87)) (%fx+ i 1)))
 					((and (char>=? c #\A) (char<=? c #\F))
 					 (loop2 (%fx+ (arithmetic-shift v 4) (%fx- (char->integer c) 55)) (%fx+ i 1)))
-					(else (%error 'read "invalid escaped hexadecimal character in delimited token" c))))))
+					(else (%error 'read "invalid escaped hexadecimal character in delimited token" c)))))) ;XXX read-error
 			     (else (loop (cons c lst)))))))
 		    (else (loop (cons c lst)))))))
 	(define (read-string) (read-delimited #\"))
