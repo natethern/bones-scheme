@@ -25,6 +25,12 @@ extern clock
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
+%define DEFAULT_FILE_MODE   420
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 ;; x86-64 ABI requires rsp to be aligned on a 16-byte boundary, sets rax to 0
 %macro ALIGN_STACK 0
@@ -165,7 +171,7 @@ syscall_open_input:
   call copy_to_buffer
   mov rdi, buffer
   mov rsi, 0			; flags: O_RDONLY
-  mov rdx, 0o700		; mode: S_IRWXU
+  mov rdx, DEFAULT_FILE_MODE
   ALIGN_STACK
   call open
   INT2FIX rax
@@ -180,7 +186,7 @@ syscall_open_output:
   call copy_to_buffer
   mov rdi, buffer
   mov rsi, 577			; flags: O_WRONLY|O_CREAT|O_TRUNC
-  mov rdx, 0o700		; mode: S_IRWXU
+  mov rdx, DEFAULT_FILE_MODE
   ALIGN_STACK
   call open
   INT2FIX rax
@@ -195,7 +201,7 @@ syscall_open_append:
   call copy_to_buffer
   mov rdi, buffer
   mov rsi, 1089			; flags: O_WRONLY|O_CREAT|O_APPEND
-  mov rdx, 0o700		; S_IRWXU
+  mov rdx, DEFAULT_FILE_MODE
   ALIGN_STACK
   call open
   INT2FIX rax
