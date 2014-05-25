@@ -1,0 +1,32 @@
+#!/bin/scheme /grass/16/boot
+;;;; -*- Scheme -*-
+
+
+(require 'sh)
+
+
+(define options (command-line-arguments))
+
+(with-temporary-files
+ (lambda ()
+   (let* ((tmp (temporary-file "repl" "scm"))
+	  (stmp (replace-suffix "s" tmp))
+	  (otmp (replace-suffix "o" tmp))
+	  (xtmp (strip-suffix tmp)))
+     (let loop ()
+       (print* "bones> ")
+       (let ((x (read)))
+	 (unless (eof-object? x)
+	   (with-output-to-file tmp
+	     (lambda ()
+	       (pp `(program 
+		     (include "base.scm")
+		     (code
+		      (write ,x)
+		      (newline))))))
+	   (and (zero? (run* (./bones ,tmp -o ,stmp)))
+		(zero? (run* (nasm -f elf64 -g -F dwarf ,stmp -o ,otmp -DENABLE_GC_LOGGING ,@options)))
+		(zero? (run* (bin/musl-gcc ,otmp -o ,xtmp)))
+		(run* (,xtmp)))
+	   (loop))))
+     (newline))))
