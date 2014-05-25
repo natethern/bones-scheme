@@ -9,6 +9,6 @@
 (load "cps.scm")
 (load "mangle.scm")
 (load "program.scm")
-(load "barebones.scm")
+(load "cmplr.scm")
 
 (main (command-line-arguments))

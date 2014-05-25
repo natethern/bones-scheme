@@ -11,6 +11,6 @@
 (load "mangle.scm")
 (load "program.scm")
 
-(load "barebones.scm")
+(load "cmplr.scm")
 
 (load "repl.scm")

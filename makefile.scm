@@ -60,8 +60,8 @@
 
 (define (backup)
   (let* ((date (capture (date +%Y%m%d)))
-	 (name (string-append "bones-" date ".bky.tar.gz")))
-    (run (tar cfz ,name .bky))
+	 (name (string-append "bones-" date ".git.tar.gz")))
+    (run (tar cfz ,name .git))
     (run (scp ,name sem15:))))
 
 (define (tags)

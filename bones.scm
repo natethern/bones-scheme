@@ -20,5 +20,5 @@
 	 "cps.scm"
 	 "mangle.scm"
 	 "program.scm"
-	 "barebones.scm")
+	 "cmplr.scm")
   (code (main (command-line-arguments))))
