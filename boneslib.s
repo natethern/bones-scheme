@@ -290,6 +290,7 @@ section .text
 global main
 
 main:
+  SAVE
   mov [argc], rdi
   mov [argv], rsi
   jmp init
@@ -303,13 +304,17 @@ init:
   mov LIMIT, [fromspace_end]
   sub LIMIT, FROMSPACE_RESERVE
   mov rcx, terminate_closure
+  mov [toplevel_rsp], rsp
   xor SELF, SELF	    ; current closure, empty here
   jmp toplevel
 
 
 terminate:
-  mov rax, FIX(0)
-  call syscall_exit
+  mov rsp, [toplevel_rsp]
+  mov rax, [exit_code]
+  FIX2INT rax
+  RESTORE
+  ret
 
 
 ;; consrest: registers/locals = arguments, r11 = argc, rax = non-rest args -> rax (ptr)
@@ -1951,6 +1956,7 @@ fromspace_end: dq area1 + TOTAL_HEAP_SIZE / 2
 tospace: dq area2
 tospace_end: dq area2 + TOTAL_HEAP_SIZE / 2
 fromspace_limit: dq area1 + FROMSPACE_RESERVE
+exit_code: dq FIX(0)
 
 align 8
 
@@ -2006,6 +2012,7 @@ random_numbers:
 
 section .bss
 
+toplevel_rsp: resq 1
 gc_count: resq 1
 buffer: resb 1024
 gcsave: resq 2			; holds 2 additional registers to those in "tempregisters"

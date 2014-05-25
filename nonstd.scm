@@ -107,9 +107,6 @@
 
 (define-inline (system str) ($inline "call syscall_shell_command" str))
 
-(define (exit . code)
-  ($inline "call syscall_exit" (if (null? code) 0 (car code))))
-
 (define-inline (add1 x) (+ x 1))
 (define-inline (sub1 x) (- x 1))
 

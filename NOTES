@@ -13,9 +13,7 @@ BONES                                                                           
   - file-errors (input/output and opening files).
     - file-error errno-codes can be retrieved via __errno_location (linux only).
   - reader errors.
-* TODO add standard features
-  - somehow via file:base.scm
-  - linux, x86_64.
+  - allow later integration with exn-handling.
 * TODO consider using libgc as 2nd heap generation
   - needs write-barrier to record assignments of heap-data into non-heap objects
 * TODO pre-allocated chars in the range 0-255
@@ -24,8 +22,26 @@ BONES                                                                           
 * TODO allow running without libc
   - will need to drop a number of primitives.
   - needs hand-rolled str<->num conversion.
-  - "exit": unwind and return to toplevel k.
-    - "emergency-exit": clear dynwinds first.
+* TODO write minimal "bare" bones variant
+  - no floats.
+  - manual str<->num conversion (exact integer only).
+  - 32-bit (doesn't need alignment-hole.)
+  - file:r5rs.scm
+    - drop:
+      exact? inexact? rational? real? exact->inexact inexact->exact finite?
+      nan? integer? sin cos tan atan sqrt expt exp truncate ceiling floor round
+      open-input-file open-output-file current-directory current-second
+      current-process-id delete-file file-exists? current-jiffy jiffies-per-second
+      open-append-output-file system
+      %make-file-input-port %make-file-output-port
+    - standard-ports are empty (bit-sinks/return eof.)
+    - simplify:
+      number? negative? positive? zero? even? number->string
+    - drop exactness prefixes in reader.
+  - file:boneslib.scm
+    - simplify arithmetic and numeric operators.
+* TODO write file:README
+* TODO is pre-expansion necessary at all?
 * Add partial R7RS support?
   - modulo libraries.
   - exn-handling could use code from http://srfi.schemers.org/srfi-34/srfi-34.html to
@@ -54,95 +70,98 @@ BONES                                                                           
 	MsgBox "ArcCos(0.5) = " & ArcCos(0.5)
     End Sub
 * TODO we need some sort of register-allocation
+  - see Appel's book, perhaps a variant of the Sethi-Ullman RA.
 * TODO reimplement repl that runs code via native (self-compiled) bones
 * TODO log: "fld1; fld XXX; fyl2x"
   - seems to be broken.
 * TODO remove unused globals
 * Possible R7RS exception-handling stuff from srfi-34
-
-(define *current-exception-handlers*
-  (list (lambda (condition)
-          (error "unhandled exception" condition))))
-
-(define (with-exception-handler handler thunk)
-  (with-exception-handlers (cons handler *current-exception-handlers*)
-                           thunk))
-
-(define (with-exception-handlers new-handlers thunk)
-  (let ((previous-handlers *current-exception-handlers*))
-    (dynamic-wind
-      (lambda ()
-        (set! *current-exception-handlers* new-handlers))
-      thunk
-      (lambda ()
-        (set! *current-exception-handlers* previous-handlers)))))
-
-(define (raise obj)
-  (let ((handlers *current-exception-handlers*))
-    (with-exception-handlers (cdr handlers)
-      (lambda ()
-        ((car handlers) obj)
-        (error "handler returned"
-               (car handlers)
-               obj)))))
-
-(define-syntax guard
-  (syntax-rules ()
-    ((guard (var clause ...) e1 e2 ...)
-     ((call-with-current-continuation
-       (lambda (guard-k)
-         (with-exception-handler
-          (lambda (condition)
-            ((call-with-current-continuation
-               (lambda (handler-k)
-                 (guard-k
-                  (lambda ()
-                    (let ((var condition))      ; clauses may SET! var
-                      (guard-aux (handler-k (lambda ()
-                                              (raise condition)))
-                                 clause ...))))))))
-          (lambda ()
-            (call-with-values
-             (lambda () e1 e2 ...)
-             (lambda args
-               (guard-k (lambda ()
-                          (apply values args)))))))))))))
-
-(define-syntax guard-aux
-  (syntax-rules (else =>)
-    ((guard-aux reraise (else result1 result2 ...))
-     (begin result1 result2 ...))
-    ((guard-aux reraise (test => result))
-     (let ((temp test))
-       (if temp 
-           (result temp)
-           reraise)))
-    ((guard-aux reraise (test => result) clause1 clause2 ...)
-     (let ((temp test))
-       (if temp
-           (result temp)
-           (guard-aux reraise clause1 clause2 ...))))
-    ((guard-aux reraise (test))
-     test)
-    ((guard-aux reraise (test) clause1 clause2 ...)
-     (let ((temp test))
-       (if temp
-           temp
-           (guard-aux reraise clause1 clause2 ...))))
-    ((guard-aux reraise (test result1 result2 ...))
-     (if test
-         (begin result1 result2 ...)
-         reraise))
-    ((guard-aux reraise (test result1 result2 ...) clause1 clause2 ...)
-     (if test
-         (begin result1 result2 ...)
-         (guard-aux reraise clause1 clause2 ...)))))
+#+BEGIN_SRC scheme
+  (define *current-exception-handlers*
+    (list (lambda (condition)
+            (error "unhandled exception" condition))))
+  
+  (define (with-exception-handler handler thunk)
+    (with-exception-handlers (cons handler *current-exception-handlers*)
+                             thunk))
+  
+  (define (with-exception-handlers new-handlers thunk)
+    (let ((previous-handlers *current-exception-handlers*))
+      (dynamic-wind
+        (lambda ()
+          (set! *current-exception-handlers* new-handlers))
+        thunk
+        (lambda ()
+          (set! *current-exception-handlers* previous-handlers)))))
+  
+  (define (raise obj)
+    (let ((handlers *current-exception-handlers*))
+      (with-exception-handlers (cdr handlers)
+        (lambda ()
+          ((car handlers) obj)
+          (error "handler returned"
+                 (car handlers)
+                 obj)))))
+  
+  (define-syntax guard
+    (syntax-rules ()
+      ((guard (var clause ...) e1 e2 ...)
+       ((call-with-current-continuation
+         (lambda (guard-k)
+           (with-exception-handler
+            (lambda (condition)
+              ((call-with-current-continuation
+                 (lambda (handler-k)
+                   (guard-k
+                    (lambda ()
+                      (let ((var condition))      ; clauses may SET! var
+                        (guard-aux (handler-k (lambda ()
+                                                (raise condition)))
+                                   clause ...))))))))
+            (lambda ()
+              (call-with-values
+               (lambda () e1 e2 ...)
+               (lambda args
+                 (guard-k (lambda ()
+                            (apply values args)))))))))))))
+  
+  (define-syntax guard-aux
+    (syntax-rules (else =>)
+      ((guard-aux reraise (else result1 result2 ...))
+       (begin result1 result2 ...))
+      ((guard-aux reraise (test => result))
+       (let ((temp test))
+         (if temp 
+             (result temp)
+             reraise)))
+      ((guard-aux reraise (test => result) clause1 clause2 ...)
+       (let ((temp test))
+         (if temp
+             (result temp)
+             (guard-aux reraise clause1 clause2 ...))))
+      ((guard-aux reraise (test))
+       test)
+      ((guard-aux reraise (test) clause1 clause2 ...)
+       (let ((temp test))
+         (if temp
+             temp
+             (guard-aux reraise clause1 clause2 ...))))
+      ((guard-aux reraise (test result1 result2 ...))
+       (if test
+           (begin result1 result2 ...)
+           reraise))
+      ((guard-aux reraise (test result1 result2 ...) clause1 clause2 ...)
+       (if test
+           (begin result1 result2 ...)
+           (guard-aux reraise clause1 clause2 ...)))))
+#+END_SRC
 
 * R5RS support
 ** TODO missing
    asin acos
 ** TODO broken
    log
+** "string->number" does not support exactness or base prefixes
 ** Unimplemented
    numerator, denominator
    make-rectangular, make-polar, real-part, imag-part, magnitude, angle
@@ -164,6 +183,7 @@ BONES                                                                           
 ** Non-standard extensions
 *** Alexpander extensions
 *** Primitives
+   emergency-exit
    current-process-id
    current-error-port
    current-directory
@@ -208,7 +228,11 @@ BONES                                                                           
    - is the exponent overflow-test correct?
 ** align flonums so that block-data is at 16-byte boundary
    - this is supposed to be faster.
-   - but needs to be handled in GC (skip padding bytes).
+   - but needs to be handled in GC (skip padding bytes.)
+   - also needed for 32-bit variant with flonum support
+     - when allocating flonums, align ALLOC first.
+     - GC: when copying, insert marker word before flonum; during scan,
+       check for marker word and skip.
 * Referencess
   - FPU instructions: http://www.pmzone.org/appendixF.html
   - FPU tutorial: http://www.website.masmforum.com/tutorials/fptute/fpuchap10.htm

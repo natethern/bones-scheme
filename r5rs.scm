@@ -877,10 +877,25 @@
     (lambda (x . p)
       (output-to-port x #t (if (null? p) %standard-output-port (car p))))))
 
+(define (emergency-exit . code)
+  (let ((code (optional code 0)))
+    ($inline "mov [exit_code], rax; jmp terminate" 70)))
+
+(define (exit . code)
+  (let ((code (optional code 0)))
+    (let loop ()
+      (cond ((null? %dynamic-winds) ($inline "mov [exit_code], rax; jmp terminate" code))
+	    (else
+	     (let ((dw (car %dynamic-winds)))
+	       (set! %dynamic-winds (cdr %dynamic-winds))
+	       ((cdr dw))
+	       (loop)))))))
+
 (define %error
   (let ((write write)
 	(display display)
 	(newline newline)
+	(emergency-exit emergency-exit)
 	(string-append string-append))
     (lambda (msg . args)
       (cond ((and (symbol? msg) (pair? args) (string? (car args)))
@@ -901,7 +916,7 @@
 		(write arg)
 		(newline %standard-error-port))
 	      args)))
-      ($inline "call syscall_exit" 70))))
+      (emergency-exit 70))))
 
 (define-syntax error %error)
 
