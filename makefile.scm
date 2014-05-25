@@ -39,7 +39,7 @@
 			 "cps.scm"
 			 "mangle.scm"
 			 "program.scm"
-			 "barebones.scm"
+			 "cmplr.scm"
 			 "bones.scm")
 	  (run (./expand-sources bones.scm bones.x.scm))))))
 
@@ -88,6 +88,41 @@
 		(and (zero? (run* (cmp bones.s tmp/bones.s))))))
       (print "\nall checks succeeded.")
       (print "\nsome checks failed.")))
+
+(define distfiles
+  '("README"
+    "bones.s"
+    "alexpand.scm"
+    "all.scm"
+    "base.scm"
+    "bones.scm"
+    "boneslib.s"
+    "cc.scm"
+    "cmplr.scm"
+    "cps.scm"
+    "intrinsics.scm"
+    "libcalls.s"
+    "mangle.scm"
+    "match.scm"
+    "megalet.scm"
+    "moresyntax.scm"
+    "nonstd.scm"
+    "pp.scm"
+    "r5rs.scm"
+    "program.scm"
+    "source.scm"
+    "structured.s"
+    "support.scm"))
+
+(define (dist)
+  (let* ((date (capture (date +%Y-%m-%d)))
+	 (arch (string-append "bones-" date)))
+    (bones.s)
+    (run (rm -fr ,arch))
+    (run (mkdir ,arch))
+    (run (cp ,@distfiles ,arch))
+    (run (tar cfz ,(string-append arch ".tar.gz") ,arch))
+    (run (rm -fr ,arch))))
 
 (define (-n)
   (run-dry-run #t))
