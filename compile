@@ -4,7 +4,7 @@ set -e
 input=$1
 filename=`basename $1 .scm`
 shift
-./bones1 $input -o $filename.s
+./bones $input -o $filename.s
 nasm -f elf64 -g -F dwarf $filename.s -o $filename.o "$@"
 exec bin/musl-gcc $filename.o -o $filename
 #exec gcc $filename.o -o $filename
