@@ -1,6 +1,11 @@
 BONES                                                                               -*- Org -*-
 
 
+* TODO reimplement file:run in scheme, get rid of file:compile
+  - also handle .s or .o files.
+  - perhaps implement full-features driver, accepting nasm and linker options.
+* TODO use feature-cond/cond-expand to handle arch/os in file:bones.scm and file:base.scm
+* TODO refactor backend code in a better way
 * TODO move code to bitbucket?
 * TODO something is wrong with musl's "sprintf" (or varargs) implementation
   - "(number->string (expt 2.1 3))" returns "nan".
@@ -14,6 +19,7 @@ BONES                                                                           
     - file-error errno-codes can be retrieved via __errno_location (linux only).
   - reader errors.
   - allow later integration with exn-handling.
+  - needs [[exception-handling stuff]]
 * TODO consider using libgc as 2nd heap generation
   - needs write-barrier to record assignments of heap-data into non-heap objects
 * TODO pre-allocated chars in the range 0-255
@@ -25,6 +31,7 @@ BONES                                                                           
 * TODO write minimal "bare" bones variant
   - no floats.
   - manual str<->num conversion (exact integer only).
+    - needs intrinsic "(%fx-divmod X Y K)"
   - 32-bit (doesn't need alignment-hole.)
   - file:r5rs.scm
     - drop:
@@ -40,62 +47,37 @@ BONES                                                                           
     - drop exactness prefixes in reader.
   - file:boneslib.scm
     - simplify arithmetic and numeric operators.
+  - sample architecture: MIPS (el, 32 bits)
+    - register usage:
+      | temporaries | v0, v1, a0 (3)                            |
+      | arguments   | s5 (SELF), a1 - a3, t0 - t9, s0 - s4 (16) |
+      | ALLOC       | s8                                        |
+      | LIMIT       | s7                                        |
+      | FALSE       | s6                                        |
+      | stackptr    | sp                                        |
+      | unused      | zero, at, ra, gp                          | 
+    - use $ra as continuation argument?
 * TODO write file:README
 * TODO is pre-expansion necessary at all?
 * Add partial R7RS support?
   - modulo libraries.
-  - exn-handling could use code from http://srfi.schemers.org/srfi-34/srfi-34.html to
-    implement dynamic-env required spaghetti.
-* TODO code for "asin"
-  - http://forums.codeguru.com/showthread.php?262979-How-to-compute-asin
-    fld   st(0)             ;copy sine value
-    fmul  st,st(0)          ;sin^2
-    fld1
-    fsubr                   ;1-sin^2 = cos^2
-    fsqrt                   ;->cos
-    fpatan                  ;i.e. arctan(sin/cos) = arcsin
-  - more
-    Function ArcSin(X As Double) As Double
-	ArcSin = Atn(X / Sqr(-X * X + 1))
-    End Function
-
-    Function ArcCos(X As Double) As Double
-	ArcCos = Atn(-X / Sqr(-X * X + 1)) + 2 * Atn(1)
-    End Function
-
-    Private Sub Command1_Click()
-	' replace the 0.5 below with the degree (in radians) that
-	' you want to calculate its ArcSin or ArcCos value
-	MsgBox "ArcSin(0.5) = " & ArcSin(0.5)
-	MsgBox "ArcCos(0.5) = " & ArcCos(0.5)
-    End Sub
-* TODO we need some sort of register-allocation
-  - see Appel's book, perhaps a variant of the Sethi-Ullman RA.
-* TODO reimplement repl that runs code via native (self-compiled) bones
-* TODO log: "fld1; fld XXX; fyl2x"
-  - seems to be broken.
-* TODO remove unused globals
 * Possible R7RS exception-handling stuff from srfi-34
 #+BEGIN_SRC scheme
-  (define *current-exception-handlers*
-    (list (lambda (condition)
-            (error "unhandled exception" condition))))
-  
   (define (with-exception-handler handler thunk)
-    (with-exception-handlers (cons handler *current-exception-handlers*)
+    (with-exception-handlers (cons handler %current-exception-handlers)
                              thunk))
   
   (define (with-exception-handlers new-handlers thunk)
-    (let ((previous-handlers *current-exception-handlers*))
+    (let ((previous-handlers %current-exception-handlers))
       (dynamic-wind
         (lambda ()
-          (set! *current-exception-handlers* new-handlers))
+          (set! %current-exception-handlers new-handlers))
         thunk
         (lambda ()
-          (set! *current-exception-handlers* previous-handlers)))))
+          (set! %current-exception-handlers previous-handlers)))))
   
   (define (raise obj)
-    (let ((handlers *current-exception-handlers*))
+    (let ((handlers %current-exception-handlers))
       (with-exception-handlers (cdr handlers)
         (lambda ()
           ((car handlers) obj)
@@ -154,8 +136,127 @@ BONES                                                                           
        (if test
            (begin result1 result2 ...)
            (guard-aux reraise clause1 clause2 ...)))))
+  
+  (define (%make-error-object kind msg irritants loc)
+    (let ((err ($allocate 10 4 'error-object 1)))
+      (%slot-set! err 2 kind)
+      (%slot-set! 
+       err 3 
+       `((((error-object . 1) . message) . ,msg)
+         (((error-object . 1) . irritants) . ,irritants)
+         (((error-object . 1) . location) . ,location)))
+      err))
+  
+  (define-inline (error-object? x)
+    (and (record? x)
+         (eq 'error-object (%slot-ref x 2))
+         (eq? 1 (%slot-ref x 1))))
+  
+  (define-inline (error-object-message x) 
+    (cdr (assoc '((error-object . 1) . message) (%slot-ref x 3))))
+  
+  (define-inline (error-object-irritants x)
+    (cdr (assoc '((error-object . 1) . irritants) (%slot-ref x 3))))
+  
+  (define-inline (error-object-location x)
+    (cdr (assoc '((error-object . 1) . location) (%slot-ref x 3))))
+  
+  (define-inline (read-error? x)
+    (and (error-object? x)
+         (member '(read-error . 1) (%slot-ref x 2))))
+  
+  (define-inline (file-error? x)
+    (and (error-object? x)
+         (member '(file-error . 1) (%slot-ref x 2))))
+  
+  ;; replacement
+  (define %error
+    (let ((write write)
+          (display display)
+          (newline newline)
+          (emergency-exit emergency-exit)
+          (string-append string-append))
+      (lambda (msg . args)
+        (let ((msg "<unknown error>")
+              (irrs args)
+              (loc #f))
+          (cond ((and (symbol? msg) (pair? args) (string? (car args)))
+                 (set! loc (symbol->string msg))
+                 (set! msg (car args))
+                 (set! irrs (cdr args)))
+                ((not (string? msg))
+                 (set! irrs (cons msg args))))
+          (raise
+           (%make-error-object
+            '((error-object . 1))
+            msg irrs loc))))))
+  
+  (define %current-exception-handlers
+    (list
+     (let ((write write)
+           (display display)
+           (newline newline)
+           (emergency-exit emergency-exit)
+           (string-append string-append))
+       (lambda (condition)
+         (cond ((error-object? condition)
+                (let ((args (error-object-irritants condition))
+                      (loc (error-object-location condition)))
+                  (display
+                   (string-append
+                    "\nError: "
+                    (if loc (string-append "(" loc ")") "")
+                    (error-object-message condition))
+                   %standard-error-port)
+                  (cond ((null? args) (newline %standard-error-port))
+                        (else
+                         (display ":\n" %standard-error-port)
+                         (for-each
+                          (lambda (arg)
+                            (newline %standard-error-port)
+                            (write arg)
+                            (newline %standard-error-port))
+                          args)))))
+               (else
+                (display "\nUnhandled exception: " %standard-error-port)
+                (write condition %standard-error-port)
+                (newline %standard-error-port)))
+         (emergency-exit 70)))))
 #+END_SRC
 
+* TODO code for "asin"
+  - http://forums.codeguru.com/showthread.php?262979-How-to-compute-asin
+    fld   st(0)             ;copy sine value
+    fmul  st,st(0)          ;sin^2
+    fld1
+    fsubr                   ;1-sin^2 = cos^2
+    fsqrt                   ;->cos
+    fpatan                  ;i.e. arctan(sin/cos) = arcsin
+  - more
+    Function ArcSin(X As Double) As Double
+	ArcSin = Atn(X / Sqr(-X * X + 1))
+    End Function
+
+    Function ArcCos(X As Double) As Double
+	ArcCos = Atn(-X / Sqr(-X * X + 1)) + 2 * Atn(1)
+    End Function
+
+    Private Sub Command1_Click()
+	' replace the 0.5 below with the degree (in radians) that
+	' you want to calculate its ArcSin or ArcCos value
+	MsgBox "ArcSin(0.5) = " & ArcSin(0.5)
+	MsgBox "ArcCos(0.5) = " & ArcCos(0.5)
+    End Sub
+* TODO we need some sort of register-allocation
+  - see Appel's book, perhaps a variant of the Sethi-Ullman RA.
+* TODO log: "fld1; fld XXX; fyl2x"
+  - seems to be broken.
+* TODO remove unused globals
+* TODO lexically save references to primitives defined as syntax (inline functions)?
+  - like this:
+    (let-syntax ((PRIMITIVE PRIMITIVE))
+      (define-inline (OTHER-PRIMITIVE ...) ...))
+  - or redefinition of PRIMITIVE will change behaviour of OTHER-PRIMITIVE.
 * R5RS support
 ** TODO missing
    asin acos
@@ -234,12 +335,20 @@ BONES                                                                           
      - GC: when copying, insert marker word before flonum; during scan,
        check for marker word and skip.
 * Referencess
-  - FPU instructions: http://www.pmzone.org/appendixF.html
-  - FPU tutorial: http://www.website.masmforum.com/tutorials/fptute/fpuchap10.htm
-  - x86 reference: http://www.fermimn.gov.it/linux/quarta/x86/index.htm
-  - SSE: http://softpixel.com/~cwright/programming/simd/sse.php
-  - General information: file:/archive/optimizing_assembly.pdf
-  - x86-64 ABI: file:/archive/x86-64-abi.pdf
+  - X86_64:
+    - FPU instructions: http://www.pmzone.org/appendixF.html
+    - FPU tutorial: http://www.website.masmforum.com/tutorials/fptute/fpuchap10.htm
+    - x86 reference: http://www.fermimn.gov.it/linux/quarta/x86/index.htm
+    - SSE: http://softpixel.com/~cwright/programming/simd/sse.php
+    - General information: file:/archive/optimizing_assembly.pdf
+    - x86-64 ABI: file:/archive/x86-64-abi.pdf
+  - MIPS
+    http://en.wikipedia.org/wiki/MIPS_instruction_set
+    http://www.mrc.uidaho.edu/mrc/people/jff/digital/MIPSir.html
+    file:/archive/4KcProgMan.pdf
+    file:/archive/mipsabi32.pdf
+  - RA:
+    http://pages.cs.wisc.edu/~cs701-1/NOTES/5.REGISTER-ALLOCATION.html
 * Notes
 ** the write barrier can be disabled by defining DISABLE_WRITE_BARRIER
 ** enable GC logging with -DENABLE_GC_LOGGING
