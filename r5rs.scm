@@ -59,6 +59,7 @@
 (define-inline (eof-object? x) (eq? x (eof-object)))
 (define-inline (boolean? x) (eq? ($inline "TYPE_OF" x) 7))
 (define-inline (port? x) (eq? ($inline "TYPE_OF" x) 8))
+(define-inline (record? x) (eq? ($inline "TYPE_OF" x) 10))
 (define-inline (input-port? x) (and (port? x) (%slot-ref x 1)))
 (define-inline (output-port? x) (and (port? x) (not (%slot-ref x 1))))
 (define-inline (promise? x) (eq? ($inline "TYPE_OF" x) 9))
@@ -862,6 +863,13 @@
 	      ((number? x) (outs (number->string x)))
 	      ((null? x) (outs "()"))
 	      ((promise? x) (outs "#<promise>"))
+	      ((record? x)
+	       (let ((rt (%slot-ref x 0)))
+		 (out (string-append 
+		       "#<record "
+		       (%slot-ref rt 0)	; record-type name-symbol
+		       (number->string (%slot-ref rt 1)) ; record-type id
+		       ">"))))
 	      ((input-port? x) (outs "#<input-port>"))
 	      ((output-port? x) (outs "#<output-port>"))
 	      ((procedure? x) (outs "#<procedure>"))
