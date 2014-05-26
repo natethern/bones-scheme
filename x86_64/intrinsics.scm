@@ -1,4 +1,4 @@
-;;;; low-level operations
+;;;; low-level operations (x86_64)
 
 
 (define-syntax-rule (%slot-ref x i) ($inline "SLOT_REF" x i))

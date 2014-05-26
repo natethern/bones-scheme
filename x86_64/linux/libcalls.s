@@ -1,4 +1,4 @@
-;;;; libc stubs
+;;;; libc stubs (x86_64-linux)
 
 
 section .text

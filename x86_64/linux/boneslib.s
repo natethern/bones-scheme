@@ -1,4 +1,4 @@
-;;;; bones.s - runtime system and core library -*- nasm -*-
+;;;; bones.s - runtime system and core library (x86_64-linux) -*- nasm -*-
 ;
 ;
 ; * Register usage: 
