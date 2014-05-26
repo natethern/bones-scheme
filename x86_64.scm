@@ -7,7 +7,7 @@
 (define word-size 8)			; bytes
 (define target-os 'linux)
 (define target-arch 'x86_64)
-(define target-endianess 'little-endian)
+(define target-endianness 'little-endian)
 
 
 (define (generate-header)
