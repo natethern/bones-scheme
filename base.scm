@@ -1,6 +1,6 @@
 ;; default base
 
-(provide linux x86_64 little-endian)
+(provide little-endian)	;XXX move somewhere else
 
 (files "moresyntax.scm"
        "intrinsics.scm"

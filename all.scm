@@ -10,7 +10,7 @@
 (load "cps.scm")
 (load "mangle.scm")
 (load "program.scm")
-
 (load "cmplr.scm")
+(load "x86_64.scm")
 
 (load "repl.scm")

@@ -6,24 +6,10 @@
 
 
 (define (all)
-  (fac))
+  (bones))
 
 (define (clean)
   (run (rm -f fac fac.o fac.s)))
-
-(define (fac.s)
-  (make (("fac.s" ("fac.scm" "r5rs.scm" "moresyntax.scm" "intrinsics.scm")
-	  (run (./bones1 fac.scm -o fac.s))))))
-
-(define (fac.o)
-  (fac.s)
-  (make (("fac.o" ("fac.s" "boneslib.s" "structured.s" "libcalls.s")
-	  (run (nasm -f elf64 -g -F dwarf fac.s -o fac.o))))))
-
-(define (fac)
-  (fac.o)
-  (make (("fac" ("fac.o")
-	  (run (bin/musl-gcc fac.o -o fac))))))
 
 (define (bones.x.scm)
   (make (("bones.x.scm" ("moresyntax.scm"
@@ -40,23 +26,24 @@
 			 "mangle.scm"
 			 "program.scm"
 			 "cmplr.scm"
+			 "x86_64.scm"
 			 "bones.scm")
 	  (run (./expand-sources bones.scm bones.x.scm))))))
 
-(define (bones.s)
+(define (bones-x86_64-linux.s)
   (bones.x.scm)
   (make (("bones.s" ("bones.x.scm")
-	  (run (./bones1 bones.x.scm -o bones.s))))))
+	  (run (./bones1 bones.x.scm -o bones-x86_64-linux.s))))))
 
-(define (bones.o)
+(define (bones-x86_64-linux.o)
   (bones.s)
-  (make (("bones.o" ("bones.s")
-	  (run (nasm -f elf64 -g -F dwarf bones.s -o bones.o))))))
+  (make (("bones-x86_64-linux.o" ("bones-x86_64-linux.s")
+	  (run (nasm -f elf64 -g -F dwarf bones-x86_64-linux.s -o bones-x86_64-linux.o))))))
 
 (define (bones)
   (bones.o)
-  (make (("bones" ("bones.o")
-	  (run (bin/musl-gcc bones.o -o bones))))))
+  (make (("bones" ("bones-x86_64-linux.o")
+	  (run (bin/musl-gcc bones-x86_64-linux.o -o bones))))))
 
 (define (backup)
   (let* ((date (capture (date +%Y%m%d)))
@@ -91,17 +78,16 @@
 
 (define distfiles
   '("README"
-    "bones.s"
+    "bones-x86_64-linux.s"
     "alexpand.scm"
     "all.scm"
     "base.scm"
     "bones.scm"
-    "boneslib.s"
     "cc.scm"
     "cmplr.scm"
+    "x86_64.scm"
     "cps.scm"
     "intrinsics.scm"
-    "libcalls.s"
     "mangle.scm"
     "match.scm"
     "megalet.scm"
@@ -111,16 +97,21 @@
     "r5rs.scm"
     "program.scm"
     "source.scm"
-    "structured.s"
+    "x86_64/structured.s"
+    "x86_64/linux/boneslib.s"
+    "x86_64/linux/libcalls.s"
     "support.scm"))
 
 (define (dist)
   (let* ((date (capture (date +%Y-%m-%d)))
 	 (arch (string-append "bones-" date)))
-    (bones.s)
+    (bones-x86_64-linux.s)
     (run (rm -fr ,arch))
-    (run (mkdir ,arch))
-    (run (cp ,@distfiles ,arch))
+    (run (mkdir -p ,(string-append arch "/x86_64/linux")))
+    (for-each
+     (lambda (df)
+       (run (cp ,df ,(string-append arch "/" df))))
+     distfiles)
     (run (tar cfz ,(string-append arch ".tar.gz") ,arch))
     (run (rm -fr ,arch))))
 

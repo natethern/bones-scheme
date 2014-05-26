@@ -20,5 +20,6 @@
 	 "cps.scm"
 	 "mangle.scm"
 	 "program.scm"
-	 "cmplr.scm")
+	 "cmplr.scm"
+	 "x86_64.scm")
   (code (main (command-line-arguments))))

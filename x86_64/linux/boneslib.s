@@ -20,7 +20,7 @@
   bits 64
 
 
-%include "structured.s"
+%include "x86_64/structured.s"
 
 
 ; types:
@@ -62,6 +62,7 @@
 %define BOOLEAN TYPECODE(7)
 %define PORT    TYPECODE(8)
 %define PROMISE  TYPECODE(9)
+%define RECORD  TYPECODE(10)
 ;; byteblock objects
 %define FLONUM	TYPECODE(0x10)
 %define STRING	TYPECODE(0x11)
@@ -1943,7 +1944,7 @@ member_cmp_equal:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-%include "libcalls.s"
+%include "x86_64/linux/libcalls.s"
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
