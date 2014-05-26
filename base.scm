@@ -1,8 +1,10 @@
 ;; default base
 
-(provide little-endian)	;XXX move somewhere else
+(files "moresyntax.scm")
 
-(files "moresyntax.scm"
-       "intrinsics.scm"
-       "r5rs.scm"
+(cond-expand
+  (x86_64
+   (files "x86_64/intrinsics.scm")))
+
+(files "r5rs.scm"
        "nonstd.scm")

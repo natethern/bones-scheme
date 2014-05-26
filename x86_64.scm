@@ -4,10 +4,10 @@
 (define fixnum-range '(-4611686018427387904 . 4611686018427387903))
 (define temporary-registers '(rax r11 r15))
 (define argument-registers '(rbx rcx rdx rsi rdi r8 r9 r10 r12))
-(define word-size 8)
+(define word-size 8)			; bytes
 (define target-os 'linux)
 (define target-arch 'x86_64)
-(define argument-register-count (sub1 (length argument-registers)))
+(define target-endianess 'little-endian)
 
 
 (define (generate-header)

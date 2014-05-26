@@ -3,12 +3,23 @@
 
 (define basic-implementation-features '(bones srfi-0 srfi-6 srfi-8 srfi-7))
 
+(define argument-register-count 0)
+(define primitives '())
+(define closures-to-be-translated '())
+(define literals-to-be-translated '())
+(define string-literals '())
+(define symbol-table '())
+(define label-counter 0)
+(define environment '())
+(define allocating #f)
+
 
 (define (compile code . options)
   (set! lambda-id-counter 0)
+  (set! argument-register-count (sub1 (length argument-registers)))
   (set! implementation-features
     (append (map string->symbol (collect-options 'feature: options))
-	    (list target-os target-arch)
+	    (list target-os target-arch target-endianness)
 	    basic-implementation-features))
   (set! file-search-path
     (append (collect-options 'library-path: options) '(".")))
@@ -63,15 +74,6 @@
   (generate-literals)
   (generate-primitives)
   (generate-trailer))
-
-(define primitives '())
-(define closures-to-be-translated '())
-(define literals-to-be-translated '())
-(define string-literals '())
-(define symbol-table '())
-(define label-counter 0)
-(define environment '())
-(define allocating #f)
 
 (define (fixnum? n)
   (and (number? n) (exact? n) (<= (car fixnum-range) n (cdr fixnum-range))))

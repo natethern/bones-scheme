@@ -13,7 +13,7 @@
 
 (define (bones.x.scm)
   (make (("bones.x.scm" ("moresyntax.scm"
-			 "intrinsics.scm"
+			 "x86_64/intrinsics.scm"
 			 "r5rs.scm"
 			 "match.scm"
 			 "support.scm"
@@ -87,7 +87,7 @@
     "cmplr.scm"
     "x86_64.scm"
     "cps.scm"
-    "intrinsics.scm"
+    "x86_64/intrinsics.scm"
     "mangle.scm"
     "match.scm"
     "megalet.scm"
