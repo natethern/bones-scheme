@@ -1,15 +1,6 @@
 ;;;; non-std extensions
 
 
-(define command-line
-  (let* ((argc ($inline "mov rax, [argc]; INT2FIX rax"))
-	 (lst (let loop ((i 0))
-		(if (%fx>=? i argc)
-		    '()
-		    (cons ($inline "FIX2INT rax; mov r11, [argv]; mov rax, [r11 + rax * CELLS(1)]; call alloc_zstring" i)
-			  (loop (%fx+ i 1)))))))
-    (lambda () lst)))
-
 (define open-input-string
   (let ((substring substring))
     (lambda (str)
@@ -49,11 +40,11 @@
 		  (p2 (%fx+ p1 n)))
 	     (when (%fx>? p2 len)
 	       (let ((new (make-string (%fx+ p2 5000))))
-		 ($inline "call copy_bytes" (cons s 0) (cons new 0) p1)
+		 ($inline "CALL copy_bytes" (cons s 0) (cons new 0) p1)
 		 (set! s new))
 	       (set-car! data s))
 	     (set-cdr! data p2)
-	     ($inline "call copy_bytes" (cons str 0) (cons s p1) n)
+	     ($inline "CALL copy_bytes" (cons str 0) (cons s p1) n)
 	     str))
 	 data)))))
 
@@ -80,32 +71,58 @@
   (let ((p (optional p %standard-output-port)))
     ((%slot-ref p 3) p str)))
 
-(define (current-directory . dir)
-  (if (null? dir)
-      ($inline "call syscall_getcwd")	;XXX file-error
-      (let ((r ($inline "call syscall_chdir" (car dir))))
-	r)))				;XXX file-error
+(cond-expand
+  (file-system
+
+   (define (current-directory . dir)
+     (if (null? dir)
+	 ($inline "CALL syscall_getcwd")	;XXX file-error
+	 (let ((r ($inline "CALL syscall_chdir" (car dir))))
+	   r)))				;XXX file-error
+
+   (define-inline (delete-file str) ($inline "CALL syscall_delete_file" str))
+   (define-inline (file-exists? str) (and ($inline "CALL syscall_file_exists" str) str)))
+
+  (else))
 
 (define reclaim ($primitive "reclaim_garbage"))
 
-(define-inline (current-second) ($inline "call syscall_time"))
-(define-inline (current-process-id) ($inline "call syscall_getpid"))
+(cond-expand
+  (time
+   (define-inline (current-second) ($inline "CALL syscall_time")))
+  (else))
 
-(define-inline (get-environment-variable str) ($inline "call syscall_getenv" str))
-(define-inline (delete-file str) ($inline "call syscall_delete_file" str))
-(define-inline (file-exists? str) (and ($inline "call syscall_file_exists" str) str))
+(cond-expand
+  (process-environment
+   (define-inline (current-process-id) ($inline "CALL syscall_getpid"))
+   (define-inline (get-environment-variable str) ($inline "CALL syscall_getenv" str))
+   (define-inline (system str) ($inline "CALL syscall_shell_command" str))
 
-(define-inline (current-jiffy) ($inline "call syscall_clock"))
-(define-inline (jiffies-per-second) 1000000)
+   (define command-line
+     (let* ((argc (%argc))
+	    (lst (let loop ((i 0))
+		   (if (%fx>=? i argc)
+		       '()
+		       (cons (%argv-ref i) (loop (%fx+ i 1)))))))
+       (lambda () lst))))
+
+  (else))
+
+(cond-expand
+  (jiffy-clock
+   (define-inline (current-jiffy) ($inline "CALL syscall_clock"))
+   (define-inline (jiffies-per-second) 1000000))
+  (else))
 
 (define-syntax call/cc call-with-current-continuation)
 
-(define (open-append-output-file name)
-  (let ((fd ($inline "call syscall_open_append" name)))
-    ;;XXX check for error
-    (%make-file-output-port fd)))
-
-(define-inline (system str) ($inline "call syscall_shell_command" str))
+(cond-expand
+  (file-ports
+   (define (open-append-output-file name)
+     (let ((fd ($inline "CALL syscall_open_append" name)))
+       ;;XXX check for error
+       (%make-file-output-port fd))))
+  (else))
 
 (define-inline (add1 x) (+ x 1))
 (define-inline (sub1 x) (- x 1))

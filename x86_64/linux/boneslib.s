@@ -85,6 +85,11 @@
 %endmacro
 
 
+%macro CALL 1
+  call %1
+%endmacro
+
+
 ;; save registers before C function call
 %macro SAVE 0
   push rbx
