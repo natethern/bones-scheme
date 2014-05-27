@@ -1,8 +1,5 @@
 (program
- (files "moresyntax.scm"
-	"intrinsics.scm"
-	"r5rs.scm"
-	"nonstd.scm")
+ (include "base.scm")
  (code
 
 (define (tak x y z)
@@ -17,8 +14,5 @@
     (unless (eq? 7 r)
       (display "failed.")
       (exit 1))))
-
-(display ($inline "mov rax, [gc_count]; INT2FIX rax"))
-(newline)
 
 ))
