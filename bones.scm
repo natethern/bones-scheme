@@ -5,8 +5,7 @@
  (include "base.scm")
  (code
   (define (features) '(bones))
-  (define flush-output void)
-  (define (command-line-arguments) (cdr (command-line))))
+  (define flush-output void))
  (files "match.scm"
 	"support.scm"
 	"pp.scm"
@@ -17,6 +16,7 @@
 	"cps.scm"
 	"mangle.scm"
 	"program.scm"
-	"cmplr.scm"
-	"x86_64.scm")
- (code (main (command-line-arguments))))
+	"cmplr.scm")
+ (cond-expand
+   (else (files "x86_64.scm")))		; default target
+ (code (main (cdr (command-line)))))
