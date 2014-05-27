@@ -11,37 +11,33 @@
 (define (clean)
   (run (rm -f fac fac.o fac.s)))
 
-(define (bones.x.scm)
-  (make (("bones.x.scm" ("moresyntax.scm"
-			 "x86_64/intrinsics.scm"
-			 "r5rs.scm"
-			 "match.scm"
-			 "support.scm"
-			 "pp.scm"
-			 "alexpand.scm"
-			 "megalet.scm"
-			 "source.scm"
-			 "cc.scm"
-			 "cps.scm"
-			 "mangle.scm"
-			 "program.scm"
-			 "cmplr.scm"
-			 "x86_64.scm"
-			 "bones.scm")
-	  (run (./expand-sources bones.scm bones.x.scm))))))
-
 (define (bones-x86_64-linux.s)
-  (bones.x.scm)
-  (make (("bones.s" ("bones.x.scm")
-	  (run (./bones1 bones.x.scm -o bones-x86_64-linux.s))))))
+  (make (("bones-x86_64-linux.s" ("bones.scm"
+				  "moresyntax.scm"
+				  "x86_64/intrinsics.scm"
+				  "r5rs.scm"
+				  "match.scm"
+				  "support.scm"
+				  "pp.scm"
+				  "alexpand.scm"
+				  "megalet.scm"
+				  "source.scm"
+				  "cc.scm"
+				  "cps.scm"
+				  "mangle.scm"
+				  "program.scm"
+				  "cmplr.scm"
+				  "x86_64.scm"
+				  "bones.scm")
+	  (run (./bones1 bones.scm -o bones-x86_64-linux.s))))))
 
 (define (bones-x86_64-linux.o)
-  (bones.s)
+  (bones-x86_64-linux.s)
   (make (("bones-x86_64-linux.o" ("bones-x86_64-linux.s")
 	  (run (nasm -f elf64 -g -F dwarf bones-x86_64-linux.s -o bones-x86_64-linux.o))))))
 
 (define (bones)
-  (bones.o)
+  (bones-x86_64-linux.o)
   (make (("bones" ("bones-x86_64-linux.o")
 	  (run (bin/musl-gcc bones-x86_64-linux.o -o bones))))))
 
@@ -64,14 +60,14 @@
       (and (zero? (run* (,cmplr ,(string-append fname ".scm") -o ,sname)))
 	   (zero? (run* (nasm -f elf64 -g -F dwarf ,sname -o ,oname)))
 	   (zero? (run* (bin/musl-gcc ,oname -o ,xname)))
-	   (zero? (run* (,xname ,@args)))))))
+	   (zero? (run* (memtime ,xname ,@args)))))))
 
 (define (check)
   (bones)
   (run (mkdir -p tmp))
   (if (and (every compile+run
 		  '("fac" "tak" "mandelbrot" "r4test" "r5rs_pitfalls" "dyn" "comp"))
-	   (and (compile+run "bones" "./bones" '(bones.x.scm -o tmp/bones.s))
+	   (and (compile+run "bones" "./bones" '(bones.scm -o tmp/bones.s))
 		(and (zero? (run* (cmp bones.s tmp/bones.s))))))
       (print "\nall checks succeeded.")
       (print "\nsome checks failed.")))
