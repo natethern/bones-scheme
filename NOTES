@@ -4,7 +4,6 @@ BONES                                                                           
 * TODO reimplement file:run in scheme, get rid of file:compile
   - also handle .s or .o files.
   - perhaps implement full-features driver, accepting nasm and linker options.
-* TODO use feature-cond/cond-expand to handle arch/os in file:bones.scm and file:base.scm
 * TODO refactor backend code in a better way
 * TODO move code to bitbucket?
 * TODO something is wrong with musl's "sprintf" (or varargs) implementation
@@ -25,26 +24,11 @@ BONES                                                                           
 * TODO pre-allocated chars in the range 0-255
 * TODO "(if X S1 S2)" can be computed more efficiently
   - use "cmovCC" if S1, S2 are simple-expressions.
-* TODO allow running without libc
-  - will need to drop a number of primitives.
-  - needs hand-rolled str<->num conversion.
 * TODO write minimal "bare" bones variant
   - no floats.
   - manual str<->num conversion (exact integer only).
     - needs intrinsic "(%fx-divmod X Y K)"
   - 32-bit (doesn't need alignment-hole.)
-  - file:r5rs.scm
-    - drop:
-      exact? inexact? rational? real? exact->inexact inexact->exact finite?
-      nan? integer? sin cos tan atan sqrt expt exp truncate ceiling floor round
-      open-input-file open-output-file current-directory current-second
-      current-process-id delete-file file-exists? current-jiffy jiffies-per-second
-      open-append-output-file system
-      %make-file-input-port %make-file-output-port
-    - standard-ports are empty (bit-sinks/return eof.)
-    - simplify:
-      number? negative? positive? zero? even? number->string
-    - drop exactness prefixes in reader.
   - file:boneslib.scm
     - simplify arithmetic and numeric operators.
   - sample architecture: MIPS (el, 32 bits)
@@ -58,7 +42,6 @@ BONES                                                                           
       | unused      | zero, at, ra, gp                          | 
     - use $ra as continuation argument?
 * TODO write file:README
-* TODO is pre-expansion necessary at all?
 * Add partial R7RS support?
   - modulo libraries.
 * Possible R7RS exception-handling stuff from srfi-34
