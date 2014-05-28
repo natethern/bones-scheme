@@ -1,7 +1,22 @@
-#!/bin/sh
-set -e
-input=$1
-filename=`basename $1 .scm`
-shift
-./compile $input "$@"
-exec memtime ./$filename
+#!/bin/scheme /grass/16/boot
+;; run .scm, .s or .o file -*- Scheme -*-
+
+(require 'sh 'match 'make)
+
+
+(match (command-line-arguments)
+  ((fname . options)
+   ;; can it get more crude?
+   (when (string=? "scm" (suffix fname))
+     (let ((fname2 (replace-suffix "s" fname)))
+       (run (./bones ,fname -o ,fname2))
+       (set! fname fname2)))
+   (when (string=? "s" (suffix fname))
+     (let ((fname2 (replace-suffix "o" fname)))
+       (run (nasm -f elf64 -g -F dwarf ,fname -o ,fname2 ,@options))
+       (set! fname fname2)))
+   (when (string=? "o" (suffix fname))
+     (let ((fname2 (strip-suffix fname)))
+       (run (bin/musl-gcc ,fname -o ,fname2))
+       (set! fname fname2)))
+   (run (memtime ,(string-append "./" fname)))))
