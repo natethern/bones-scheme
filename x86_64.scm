@@ -1,4 +1,4 @@
-;;;; x86_64 specific compiler code
+;;;; x86_64 specific compiler code, generates NASM syntax
 
 
 (define fixnum-range '(-4611686018427387904 . 4611686018427387903))
@@ -8,6 +8,12 @@
 (define target-os 'linux)
 (define target-arch 'x86_64)
 (define target-endianness 'little-endian)
+(define arg-register 'rax)
+(define alloc-register 'rbp)
+(define self-register 'rbx)
+(define false-register 'r14)
+(define count-register 'r11)
+(define stack-register 'rsp)
 
 
 (define (generate-header)
@@ -17,14 +23,6 @@
 (define (generate-trailer)
   (emit ";;; END OF GENERATED CODE\n"))
 
-(define (generate-globals defs)
-  (emit " section .data\nglobals:\n")
-  (for-each 
-   (lambda (def)
-     (emit (mangle-identifier def) ": dq undefined\n"))
-   defs)
-  (emit "endglobals:\n"))
-
 (define (generate-primitives)
   (emit " section .data\n")
   (for-each
@@ -33,303 +31,97 @@
       (emit l ": dq CLOSURE | 1\n dq " name "\n")))
    primitives))
 
-(define (generate-closures top)
-  (set! closures-to-be-translated (list top))
-  (emit " section .text\ntoplevel:\n")
-  (do ()
-      ((null? closures-to-be-translated))
-    (translate-closure (pop! closures-to-be-translated))))
+(define (generate-section name)
+  (emit " section " name "\n"))
 
-(define (generate-literals)
-  (set! string-literals '())
-  (set! symbol-table '())
-  (emit " section .data\n")
-  (do ()
-      ((null? literals-to-be-translated))
-    (match-let (((l . c) (pop! literals-to-be-translated)))
-      (translate-literal l c)))
-  (generate-strings)
-  (generate-symbol-table))
+(define (generate-defword . vals)
+  (emit " dq ")
+  (for-each emit vals)
+  (emit "\n"))
 
-(define (generate-strings)
-  (emit " section .data\n")
-  (for-each
-   (match-lambda
-     ((l . str)
-      (emit "align 8\n" l ": dq STRING | " (string-length str) "\n")
-      (when (positive? (string-length str))
-	(emit " db " (join (map (o number->string char->integer) (string->list str)) ",") "\n"))))
-   string-literals))
+(define (generate-defbyte . vals)
+  (emit " db ")
+  (for-each emit vals)
+  (emit "\n"))
 
-(define (generate-symbol-table)
-  (emit " section .data\nsymbol_literals:\n")
-  (for-each (lambda (l) (emit " dq " (cdr l) "\n")) symbol-table)
-  (emit " dq false\n"))
+(define (generate-deffloat val)
+  (emit " dq __float64__(" val ")\n"))
 
-(define (translate-literal l c)
-  (cond ((fixnum? c) (emit l " equ FIX(" c ")\n"))
-	((number? c)
-	 (emit "align 8\n" l ": dq FLONUM | FLONUM_CELLS\n dq __float64__(" (exact->inexact c) ")\n"))
-	((pair? c)
-	 (let ((lcar (register-literal (car c)))
-	       (lcdr (register-literal (cdr c))))
-	   (emit "align 8\n" l ": dq PAIR | 2\n dq " lcar "\n dq " lcdr "\n")))
-	((vector? c)
-	 (let ((ls (map register-literal (vector->list c))))
-	   (emit "align 8\n" l ": dq VECTOR | " (length ls) "\n")
-	   (for-each (cut emit " dq " <> "\n") ls)))
-	((string? c)
-	 (push! (cons l c) string-literals))
-	((symbol? c)
-	 (cond ((assq c symbol-table) =>
-		(match-lambda 
-		  ((_ . l2) (emit l " equ " l2 "\n"))))
-	       (else
-		(let ((l1 (register-literal (symbol->string c))))
-		  (push! (cons c l) symbol-table)
-		  (emit "align 8\n" l ": dq SYMBOL | 1\n dq " l1 "\n")))))
-	((char? c)
-	 (emit "align 8\n" l ": dq CHAR | 1\n dq FIX(" (char->integer c) ")\n"))
-	((null? c)
-	 (emit l " equ null\n"))
-	((eq? c #t)
-	 (emit l " equ true\n"))
-	((eq? c #f)
-	 (emit l " equ false\n"))
-	(else (error "bad literal" c))))
+(define (generate-align bytes)
+  (emit " align " bytes "\n"))
 
-(define (translate/stack x)
-  (let ((ret (translate x 'rax)))
-    (emit " push rax\n")
-    ret))
+(define (generate-padding bytes)
+  (emit " resb " bytes "\n"))
 
-(define (translate x t)
-  (match x
-    (('$closure id cap _ _)
-     (push! x closures-to-be-translated)
-     (set! allocating #t)
-     ;;XXX could be optimized to use temp.-registers, at least for #cap <= 3
-     (for-each translate/stack (reverse cap)) ; reverse ok here, args are simple
-     (emit " mov " t ", CLOSURE | " (add1 (length cap)) "\n mov [rbp], " t "\n"
-	   " mov qword [rbp + CELLS(1)], f_" id "\n")
-     (do ((lst cap (cdr lst))
-	  (off 2 (add1 off)))
-	 ((null? lst))
-       (emit " pop qword [rbp + CELLS(" off ")]\n"))
-     (emit " mov " t ", rbp\n add rbp, CELLS(" (+ 2 (length cap)) ")\n")
-     #t)
-    (('let ((vars vals) ...) body)
-     (let* ((oldenv environment)
-	    (env (extend-environment environment vars))
-	    (single (= 1 (length vars))))
-       ;; evaluate vals and push on stack
-       (for-each
-	(lambda (var val)
-	  (cond ((assq var env) => 
-		 (lambda (a)
-		   (cond (single
-			  (let ((dest (cdr a)))
-			    (cond ((symbol? dest)
-				   (translate val 'rax)
-				   (emit " mov " dest ", rax\n"))
-				  (else
-				   (translate val 'rax)
-				   (emit " mov [locals + CELLS(" dest ")], rax\n")))))
-			 (else
-			  (translate val 'rax)
-			  (emit " push rax\n")))))
-		((simple-expression? val)) ; unused and simple
-		(else (translate val 'rax)))) ; unused but not simple
-	vars vals)
-       (unless single
-	 (for-each
-	  (lambda (var val)
-	    (cond ((assq var env) =>
-		   (lambda (a)
-		     (let ((dest (cdr a)))
-		       (emit "; " dest " = " var "\n")
-		       (if (symbol? dest)
-			   (emit " pop " dest "\n")
-			   (emit " pop qword [locals + CELLS(" dest ")]\n")))))))
-	  (reverse vars) (reverse vals)))
-       (fluid-let ((environment env))
-	 (translate body t))))
-    (('$global-set! var val)
-     (translate val t)
-     (emit " mov [" (mangle-identifier var) "], " t " ; (set! " var " ...)\n")
-     #t)
-    (('$global-ref var)
-     (emit " mov " t ", [" (mangle-identifier var) "] ; " var "\n")
-     #t)
-    (('$local-ref var)
-     (emit " mov " t ", " (lookup-variable var) " ; " var "\n")
-     #t)
-    (('$local-set! var val)
-     (translate val t)
-     (emit " mov " (lookup-variable var) ", " t " ; (set! " var " ...)\n")
-     #t)
-    (('if x y z)
-     (translate x t)
-     (let ((l1 (label))
-	   (l2 (label)))
-       (emit " cmp " t ", r14\n je " l1 "\n")
-       (when (translate y t) ; ret-flag must be the same for both branches
-	 (emit " jmp " l2 "\n"))
-       (emit l1 ":\n")
-       (let ((ret (translate z t)))
-	 (emit l2 ":\n")
-	 ret)))
-    (('$primitive (or ('quote name) name))
-     (let ((l1 (label)))
-       (push! (cons l1 name) primitives)
-       (emit " mov qword " t ", " l1 " ; " name "\n")
-       #t))
-    (('$box val)
-     (translate val t)
-     (emit " mov [rbp + CELLS(1)], " t "\n mov " t ", VECTOR | 1\n mov [rbp], " t "\n"
-	   " mov " t ", rbp\n add rbp, CELLS(2)\n")
-     #t)
-    (('$box-ref val)
-     (translate val t)
-     (emit " mov " t ", [" t " + CELLS(1)]\n")
-     #t)
-    (('$box-set! box val)
-     (match-let ((((_ . r1) (_ . r2)) (translate-inline-arguments (list box val))))
-       (emit " mov [" r1 " + CELLS(1)], " r2 "\n")
-       (unless (eq? t r2) (emit " mov " t ", " r2 "\n"))
-       #t))
-    (('$inline (or ('quote opr) opr) args ...)
-     (assert (<= (length args) (length temporary-registers)) 
-	     "too many arguments to `$inline'" args)
-     (translate-inline-arguments args)
-     (for-each
-      (cut emit " " <> "\n")
-      (string-split opr ";"))
-     (unless (eq? t 'rax) (emit " mov " t ", rax\n"))
-     #t)
-    (('$allocate (or ('quote type) type) (or ('quote size) size) args ...)
-     (assert (<= (length args) (length temporary-registers))
-	     "too many arguments to `$allocate'" args)
-     (let ((regs (translate-inline-arguments args))
-	   (bytevec (not (zero? (bitwise-and type #x10)))))
-       (set! allocating #t)
-       (do ((regs regs (cdr regs))
-	    (off 1 (add1 off)))
-	   ((null? regs))
-	 (emit " mov [rbp + CELLS(" off ")], " (cdar regs) "\n"))
-       (emit " mov " t ", TYPECODE(" type ") | " size "\n")
-       (emit " mov [rbp], " t "\n mov " t ", rbp\n add rbp, ")
-       (if bytevec
-	   (emit "CELLS(1) + ALIGNED(" size ")\n")
-	   (emit "CELLS(" (add1 size) ")\n"))
-       #t))
-    (((or '$undefined '$uninitialized))
-     (emit " mov " t ", undefined\n")
-     #t)
-    (('$closure-ref i)
-     (emit " mov " t ", [rbx + CELLS(" (+ i 2) ")]\n")
-     #t)
-    (('quote c)
-     (cond ((fixnum? c)
-	    (emit " mov " t ", " (encode-fixnum c) " ; '" c "\n"))
-	   ((eq? #t c)
-	    (emit " SET_T " t "\n"))
-	   ((eq? #f c)
-	    (emit " mov " t ", r14\n"))
-	   ((null? c)
-	    (emit " mov " t ", null\n"))
-	   (else
-	    (let ((l1 (register-literal c)))
-	      (emit " mov " t ", " l1 "\n"))))
-     #t)
-    ((op args ...)
-     (translate-call x)
-     #f)))
+(define (generate-equ name . vals)
+  (emit name " equ ")
+  (for-each emit vals)
+  (emit "\n"))
 
-(define (translate/registers args regs locals?)
-  (let* ((argc (length args))
-	 (rargs (map cons args 
-		     (append (take argc regs)
-			     (iota (- argc (length regs)))))))
-    (match rargs
-      (((arg . reg))			; just a single argument
-       (translate arg 'rax)
-       (if (symbol? reg)
-	   (unless (eq? reg 'rax) (emit " mov " reg ", rax\n"))
-	   (emit " mov qword [locals + CELLS(" reg ")], rax\n")))
-      (_ (let ((easy hard (partition
-			     (match-lambda
-			       ((arg . reg)
-				(and (simple-expression? arg)
-				     ;;XXX could check whether arg is a var already stored in reg
-				     (not (blocked-register? reg))
-				     (match arg
-				       (('$closure-ref i) #f)
-				       (('$local-ref var)
-					(not (memq (cdr (assq var environment)) regs)))
-				       (_ #t)))))
-			     rargs)))
-	   (for-each
-	    (match-lambda
-	      ((arg . _)
-	       (translate arg 'rax)
-	       (emit " push rax\n")))
-	    hard)
-	   ;; assign easy destinations first to avoid clobbering rbx
-	   (for-each
-	    (match-lambda
-	      ((arg . reg)
-	       (cond ((symbol? reg) (translate arg reg))
-		     (else
-		      (translate arg 'rax)
-		      (emit " mov [locals + CELLS(" reg ")], rax\n")))))
-	    easy)
-	   (for-each
-	    (match-lambda
-	      ((_ . reg)
-	       (if (symbol? reg)
-		   (emit " pop " reg "\n")
-		   (emit " pop qword [locals + CELLS(" reg ")]\n"))))
-	    (reverse hard)))))
-    rargs))
+(define (generate-closure-alloc t n id)
+  (emit " mov " t ", CLOSURE | " (add1 n) "\n mov [rbp], " t "\n"
+	" mov qword [rbp + " (cells 1) "], f_" id "\n"))
 
-(define (translate-call x)
-  (let ((n (length x)))
-    (translate/registers x argument-registers #t)
-    (emit " mov rax, [rbx + CELLS(1)]\n mov r11, " n "\n")
-    (cond (allocating
-	   (let ((l1 (label)))
-	     (emit " cmp rbp, r13\n ja reclaim\n jmp rax\n")))
-	  (else (emit " jmp rax\n")))))
+(define (generate-move dest src)
+  (emit " mov " dest ", " src "\n"))
 
-(define (translate-closure exp)
-  (match exp
-    ((_ id cap llist body)
-     (emit "\nf_" id ":\n")
-     (translate-llist llist)
-     (set! allocating #f)
-     (translate body 'rax))))
+(define (generate-add r n)
+  (emit " add " r ", " n "\n"))
 
-(define (translate-llist llist)
-  (let* ((vars argc rest (parse-lambda-list llist))
-	 (nvars (length vars))
-	 (lvars (- nvars (length (cdr argument-registers)))))
-    ;;XXX the registers for unused variables are not made available
-    (set! environment
-      (map cons
-	   vars
-	   (append 
-	    (take nvars (cdr argument-registers))
-	    (if (positive? lvars)
-		(iota lvars)
-		'()))))
-    (emit "; " environment "\n")
-    (when (and rest (not (eq? '$unused rest)))
-      (let ((rdest (cdr (assq rest environment))))
-	(emit " mov rax, " (add1 argc) "\n call consrest\n")
-	(if (symbol? rdest)
-	    (emit " mov " rdest ", rax\n")
-	    (emit " mov [locals + CELLS(" rdest ")], rax\n"))))))
+(define (generate-move-to-local off src)
+  (emit " mov [locals + " off "], " src "\n"))
+
+(define (generate-reserve-on-stack bytes)
+  (emit " sub rsp, " bytes "\n"))
+
+(define (generate-pop-stack bytes)
+  (emit " add rsp, " bytes "\n"))
+
+(define (generate-comment . text)
+  (emit "; ")
+  (for-each emit text)
+  (emit "\n"))
+
+(define (generate-global-store var name src)
+  (emit " mov [" name "], " src " ; (set! " var " ...)\n"))
+
+(define (generate-global-ref dest var name)
+  (emit " mov " dest ", [" name "] ; " var "\n"))
+
+(define (generate-variable-ref dest var src)
+  (emit " mov " dest ", " src " ; " var "\n"))
+
+(define (generate-variable-store var dest src)
+  (emit " mov " dest ", " src " ; (set! " var " ...)\n"))
+
+(define (generate-conditional-branch r lbl)
+  (emit " cmp " r ", r14\n je " lbl "\n"))
+
+(define (generate-jump lbl)
+  (emit " jmp " lbl "\n"))
+
+(define (generate-immediate-ref dest val . comment)
+  (emit " mov " dest ", " val " ; ")
+  (for-each emit comment)
+  (emit "\n"))
+
+(define (generate-slot-ref dest src off)
+  (emit " mov " dest ", [" src " + " off "]\n"))
+
+(define (generate-slot-store dest off src)
+  (emit " mov [" dest " + " off "], " src "\n"))
+
+(define (generate-true-ref r)
+  (emit " SET_T " r "\n"))
+
+(define (generate-alloc-check-and-call)
+  (emit " cmp rbp, r13\n ja reclaim\n jmp rax\n"))
+
+(define (generate-tail-call r)
+  (emit " jmp " r "\n"))
+
+(define (generate-call name)
+  (emit " call " name "\n"))
 
 (define (lookup-variable var)
   (cond ((assq var environment) =>
@@ -337,5 +129,5 @@
 	   ((_ . r)
 	    (if (symbol? r)
 		r
-		(string-append "[locals + CELLS(" (number->string r) ")]")))))
+		(string-append "[locals + " (number->string (cells r)) "]")))))
 	(else (error "unknown local variable" var))))
