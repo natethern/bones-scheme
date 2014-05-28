@@ -77,7 +77,12 @@
   (run (echo >>benchmark.txt))
   (run (date +%Y-%m-%d: >>benchmark.txt))
   (run (git rev-parse HEAD >>benchmark.txt))
+  (run (echo bones:))
   (run (memtime ./bones comp.scm -o /dev/null 2>>benchmark-txt))
+  (run (echo dynamic:))
+  (run (./run dyn.scm 2>>benchmark.txt))
+  (run (echo mandelbrot:))
+  (run (./run mandelbrot.scm 2>>benchmark.txt))
   (run (tail benchmark.txt)))
 
 (define distfiles
