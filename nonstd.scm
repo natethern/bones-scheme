@@ -124,9 +124,6 @@
        (%make-file-output-port fd))))
   (else))
 
-(define-inline (add1 x) (+ x 1))
-(define-inline (sub1 x) (- x 1))
-
 (define (print . args)
   (for-each display args)
   (newline))
