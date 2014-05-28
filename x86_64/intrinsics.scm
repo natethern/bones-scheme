@@ -10,7 +10,7 @@
 (define-syntax-rule (%byte-set! x i y) ($inline "BYTE_SET" x i y))
 
 (define-syntax-rule (%type-of x) ($inline "TYPE_OF" x))
-(define-syntax-rule (%fixnum? x) ($inline "FIXNUMP" x))
+(define-syntax-rule (%fixnum? x) ($inline "test rax, 1; SET_T rax; cmovz rax, FALSE" x))
 
 (define-syntax-rule (%eq? x y) ($inline "cmp rax, r11; SET_T rax; cmovne rax, FALSE" x y))
 

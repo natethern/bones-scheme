@@ -23,7 +23,8 @@
 %include "x86_64/structured.s"
 
 
-; types:
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 %ifndef TOTAL_HEAP_SIZE
  %define TOTAL_HEAP_SIZE 100000000
@@ -42,7 +43,6 @@
 %define ALIGN_BASE      7
 %define WORD_SIZE       8
 
-%define FLONUM_CELLS    CELLS(8 / WORD_SIZE)
 %define ALIGNED(n)      (((n) + ALIGN_BASE) & ~ALIGN_BASE)
 %define TYPECODE(tn)    ((tn) << HEADER_SHIFT)
 %define TYPENUMBER(tc)  (((tc) >> HEADER_SHIFT) & 0x0f)
@@ -51,6 +51,8 @@
 %define ALLOC		rbp
 %define FALSE           r14
 %define LIMIT           r13
+
+%define NUMBER_OF_ARGUMENT_REGISTERS 9
 
 %define NULL    TYPECODE(0)
 %define SYMBOL	TYPECODE(1)
@@ -229,14 +231,6 @@
 %endmacro
 
 
-;; simple fixnum test
-%macro FIXNUMP 0
-  test rax, 1
-  SET_T rax
-  cmovz rax, FALSE
-%endmacro
-
-
 ;; get type-code: rax = object -> type-number as fixnum in rax
 %macro TYPE_OF 0
   test rax, 1
@@ -330,10 +324,10 @@ consrest:
   repeat
     cmp r11, rax
     je .done
-    cmp r11, 9
+    cmp r11, NUMBER_OF_ARGUMENT_REGISTERS
   while a
     push  r11
-    sub   r11, 10
+    sub   r11, NUMBER_OF_ARGUMENT_REGISTERS + 1
     mov [ALLOC + CELLS(2)], rcx
     mov rcx, PAIR | 2
     mov [ALLOC], rcx
@@ -458,7 +452,7 @@ pairwise_compare_%1:
   call r15
   j%2 .no
   mov rax, rbx
-  sub r11, 9
+  sub r11, NUMBER_OF_ARGUMENT_REGISTERS
   mov rdx, locals
   repeat
     test r11, r11
@@ -634,7 +628,7 @@ fold_binary_operation:
   je .done
   mov rbx, r12			; 7th arg
   call r15
-  sub r11, 9
+  sub r11, NUMBER_OF_ARGUMENT_REGISTERS
   mov rdx, locals
   test r11, r11
   je .done
@@ -954,12 +948,12 @@ list_length:
 PRIMITIVE apply
   mov rbx, rdx			; proc
   push r11
-  cmp r11, 9
+  cmp r11, NUMBER_OF_ARGUMENT_REGISTERS
   ja .l9
   sub r11, 4
   mov rax, [apply_jmptable + r11 * CELLS(1)]
   jmp rax
-  ;; jmptable: move all register arguments into "tempregisters"
+  ;; jmptable: move all register arguments into "tempregisters", starting from rsi
 .l9:
   mov [tempregisters + CELLS(5)], r12
 .l8:
@@ -1013,7 +1007,7 @@ section .text
 ;; invoke garbage collection: rcx = k -> (k void)
 PRIMITIVE reclaim_garbage
   mov SELF, rcx
-  mov rcx, undefined
+  mov rcx, undefined		; ignored
   mov r11, 2
   mov rax, [SELF + CELLS(1)]
   jmp reclaim
@@ -1194,7 +1188,7 @@ heap_full_trap:
 ;
 ; * roots:
 ;
-;   locals (r11 - 9)
+;   locals (r11 - NUMBER_OF_ARGUMENT_REGISTERS)
 ;   registers (r11)
 ;   globals ... endglobals
 
@@ -1224,7 +1218,7 @@ reclaim:
   mov rax, gc_log_format
   mov r11, [gc_count]
   mov r15, [fromspace_end]
-  sub r15, LIMIT
+  sub r15, ALLOC
   call format_string
 %endif
   mov r11, [rsp]
