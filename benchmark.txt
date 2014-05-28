@@ -1,0 +1,10 @@
+
+2014-05-28:
+2975d560a14f7c9d2f2f199696c72876cbe6059b
+Exit [0]
+2.46 user, 0.20 system, 2.70 elapsed -- Max VSize = 98400KB, Max RSS = 78668KB
+
+2014-05-29:
+2975d560a14f7c9d2f2f199696c72876cbe6059b
+Exit [0]
+2.63 user, 0.22 system, 2.90 elapsed -- Max VSize = 99932KB, Max RSS = 80252KB

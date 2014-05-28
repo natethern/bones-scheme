@@ -68,9 +68,17 @@
   (if (and (every compile+run
 		  '("fac" "tak" "mandelbrot" "r4test" "r5rs_pitfalls" "dyn" "comp"))
 	   (and (compile+run "bones" "./bones" '(bones.scm -o tmp/bones.s))
-		(and (zero? (run* (cmp bones.s tmp/bones.s))))))
+		(and (zero? (run* (cmp bones-x86_64-linux.s tmp/bones.s))))))
       (print "\nall checks succeeded.")
       (print "\nsome checks failed.")))
+
+(define (bench)
+  (bones)
+  (run (echo >>benchmark.txt))
+  (run (date +%Y-%m-%d: >>benchmark.txt))
+  (run (git rev-parse HEAD >>benchmark.txt))
+  (run (memtime ./bones comp.scm -o /dev/null 2>>benchmark-txt))
+  (run (tail benchmark.txt)))
 
 (define distfiles
   '("README"
