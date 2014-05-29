@@ -88,11 +88,11 @@
 (define (generate-global-ref dest var name)
   (emit " mov " dest ", [" name "] ; " var "\n"))
 
-(define (generate-variable-ref dest var src)
-  (emit " mov " dest ", " src " ; " var "\n"))
+(define (generate-local-ref dest var src)
+  (emit " mov " dest ", [locals + " src "] ; " var "\n"))
 
-(define (generate-variable-store var dest src)
-  (emit " mov " dest ", " src " ; (set! " var " ...)\n"))
+(define (generate-local-store var dest src)
+  (emit " mov [locals + " dest "], " src " ; (set! " var " ...)\n"))
 
 (define (generate-conditional-branch r lbl)
   (emit " cmp " r ", r14\n je " lbl "\n"))
@@ -122,12 +122,3 @@
 
 (define (generate-call name)
   (emit " call " name "\n"))
-
-(define (lookup-variable var)
-  (cond ((assq var environment) =>
-	 (match-lambda 
-	   ((_ . r)
-	    (if (symbol? r)
-		r
-		(string-append "[locals + " (number->string (cells r)) "]")))))
-	(else (error "unknown local variable" var))))

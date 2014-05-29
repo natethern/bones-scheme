@@ -16,6 +16,9 @@
 (define (cells n) (* word-size n))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 (define (compile code . options)
   (set! lambda-id-counter 0)
   (set! argument-register-count (sub1 (length argument-registers)))
@@ -178,11 +181,17 @@
      (generate-global-ref t var (mangle-identifier var))
      #t)
     (('$local-ref var)
-     (generate-variable-ref t var (lookup-variable var))
+     (let ((ref (lookup-variable var)))
+       (if (symbol? ref)
+	   (generate-move t ref)
+	   (generate-local-ref t var ref)))
      #t)
     (('$local-set! var val)
      (translate val t)
-     (generate-variable-store var (lookup-variable var) t)
+     (let ((ref (lookup-variable var)))
+       (if (symbol? ref)
+	   (generate-move ref t)
+	   (generate-local-store var ref t)))
      #t)
     (('if x y z)
      (translate x t)
@@ -427,6 +436,18 @@
      (map cons lvars (iota (length lvars) (- (length env) (sub1 argument-register-count))))
      env)))
 
+(define (lookup-variable var)
+  (cond ((assq var environment) =>
+	 (match-lambda 
+	   ((_ . r)
+	    (if (symbol? r)
+		r
+		(cells r)))))
+	(else (error "unknown local variable" var))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (define (generate-globals defs)
   (generate-section ".data")
@@ -478,6 +499,9 @@
      (generate-defword (cdr l)))
    symbol-table)
   (generate-defword "false"))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (define (command-line-option? str)
