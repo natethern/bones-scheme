@@ -1,10 +1,10 @@
 BONES                                                                               -*- Org -*-
 
 
-* TODO reimplement file:run in scheme, get rid of file:compile
-  - also handle .s or .o files.
-  - perhaps implement full-features driver, accepting nasm and linker options.
-* TODO refactor backend code in a better way
+* TODO measure difference in performance compared with old way of pushing/popping + closure-alloc
+  - compare with 2975d560a14f7c9d2f2f199696c72876cbe6059b
+  - try file:dyn.scm and file:mandelbrot.scm
+* TODO try compiling grond
 * TODO move code to bitbucket?
 * TODO something is wrong with musl's "sprintf" (or varargs) implementation
   - "(number->string (expt 2.1 3))" returns "nan".
@@ -19,28 +19,35 @@ BONES                                                                           
   - reader errors.
   - allow later integration with exn-handling.
   - needs [[exception-handling stuff]]
-* TODO consider using libgc as 2nd heap generation
-  - needs write-barrier to record assignments of heap-data into non-heap objects
+* TODO try using libgc as 2nd heap generation
+  - needs write-barrier to record assignments of heap-data into non-heap objects.
+    - then evict recursively.
+  - also, keep GC-count 
 * TODO pre-allocated chars in the range 0-255
 * TODO "(if X S1 S2)" can be computed more efficiently
   - use "cmovCC" if S1, S2 are simple-expressions.
 * TODO write minimal "bare" bones variant
   - no floats.
   - manual str<->num conversion (exact integer only).
-    - needs intrinsic "(%fx-divmod X Y K)"
-  - 32-bit (doesn't need alignment-hole.)
+    - needs intrinsic "(%fx-divmod X Y K)" -> (K QUO REM)
+  - 32-bit (doesn't need alignment-hole, though)
   - file:boneslib.scm
     - simplify arithmetic and numeric operators.
   - sample architecture: MIPS (el, 32 bits)
     - register usage:
-      | temporaries | v0, v1, a0 (3)                            |
-      | arguments   | s5 (SELF), a1 - a3, t0 - t9, s0 - s4 (16) |
-      | ALLOC       | s8                                        |
-      | LIMIT       | s7                                        |
-      | FALSE       | s6                                        |
-      | stackptr    | sp                                        |
-      | unused      | zero, at, ra, gp                          | 
-    - use $ra as continuation argument?
+      | temporaries | v0, v1, a0, a1 (4)                            |
+      | arguments   | s5 (SELF), a2 - a3, t0 - t9, s0 - s4 (18)     |
+      | ALLOC       | s8                                            |
+      | LIMIT       | s7                                            |
+      | FALSE       | s6                                            |
+      | stackptr    | sp                                            |
+      | count       | v1                                            |
+      | unused      | zero, at, ra, gp                              | 
+  - we probably need a register to point to "globals", to address via offset.
+    - but is "la" or "li" valid to get the full address of a symbol?
+* TODO file:mips.scm
+  - $closure: load-delay slot for moving data from stack to closure really needed?
+    - is this only relevant on older MIPSen?
 * TODO write file:README
 * Add partial R7RS support?
   - modulo libraries.
@@ -304,7 +311,6 @@ BONES                                                                           
    case-sensitive
    command-line
    error
-   add1 sub1
    print
 * Issues
 ** "inexact->exact" uses "fisttp", so needs SSE3
