@@ -164,14 +164,6 @@
 %endmacro
 
 
-;; slot_ref: rax = val, r11 = index -> rax
-%macro SLOT_REF 0
-  FIX2INT r11
-  inc r11
-  mov rax, [rax + r11 * CELLS(1)]
-%endmacro
-
-
 ;; write barrier: %1 = destination, %2 = value (may not be rax), clobbers rax
 %macro WRITE_BARRIER 2
 %ifdef DISABLE_WRITE_BARRIER
@@ -194,54 +186,10 @@
 %endmacro
 
 	      
-;; slot_set: rax = val, r11 = index, r15 = new -> rax (new)
-%macro SLOT_SET 0
-  FIX2INT r11
-  inc r11
-  WRITE_BARRIER [rax + r11 * CELLS(1)], r15
-  mov rax, r15
-%endmacro
-
-
-;; byte_ref: rax = val, r11 = index -> rax (fixnum)
-%macro BYTE_REF 0
-  FIX2INT r11
-  add rax, r11
-  mov al, [rax + CELLS(1)]
-  and rax, 0xff
-  INT2FIX rax
-%endmacro
-
-
-;; byte_set: rax = val, r11 = index, r15 = byte (fixnum) -> rax (byte)
-%macro BYTE_SET 0
-  FIX2INT r11
-  add rax, r11
-  xchg rax, r15
-  FIX2INT rax
-  mov [r15 + CELLS(1)], al
-  mov rax, r15
-%endmacro
-
-
 ;; define primitive procedure
 %macro PRIMITIVE 1
   align 8
 %1: 
-%endmacro
-
-
-;; get type-code: rax = object -> type-number as fixnum in rax
-%macro TYPE_OF 0
-  test rax, 1
-  if z
-    mov rax, [rax]
-    shr rax, HEADER_SHIFT
-    and rax, 0x7f
-    INT2FIX rax
-  else
-    mov rax, (TYPENUMBER(FIXNUM) << 1) | 1
-  endif
 %endmacro
 
 
@@ -259,14 +207,6 @@
   endif
   INT2FIX rax
   pop rcx
-%endmacro
-
-
-;; eq?: rax, r11 = args -> rax (bool)
-%macro IDENTICALP 0
-  cmp rax, r11
-  SET_T rax
-  cmovne rax, FALSE
 %endmacro
 
 

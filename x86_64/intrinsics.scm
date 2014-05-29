@@ -4,12 +4,21 @@
 (define-syntax-rule (%eof) ($inline "mov rax, eof"))
 (define-syntax-rule (%undefined) ($inline "mov rax, undefined")) 
 
-(define-syntax-rule (%slot-ref x i) ($inline "SLOT_REF" x i))
-(define-syntax-rule (%slot-set! x i y) ($inline "SLOT_SET" x i y))
-(define-syntax-rule (%byte-ref x i) ($inline "BYTE_REF" x i))
-(define-syntax-rule (%byte-set! x i y) ($inline "BYTE_SET" x i y))
+(define-syntax-rule (%slot-ref x i)
+  ($inline "shl r11, 2; mov rax, [rax + r11 + 4]" x i))
 
-(define-syntax-rule (%type-of x) ($inline "TYPE_OF" x))
+(define-syntax-rule (%slot-set! x i y)
+  ($inline "shl r11, 2; WRITE_BARRIER [rax + r11 + 4], r15; mov rax, r15" x i y))
+
+(define-syntax-rule (%byte-ref x i)
+  ($inline "FIX2INT r11; add rax, r11; mov al, [rax + CELLS(1)]; and rax, 0xff; INT2FIX rax" x i))
+
+(define-syntax-rule (%byte-set! x i y)
+  ($inline "FIX2INT r11; add rax, r11; xchg rax, r15; FIX2INT rax; mov [r15 + CELLS(1)], al; mov rax, r15" x i y))
+
+(define-syntax-rule (%type-of x)
+  ($inline "test rax, 1; if z; mov rax, [rax]; shr rax, HEADER_SHIFT; and rax, 0x7f; INT2FIX rax; else; mov rax, (TYPENUMBER(FIXNUM) << 1) | 1; endif" x))
+
 (define-syntax-rule (%fixnum? x) ($inline "test rax, 1; SET_T rax; cmovz rax, FALSE" x))
 
 (define-syntax-rule (%eq? x y) ($inline "cmp rax, r11; SET_T rax; cmovne rax, FALSE" x y))
