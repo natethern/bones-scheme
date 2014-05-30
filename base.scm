@@ -5,7 +5,9 @@
 (cond-expand
   (x86_64
    (provide flonums ieee754)
-   (files "x86_64/intrinsics.scm")))
+   (files "x86_64/intrinsics.scm"))
+  (mips
+   (files "mips/intrinsics.scm")))
 
 (cond-expand
   (linux 
