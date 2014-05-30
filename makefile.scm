@@ -31,15 +31,45 @@
 				  "bones.scm")
 	  (run (./bones1 bones.scm -o bones-x86_64-linux.s))))))
 
+(define (bones-mips-linux.s)
+  (make (("bones-mips-linux.s" ("bones.scm"
+				"moresyntax.scm"
+				"mips/intrinsics.scm"
+				"r5rs.scm"
+				"match.scm"
+				"support.scm"
+				"pp.scm"
+				"alexpand.scm"
+				"megalet.scm"
+				"source.scm"
+				"cc.scm"
+				"cps.scm"
+				"mangle.scm"
+				"program.scm"
+				"cmplr.scm"
+				"mips.scm"
+				"bones.scm")
+	  (run (./bones1 bones.scm -o bones-mips-linux.s))))))
+
 (define (bones-x86_64-linux.o)
   (bones-x86_64-linux.s)
   (make (("bones-x86_64-linux.o" ("bones-x86_64-linux.s")
+	  (run (nasm -f elf64 -g -F dwarf bones-x86_64-linux.s -o bones-x86_64-linux.o))))))
+
+(define (bones-mips-linux.o)
+  (bones-mips-linux.s)
+  (make (("bones-mips-linux.o" ("bones-mips-linux.s")
 	  (run (nasm -f elf64 -g -F dwarf bones-x86_64-linux.s -o bones-x86_64-linux.o))))))
 
 (define (bones)
   (bones-x86_64-linux.o)
   (make (("bones" ("bones-x86_64-linux.o")
 	  (run (bin/musl-gcc bones-x86_64-linux.o -o bones))))))
+
+(define (mips-bones)
+  (bones-mips-linux.o)
+  (make (("mips-bones" ("bones-mips-linux.o")
+	  (run (bin/musl-gcc bones-mips-linux.o -o bones))))))
 
 (define (backup)
   (let* ((date (capture (date +%Y%m%d)))
