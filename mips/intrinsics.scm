@@ -1,8 +1,8 @@
-;;;; low-level operations (MIPS)
+;;;; low-level operations (MIPSel)
 
 
-(define-syntax-rule (%eof) ($inline "addi $v0, $s4, eof - base"))
-(define-syntax-rule (%undefined) ($inline "addi $v0, $s4, undefined - base")) 
+(define-syntax-rule (%eof) ($inline "addiu $v0, $s4, eof - base"))
+(define-syntax-rule (%undefined) ($inline "addiu $v0, $s4, undefined - base")) 
 
 (define-syntax-rule (%slot-ref x i)
   ($inline "sll $v1, $v1, 1; addu $v1, $v1, $v0; lw $v0, 2($v1)" x i))
@@ -16,109 +16,55 @@
 (define-syntax-rule (%byte-set! x i y)
   ($inline "sra $v1, $v1, 1; addu $v0, $v0, $v1; sra $a1, $a0, 1; sb $a1, 4($v0); move $v0, $a0" x i y))
 
-;;XXX
-...
+(define-syntax-rule (%type-of x)
+  ($inline "andi $v0, $v0, 1; bne $v0, $zero, 1f; lbu $v0, 3($v0); INT2FIX $v0, $v0; j 2f; 1: li $v0, (TYPENUMBER(FIXNUM) << 1) | 2; 2:"
+	   x))
 
-(define-syntax-rule (%type-of x) ($inline "TYPE_OF" x))
+(define-syntax-rule (%fixnum? x) ($inline "andi $v1, $v0, 1; sll $v1, $v1, 3; addu $v0, $s6, $v1" x))
 
-(define-syntax-rule (%fixnum? x) ($inline "test rax, 1; SET_T rax; cmovz rax, FALSE" x))
-
-(define-syntax-rule (%eq? x y) ($inline "cmp rax, r11; SET_T rax; cmovne rax, FALSE" x y))
+;;XXX can we make this bracnh-free?
+(define-syntax-rule (%eq? x y) ($inline "bne $v0, $v1, 1f; move $v0, $s6; j 2f; 1: addiu $v0, %s6, 8; 2:" x y))
 
 (define-syntax-rule (%fx+ x y)
-  ($inline "dec rax; add rax, r11" x y))
+  ($inline "addiu $v0, $v0, 1; addu $v0, $v0, $v1" x y))
 
 (define-syntax-rule (%fx- x y)
-  ($inline "sub rax, r11; inc rax" x y))
+  ($inline "sub $v0, $v0, $v1; addiu $v0, $v0, 1" x y))
 
 (define-syntax-rule (%fx>? x y)
-  ($inline "cmp rax, r11; SET_T rax; cmovle rax, FALSE" x y))
+  ($inline "bgt $v0, $v1, 1f; move $v0, $s6; j 2f; 1: addiu $v0, %s6, 8; 2:" x y))
 
 (define-syntax-rule (%fx<? x y)
-  ($inline "cmp rax, r11; SET_T rax; cmovge rax, FALSE" x y))
+  ($inline "blt $v0, $v1, 1f; move $v0, $s6; j 2f; 1: addiu $v0, %s6, 8; 2:" x y))
 
 (define-syntax-rule (%fx>=? x y)
-  ($inline "cmp rax, r11; SET_T rax; cmovl rax, FALSE" x y))
+  ($inline "bge $v0, $v1, 1f; move $v0, $s6; j 2f; 1: addiu $v0, %s6, 8; 2:" x y))
 
 (define-syntax-rule (%fx<=? x y)
-  ($inline "cmp rax, r11; SET_T rax; cmovg rax, FALSE" x y))
+  ($inline "ble $v0, $v1, 1f; move $v0, $s6; j 2f; 1: addiu $v0, %s6, 8; 2:" x y))
 
 (define-syntax-rule (%size x)
-  ($inline "mov rax, [rax]; mov r11, SIZE_MASK; and rax, r11; INT2FIX rax" x))
+  ($inline "lw $v0, 0($v0); li $v1, SIZE_MASK; and $v0, $v0, $v1; INT2FIX $v0, $v0" x))
 
-(define-syntax-rule (%ieee754-sign x)
-  ($inline "mov rax, [rax + CELLS(1)]; sar rax, 63; or rax, 1" x))
+;;;XXX no ieee754 intrinsics, yet
 
-(define-syntax-rule (%ieee754-exponent x)
-  ($inline "mov rax, [rax + CELLS(1)]; sar rax, 51; and rax, 0xfff; or rax, 1" x))
+(define-syntax-rule (%cells n) ($inline "sll $v0, CELL_SHIFT; ori $v0, $v0, 1" n))
 
-(define-syntax-rule (%ieee754-mantissa x)
-  ($inline "mov rax, [rax + CELLS(1)]; mov r11, 0x000fffffffffffff; and rax, r11; INT2FIX rax" x))
+(define-syntax-rule (%bitwise-ior x y) ($inline "or $v0, $v0, $v1" x y))
+(define-syntax-rule (%bitwise-and x y) ($inline "and $v0, $v0, $v1; ori $v0, $v0, 1" x y))
+(define-syntax-rule (%bitwise-xor x y) ($inline "xor $v0, $v0, $v1; ori $v0, $v0, 1" x y))
+(define-syntax-rule (%bitwise-not x) ($inline "not $v0, $v0; ori $v0, $v0, 1" x))
 
-(define-syntax-rule (%ieee754-mask x mask)
-  (let ((f ($allocate #x10 1)))
-    ($inline "mov r11, [r11 + CELLS(1)]; mov [rax + CELLS(1)], r11" f x) ; copy flonum
-    ($inline "sar r11, 1; and [rax + CELLS(1)], r11" f mask)))
-
-(define-syntax-rule (%ieee754-exponent-and-mantissa x)
-  ($inline "mov rax, [rax + CELLS(1)]; INT2FIX rax" x))
-
-(define-syntax-rule (%ieee754-truncate x)
-  ($inline "fld qword [rax + CELLS(1)]; fisttp qword [rsp - CELLS(1)]; mov rax, [rsp - CELLS(1)]; INT2FIX rax" x))
-
-(define-syntax-rule (%fixnum->ieee754 x)
-  (let ((tmp ($allocate #x10 1)))
-    ($inline "FIX2INT r11; mov [rsp - CELLS(1)], r11; fild qword [rsp - CELLS(1)]; fstp qword [rax + CELLS(1)]" tmp x)))
-
-(define-syntax-rule ($ieee754-sin x)
-  (let ((r ($allocate #x10 1)))
-    (if (%fixnum? x)
-	($inline "FIX2INT rax; mov [buffer], rax; fild qword [buffer]; fsin; fstp qword [r11 + CELLS(1)]" x r)
-	($inline "fld qword [rax + CELLS(1)]; fsin; fstp qword [r11 + CELLS(1)]" x r))))
-
-(define-syntax-rule (%ieee754-cos x) 
-  (let ((r ($allocate #x10 1)))
-    (if (exact? x)
-	($inline "FIX2INT rax; mov [buffer], rax; fild qword [buffer]; fcos; fstp qword [r11 + CELLS(1)]" x r)
-	($inline "fld qword [rax + CELLS(1)]; fcos; fstp qword [r11 + CELLS(1)]" x r))
-    r))
-
-(define-syntax-rule (%ieee754-tan x)
-  (let ((r ($allocate #x10 1)))
-    (if (%fixnum? x)
-	($inline "FIX2INT rax; mov [buffer], rax; fild qword [buffer]; fptan; fstp st0; fstp qword [r11 + CELLS(1)]" x r)
-	($inline "fld qword [rax + CELLS(1)]; fptan; fstp st0; fstp qword [r11 + CELLS(1)]" x r))
-    r))
-
-(define-syntax-rule (%ieee754-sqrt x)
-  (let ((r ($allocate #x10 1)))
-    (if (%fixnum? x)
-	($inline "FIX2INT rax; mov [buffer], rax; fild qword [buffer]; fsqrt; fstp qword [r11 + CELLS(1)]" x r)
-	($inline "fld qword [rax + CELLS(1)]; fsqrt; fstp qword [r11 + CELLS(1)]" x r))))
-
-(define-syntax-rule (%ieee754-pi) 
-  (let ((n ($allocate #x10 1)))
-    ($inline "fldpi; fstp qword [rax + CELLS(1)]" n)))
-
-(define-syntax-rule (%ieee754-atan1 x)
-  (let ((r ($allocate #x10 1)))
-    ($inline "fld qword [r11 + CELLS(1)]; fld1; fpatan; fstp qword [rax + CELLS(1)]" r x)))
-
-(define-syntax-rule (%cells n) ($inline "shl rax, CELL_SHIFT; or rax, 1" n))
-
-(define-syntax-rule (%bitwise-ior x y) ($inline "or rax, r11" x y))
-(define-syntax-rule (%bitwise-and x y) ($inline "and rax, r11; or rax, 1" x y))
-(define-syntax-rule (%bitwise-xor x y) ($inline "xor rax, r11; or rax, 1" x y))
-(define-syntax-rule (%bitwise-not x) ($inline "not rax; or rax, 1" x))
-(define-syntax-rule (%arithmetic-shift x y) ($inline "ARITHMETIC_SHIFT" x y))
+(define-syntax-rule (%arithmetic-shift x y)
+  ($inline "sra $v0, $v0, 1; sra $v1, $v1, 1; bge $v1, $zero, 1f; neg $v1, $v1; srav $v0, $v0, $v1; j 2f; 1: sllv $v0, $v0, $v1; 2: INT2FIX $v0, $v0" x y))
 
 (define-syntax-rule (%symbol-literal i)
-  ($inline "FIX2INT rax; mov rax, [symbol_literals + rax * CELLS(1)]" i))
+  ($inline "sra $v0, $v0, 1; sll $v0, $v0, 2; addu $v0, $v0, $s4; lw $v0, (symbol_literals - base)($v0)" i))
 
 (define-syntax-rule (%terminate code)
-  ($inline "mov [exit_code], rax; jmp terminate" code))
+  ($inline "sw $v0, (exit_code - base)($s4); j terminate" code))
 
-(define-syntax-rule (%argc) ($inline "mov rax, [argc]; INT2FIX rax"))
+(define-syntax-rule (%argc) ($inline "lw $v0, (argc - base)($s4); INT2FIX $v0, $v0"))
 
 (define-syntax-rule (%argv-ref i)
-  ($inline "FIX2INT rax; mov r11, [argv]; mov rax, [r11 + rax * CELLS(1)]; call alloc_zstring" i))
+  ($inline "sll $v0, $v0, 1; lw $v1, (argv - base)($s4); addu $v0, $v0, $v1; lw $v0, -2($v0); jal alloc_zstring" i))
