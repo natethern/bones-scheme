@@ -61,22 +61,22 @@
 
 (define (generate-closure-alloc t n id)
   (emit " li " t ", CLOSURE | " (add1 n) "\n sw " t ", 0($s8)\n"
-	" la $v1, f_" id "\n sw $v1, " (cells 1) "($s8)\n"))
+	" li $v1, f_" id "\n sw $v1, " (cells 1) "($s8)\n"))
 
 (define (generate-move dest src)
   (emit " move " dest ", " src "\n"))
 
 (define (generate-add r n)
-  (emit " addi " r ", " r ", " n "\n"))
+  (emit " addiu " r ", " r ", " n "\n"))
 
 (define (generate-move-to-local off src)
   (emit " sw " src ", (locals - base + " off ")($s4)\N"))
 
 (define (generate-reserve-on-stack bytes)
-  (emit " addi $sp, $sp, " (- bytes) "\n"))
+  (emit " addiu $sp, $sp, " (- bytes) "\n"))
 
 (define (generate-pop-stack bytes)
-  (emit " addi $sp, $sp, " bytes "\n"))
+  (emit " addiu $sp, $sp, " bytes "\n"))
 
 (define (generate-comment . text)
   (emit "/* ")
@@ -113,10 +113,10 @@
   (emit " sw " src ", " off "(" dest ")\n"))
 
 (define (generate-true-ref r)
-  (emit " addi " r ", $s6, 4\n"))
+  (emit " addiu " r ", $s6, 4\n"))
 
 (define (generate-alloc-check-and-call)
-  (emit " bgt $s8, $s7, reclaim\n j rax\n"))
+  (emit " bgt $s8, $s7, reclaim\n jr $v0\n"))
 
 (define (generate-tail-call r)
   (emit " jr " r "\n"))
