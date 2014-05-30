@@ -105,10 +105,10 @@
     (_ #f)))
 
 (define (translate-inline-arguments args)
-  (translate/registers args temporary-registers #f))
+  (translate/registers args temporary-registers))
 
 (define (blocked-register? reg)
-  (or (eq? reg self-register)
+  (or (eq? reg self-register)		; always considered blocked
       (any (match-lambda ((_ . r) (eq? r reg))) environment)))
 
 (define (translate x t)
@@ -128,9 +128,12 @@
      #t)
     (('let ((vars vals) ...) body)
      (let* ((oldenv environment)
-	    (env (extend-environment environment vars))
+	    (env (extend-environment vars))
 	    (single (= 1 (length vars))))
        ;; evaluate vals and push on stack
+       ;;XXX if we could state that certain registers are used, we wouldn't need to use the
+       ;;    stack here and simply compile each value, with all registers assigned to previous
+       ;;    bindings being marked as unavailable.
        (unless single
 	 (generate-reserve-on-stack (cells (length vars))))
        (do ((vars vars (cdr vars))
@@ -282,7 +285,7 @@
     (_ (error "bad expression" x))))
 
 ;;xxx replace this with a decent ra
-(define (translate/registers args regs locals?)
+(define (translate/registers args regs)
   (let* ((argc (length args))
 	 (rargs (map cons args 
 		     (append (take argc regs)
@@ -301,8 +304,7 @@
 				    (not (blocked-register? reg))
 				    (match arg
 				      (('$closure-ref i) #f)
-				      (('$local-ref var)
-				       (not (memq (cdr (assq var environment)) regs)))
+				      (('$local-ref var) (not (memq (cdr (assq var environment)) regs)))
 				      (_ #t)))))
 			    rargs))
 		(reserve (cells (length hard))))
@@ -338,7 +340,7 @@
 
 (define (translate-call x)
   (let ((n (length x)))
-    (translate/registers x argument-registers #t)
+    (translate/registers x argument-registers)
     (generate-slot-ref arg-register self-register (cells 1))
     (generate-immediate-ref count-register n)
     (if allocating
@@ -426,15 +428,16 @@
 (define (encode-fixnum n)
   (bitwise-ior (arithmetic-shift n 1) 1))
 
-(define (extend-environment env vars)
+(define (extend-environment vars)
   (let* ((vars (filter (lambda (var) (not (eq? var '$unused))) vars))
-	 (avail (max 0 (- argument-register-count (length env))))
-	 (rcount (min argument-register-count (length env)))
+	 (nenv (length environment))
+	 (avail (max 0 (- argument-register-count nenv)))
+	 (rcount (min argument-register-count nenv))
 	 (rvars lvars (split-at avail vars)))
     (append 
      (map cons rvars (take (length rvars) (drop rcount (cdr argument-registers))))
      (map cons lvars (iota (length lvars) (add1 (- (length env) (sub1 argument-register-count)))))
-     env)))
+     environment)))
 
 (define (lookup-variable var)
   (cond ((assq var environment) =>
