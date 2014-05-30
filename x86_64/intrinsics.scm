@@ -108,7 +108,10 @@
 (define-syntax-rule (%bitwise-and x y) ($inline "and rax, r11; or rax, 1" x y))
 (define-syntax-rule (%bitwise-xor x y) ($inline "xor rax, r11; or rax, 1" x y))
 (define-syntax-rule (%bitwise-not x) ($inline "not rax; or rax, 1" x))
-(define-syntax-rule (%arithmetic-shift x y) ($inline "ARITHMETIC_SHIFT" x y))
+
+(define-syntax-rule (%arithmetic-shift x y)
+  ($inline "push rcx; mov rcx, r11; FIX2INT rax; FIX2INT rcx; if l; neg rcx; sar rax, cl; else; shl rax, cl; endif; INT2FIX rax; pop rcx"
+	   x y))
 
 (define-syntax-rule (%symbol-literal i)
   ($inline "FIX2INT rax; mov rax, [symbol_literals + rax * CELLS(1)]" i))

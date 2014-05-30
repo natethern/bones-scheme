@@ -193,23 +193,6 @@
 %endmacro
 
 
-;; shift bits: rax = num, r11 = shift -> rax
-%macro ARITHMETIC_SHIFT 0
-  push rcx
-  mov rcx, r11
-  FIX2INT rax
-  FIX2INT rcx
-  if l
-    neg rcx
-    sar rax, cl
-  else
-    shl rax, cl
-  endif
-  INT2FIX rax
-  pop rcx
-%endmacro
-
-
 ;; abort with error message: %1 = string
 %macro HALT 1
   section .data
