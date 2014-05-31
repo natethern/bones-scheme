@@ -3,7 +3,7 @@
 
 (define fixnum-range '(-1073741824 . 1073741823))
 (define temporary-registers '($v0 $v1 $a0 $a1))
-(define argument-registers '($s5 $ra $a2 $a3 $t0 $t1 $t2 $t3 $t4 $t5 $t6 $t7 $t8 $t9 $s0 $s1 $s2 $s3))
+(define argument-registers '($s5 $a2 $a3 $t0 $t1 $t2 $t3 $t4 $t5 $t6 $t7 $t8 $t9 $s0 $s1 $s2 $s3))
 (define word-size 4)			; bytes
 (define target-os 'linux)
 (define target-arch 'mips)
@@ -55,7 +55,7 @@
   (emit " .fill " bytes "\n"))
 
 (define (generate-equ name . vals)
-  (emit ".equ " name " ")
+  (emit ".equ " name ", ")
   (for-each emit vals)
   (emit "\n"))
 
