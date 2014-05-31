@@ -772,7 +772,8 @@
 			 '()
 			 (let ((x (car lsts)))
 			   (and (not (null? x))
-				(cons (car x) (loop2 (cdr lsts)))))))))
+				(let ((r (loop2 (cdr lsts))))
+				  (and r (cons (car x) r)))))))))
 	  (when hds
 	    (%apply proc hds)
 	    (loop
@@ -793,7 +794,8 @@
 			 '()
 			 (let ((x (car lsts)))
 			   (and (not (null? x))
-				(cons (car x) (loop2 (cdr lsts)))))))))
+				(let ((r (loop2 (cdr lsts))))
+				  (and r (cons (car x) r)))))))))
 	  (if hds
 	      (cons
 	       (%apply proc hds)
