@@ -287,7 +287,12 @@
      #f)
     (_ (error "bad expression" x))))
 
-;;xxx replace this with a decent ra
+;;XXX replace this with a decent ra
+;
+; - at least we could check whether later expressions don't use a particular register anymore
+;   and assign directly.
+; - reordering of arguments might also be an option.
+
 (define (translate/registers args regs)
   (let* ((argc (length args))
 	 (rargs (map cons args 
@@ -306,7 +311,7 @@
 				    ;;XXX could check whether arg is a var already stored in reg
 				    (not (blocked-register? reg))
 				    (match arg
-				      (('$closure-ref i) #f)
+				      (('$closure-ref i) (not (any (lambda (ra) (eq? self-register (cdr ra))) rargs)))
 				      (('$local-ref var) (not (memq (cdr (assq var environment)) regs)))
 				      (_ #t)))))
 			    rargs))
