@@ -230,7 +230,7 @@
     (('$box-set! box val)
      (match-let ((((_ . r1) (_ . r2)) (translate-inline-arguments (list box val))))
        (generate-slot-store r1 (cells 1) r2)
-       (unless (eq? t r2) (generate-move t r2))
+       (generate-move t r2)
        #t))
     (('$inline (or ('quote opr) opr) args ...)
      (assert (<= (length args) (length temporary-registers)) 
@@ -239,7 +239,7 @@
      (for-each
       (cut emit " " <> "\n")
       (string-split opr ";"))
-     (unless (eq? t arg-register) (generate-move t arg-register))
+     (generate-move t arg-register)
      #t)
     (('$allocate (or ('quote type) type) (or ('quote size) size) args ...)
      (assert (<= (length args) (length temporary-registers))
@@ -297,13 +297,13 @@
       (((arg . reg))			; just a single argument
        (translate arg arg-register)
        (if (symbol? reg)
-	   (unless (eq? reg arg-register) (generate-move reg arg-register))
+	   (generate-move reg arg-register)
 	   (generate-move-to-local (cells reg) arg-register)))
       (_ (let* ((easy hard (partition
 			    (match-lambda
 			      ((arg . reg)
 			       (and (simple-expression? arg)
-				    ;;xxx could check whether arg is a var already stored in reg
+				    ;;XXX could check whether arg is a var already stored in reg
 				    (not (blocked-register? reg))
 				    (match arg
 				      (('$closure-ref i) #f)

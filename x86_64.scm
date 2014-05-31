@@ -63,7 +63,8 @@
 	" mov qword [rbp + " (cells 1) "], f_" id "\n"))
 
 (define (generate-move dest src)
-  (emit " mov " dest ", " src "\n"))
+  (unless (eq? dest src)
+    (emit " mov " dest ", " src "\n")))
 
 (define (generate-add r n)
   (emit " add " r ", " n "\n"))
