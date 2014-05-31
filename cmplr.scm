@@ -120,7 +120,7 @@
     (('$closure id cap _ _)
      (push! x closures-to-be-translated)
      (set! allocating #t)
-     (generate-closure-alloc t (length cap) id)
+     (generate-closure-alloc (length cap) id)
      (do ((lst cap (cdr lst))
 	  (off 2 (add1 off)))
 	 ((null? lst))

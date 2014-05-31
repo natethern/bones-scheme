@@ -58,9 +58,9 @@
   (for-each emit vals)
   (emit "\n"))
 
-(define (generate-closure-alloc t n id)
-  (emit " mov " t ", CLOSURE | " (add1 n) "\n mov [rbp], " t "\n"
-	" mov qword [rbp + " (cells 1) "], f_" id "\n"))
+(define (generate-closure-alloc n id)
+  (emit " mov rax, CLOSURE | " (add1 n) "\n mov [ALLOC], rax\n"
+	" mov qword [ALLOC + " (cells 1) "], f_" id "\n"))
 
 (define (generate-move dest src)
   (unless (eq? dest src)
