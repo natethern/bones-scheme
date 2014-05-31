@@ -1,6 +1,21 @@
 BONES                                                                               -*- Org -*-
 
 
+* TODO test integer-only string<->number conversion
+* TODO add fft.scm benchmark
+* TODO unboxing
+  - "($the TYPE EXP)" annotates with type.
+  - "let" can check for "$the" and assign FP-register.
+  - accessing variables in FP-registers needs to move them to normal registers.
+  - requires special intrinsics for FP arguments.
+    - perhaps convert variable access of FP variable into "($the ...)" form and
+      match intrinsics on arguments of this shape?
+* TODO make "let" more efficient
+  - mark registers as blocked after processing each binding-value.
+  - use dynamic globals for keeping track of available registers and topmost locals-index.
+* TODO use dynamic global for used registers
+  - mark registers as blocked while compiling values in "let" bindings.
+  - this way we can avoid stack-juggling.
 * TODO measure difference in performance compared with old way of pushing/popping + closure-alloc
   - compare with 2975d560a14f7c9d2f2f199696c72876cbe6059b
   - try file:dyn.scm and file:mandelbrot.scm
@@ -26,28 +41,6 @@ BONES                                                                           
 * TODO pre-allocated chars in the range 0-255
 * TODO "(if X S1 S2)" can be computed more efficiently
   - use "cmovCC" if S1, S2 are simple-expressions.
-* TODO write minimal "bare" bones variant
-  - no floats.
-  - manual str<->num conversion (exact integer only).
-    - needs intrinsic "(%fx-divmod X Y K)" -> (K QUO REM)
-  - 32-bit (doesn't need alignment-hole, though)
-  - file:boneslib.scm
-    - simplify arithmetic and numeric operators.
-  - sample architecture: MIPS (el, 32 bits)
-    - register usage:
-      | temporaries | v0, v1, a0, a1 (4)                            |
-      | arguments   | s5 (SELF), a2 - a3, t0 - t9, s0 - s4 (18)     |
-      | ALLOC       | s8                                            |
-      | LIMIT       | s7                                            |
-      | FALSE       | s6                                            |
-      | stackptr    | sp                                            |
-      | count       | v1                                            |
-      | unused      | zero, at, ra, gp                              | 
-  - we probably need a register to point to "globals", to address via offset.
-    - but is "la" or "li" valid to get the full address of a symbol?
-* TODO file:mips.scm
-  - $closure: load-delay slot for moving data from stack to closure really needed?
-    - is this only relevant on older MIPSen?
 * TODO write file:README
 * Add partial R7RS support?
   - modulo libraries.
@@ -273,6 +266,12 @@ BONES                                                                           
   - and more
 ** Non-standard extensions
 *** Alexpander extensions
+    - generalized syntax-rules
+    - splicing let[rec]-syntax
+    - nested syntax-binding forms.
+    - single-arg define
+    - SRFI-46
+    - non-syntax-rules as 2nd arg to define-syntax
 *** Primitives
    emergency-exit
    current-process-id
@@ -302,7 +301,6 @@ BONES                                                                           
    fluid-let
    optional let-optionals
    begin0
-   receive
    assert
    cond-expand
    call/cc
@@ -332,10 +330,11 @@ BONES                                                                           
     - General information: file:/archive/optimizing_assembly.pdf
     - x86-64 ABI: file:/archive/x86-64-abi.pdf
   - MIPS
-    http://en.wikipedia.org/wiki/MIPS_instruction_set
-    http://www.mrc.uidaho.edu/mrc/people/jff/digital/MIPSir.html
-    file:/archive/4KcProgMan.pdf
-    file:/archive/mipsabi32.pdf
+    - http://en.wikipedia.org/wiki/MIPS_instruction_set
+    - Instructions, SPIM-desc. is better, though: http://www.mrc.uidaho.edu/mrc/people/jff/digital/MIPSir.html
+    - Datasheet, somewhat compressed: file:/archive/4KcProgMan.pdf
+    - ABI: file:/archive/mipsabi32.pdf
+    - SPIM MIPS description: http://www.doc.ic.ac.uk/lab/secondyear/spim/node9.html
   - RA:
     http://pages.cs.wisc.edu/~cs701-1/NOTES/5.REGISTER-ALLOCATION.html
 * Notes
