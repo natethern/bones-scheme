@@ -97,14 +97,6 @@
        (define var #f) ...
        (define-values "1" (var ...) exp ())))))
 
-(define-syntax receive
-  (syntax-rules ()
-    ((receive expression)
-     (call-with-values (lambda () expression) list))
-    ((receive formals expression body ...)
-     (call-with-values (lambda () expression)
-       (lambda formals body ...)))))
-
 (define-syntax-rule (define-inline (name . llist) body ...)
   (define-syntax name
     (lambda llist body ...)))
