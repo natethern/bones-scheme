@@ -1,8 +1,9 @@
 BONES                                                                               -*- Org -*-
 
 
+* TODO [#A] test improvements in "better-let" branch
 * TODO test integer-only string<->number conversion
-* TODO add fft.scm benchmark
+* TODO test file:fft.scm benchmark
 * TODO unboxing
   - "($the TYPE EXP)" annotates with type.
   - "let" can check for "$the" and assign FP-register.
@@ -13,11 +14,6 @@ BONES                                                                           
   - have local FA pass ("lfa") that expands $typed-case-lambda according to inferred
     types and convert "let"-bound flonum vars using a custom binding form
     - e.g. "($let-float ...)" or something like this.
-* TODO use dynamic global for used registers to make "let" more efficient
-  - mark registers as blocked while compiling values in "let" bindings.
-  - this way we can avoid stack-juggling.
-  - use dynamic globals for keeping track of available registers and topmost locals-index.
-  - simplify "blocked-register?" by checking available registers.
 * TODO try compiling grond
 * TODO move code to bitbucket?
 * TODO something is wrong with musl's "sprintf" (or varargs) implementation
