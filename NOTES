@@ -8,17 +8,16 @@ BONES                                                                           
   - "let" can check for "$the" and assign FP-register.
   - accessing variables in FP-registers needs to move them to normal registers.
   - requires special intrinsics for FP arguments.
-    - perhaps convert variable access of FP variable into "($the ...)" form and
-      match intrinsics on arguments of this shape?
-* TODO make "let" more efficient
-  - mark registers as blocked after processing each binding-value.
-  - use dynamic globals for keeping track of available registers and topmost locals-index.
-* TODO use dynamic global for used registers
+  - implement primitives as "($typed-case-lambda (((VAR TYPE) ...) BODY ...) ...)"
+    - specially handled in operator position during canonicalization.
+  - have local FA pass ("lfa") that expands $typed-case-lambda according to inferred
+    types and convert "let"-bound flonum vars using a custom binding form
+    - e.g. "($let-float ...)" or something like this.
+* TODO use dynamic global for used registers to make "let" more efficient
   - mark registers as blocked while compiling values in "let" bindings.
   - this way we can avoid stack-juggling.
-* TODO measure difference in performance compared with old way of pushing/popping + closure-alloc
-  - compare with 2975d560a14f7c9d2f2f199696c72876cbe6059b
-  - try file:dyn.scm and file:mandelbrot.scm
+  - use dynamic globals for keeping track of available registers and topmost locals-index.
+  - simplify "blocked-register?" by checking available registers.
 * TODO try compiling grond
 * TODO move code to bitbucket?
 * TODO something is wrong with musl's "sprintf" (or varargs) implementation
@@ -64,9 +63,17 @@ BONES                                                                           
       (with-exception-handlers (cdr handlers)
         (lambda ()
           ((car handlers) obj)
-          (error "handler returned"
-                 (car handlers)
-                 obj)))))
+          (error "exception-handler returned" (car handlers) obj)))))
+  
+  (define (raise-continuable obj)
+    (let ((handlers %current-exception-handlers))
+      (call-with-current-continuation
+       (lambda (return)
+         (with-exception-handlers
+          (cdr handlers)
+          (lambda ()
+            ;;XXX is this according to R7RS?
+            (return ((car handlers) obj))))))))
   
   (define-syntax guard
     (syntax-rules ()
@@ -120,7 +127,7 @@ BONES                                                                           
            (begin result1 result2 ...)
            (guard-aux reraise clause1 clause2 ...)))))
   
-  (define (%make-error-object kind msg irritants loc)
+  (define (%make-error-object kinds msg irritants loc)
     (let ((err ($allocate 10 4 'error-object 1)))
       (%slot-set! err 2 kind)
       (%slot-set! 
@@ -132,7 +139,7 @@ BONES                                                                           
   
   (define-inline (error-object? x)
     (and (record? x)
-         (eq 'error-object (%slot-ref x 2))
+         (eq 'error-object (%slot-ref x 0))
          (eq? 1 (%slot-ref x 1))))
   
   (define-inline (error-object-message x) 
@@ -151,6 +158,12 @@ BONES                                                                           
   (define-inline (file-error? x)
     (and (error-object? x)
          (member '(file-error . 1) (%slot-ref x 2))))
+  
+  (define (%read-error loc msg . args)
+    (raise (%make-error-object '((read-error . 1)) msg args loc)))
+  
+  (define (%file-error loc msg . args)
+    (raise (%make-error-object '((file-error . 1)) msg args loc)))
   
   ;; replacement
   (define %error
@@ -296,6 +309,7 @@ BONES                                                                           
    delete-file
    define-syntax-rule
    define-values
+   free
    cut
    when unless
    fluid-let
