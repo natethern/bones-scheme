@@ -29,6 +29,9 @@
 (define-syntax-rule (%fx- x y)
   ($inline "sub rax, r11; inc rax" x y))
 
+(define-syntax-rule (%fx* x y)
+  ($inline "FIX2INT rax; FIX2INT $r11; push rdx; imul r11; pop rdx; INT2FIX rax" x y))
+
 (define-syntax-rule (%fx>? x y)
   ($inline "cmp rax, r11; SET_T rax; cmovle rax, FALSE" x y))
 
@@ -123,3 +126,8 @@
 
 (define-syntax-rule (%argv-ref i)
   ($inline "FIX2INT rax; mov r11, [argv]; mov rax, [r11 + rax * CELLS(1)]; call alloc_zstring" i))
+
+(define-syntax-rule (%fx-divmod x y k)
+  (let ((q ($inline "FIX2INT rax; FIX2INT r11; push rdx; idiv r11; mov r15, rdx; pop rdx" x y)))
+    ;; bold hack: we assume r15 will not be clobbered by "k"
+    (k q ($inline "mov rax, r15"))))
