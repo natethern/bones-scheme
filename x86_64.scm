@@ -3,15 +3,15 @@
 
 (define fixnum-range '(-4611686018427387904 . 4611686018427387903))
 (define temporary-registers '(rax r11 r15))
-(define argument-registers '(rbx rcx rdx rsi rdi r8 r9 r10 r12))
+(define argument-registers '(SELF rcx rdx rsi rdi r8 r9 r10 r12))
 (define word-size 8)			; bytes
 (define target-os 'linux)
 (define target-arch 'x86_64)
 (define target-endianness 'little-endian)
 (define arg-register 'rax)
-(define alloc-register 'rbp)
-(define self-register 'rbx)
-(define false-register 'r14)
+(define alloc-register 'ALLOC)
+(define self-register 'SELF)
+(define false-register 'FALSE)
 (define count-register 'r11)
 (define stack-register 'rsp)
 
@@ -95,7 +95,7 @@
   (emit " mov [locals + " dest "], " src " ; (set! " var " ...)\n"))
 
 (define (generate-conditional-branch r lbl)
-  (emit " cmp " r ", r14\n je " lbl "\n"))
+  (emit " cmp " r ", FALSE\n je " lbl "\n"))
 
 (define (generate-jump lbl)
   (emit " jmp " lbl "\n"))
@@ -115,7 +115,7 @@
   (emit " SET_T " r "\n"))
 
 (define (generate-alloc-check-and-call)
-  (emit " cmp rbp, r13\n ja reclaim\n jmp rax\n"))
+  (emit " cmp ALLOC, LIMIT\n ja reclaim\n jmp rax\n"))
 
 (define (generate-tail-call r)
   (emit " jmp " r "\n"))
