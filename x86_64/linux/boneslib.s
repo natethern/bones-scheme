@@ -70,8 +70,8 @@
 %define STRING	TYPECODE(0x11)
 ;; special object
 %define CLOSURE	TYPECODE(0x20)
-;; pseudo-type
-%define FIXNUM  TYPECODE(9)
+;; pesudo type
+%define FIXNUM  TYPECODE(11)
 
 
 ;; get type-number from value pointed to by %1
