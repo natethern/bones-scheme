@@ -82,6 +82,11 @@
   (for-each emit text)
   (emit "\n"))
 
+(define (generate-expr-comment expr)
+  (emit "; ") 
+  (write expr)
+  (emit "\n"))
+
 (define (generate-global-store var name src)
   (emit " mov [" name "], " src " ; (set! " var " ...)\n"))
 

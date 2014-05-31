@@ -55,6 +55,7 @@
 		(dump-expressions code dumpserial)
 		(exit)))
 	   (ccode (cc code '())))
+      (set! emit-expr-comments (option 'comment: options))
       (when dumpcc
 	(dump-expressions ccode dumpserial)
 	(exit))
@@ -93,7 +94,7 @@
 
 (define (simple-expression? exp)
   (match exp
-    ;;XXX $inline? $allocate?
+    ;;XXX $allocate?
     ((or ('quote _)
 	 '($undefined)
 	 '($uninitialized)
@@ -113,6 +114,8 @@
 
 (define (translate x t)
   ;;(pp (if (pair? x) (car x) x))
+  (when emit-expr-comments
+    (generate-expr-comment (fragment x 4)))
   (match x
     (('$closure id cap _ _)
      (push! x closures-to-be-translated)
