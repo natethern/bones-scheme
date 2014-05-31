@@ -154,8 +154,7 @@
 	      (vals (map (cut walk <> eenv) vals)))
 	 (list (car x) 
 	       (map (lambda (var val)
-		      (list (if (used? var env2) var '$unused)
-			    val))
+		      (list (if (used? var env2) var '$unused) val))
 		    vars vals)
 	       body)))
       (('begin x) (walk x env))
@@ -168,8 +167,7 @@
 	 `($lambda ,id ,(build-lambda-list 
 			 (map (lambda (var) (if (used? var env2) var '$unused)) vars)
 			 argc
-			 (and rest
-			      (if (used? rest env2) rest '$unused)))
+			 (and rest (if (used? rest env2) rest '$unused)))
 		   ,body)))
       (('if x y z) `(if ,(walk x env) ,(walk y env) ,(walk z env)))
       (('set! var x)
