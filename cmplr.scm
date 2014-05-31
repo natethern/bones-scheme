@@ -436,7 +436,7 @@
 	 (rvars lvars (split-at avail vars)))
     (append 
      (map cons rvars (take (length rvars) (drop rcount (cdr argument-registers))))
-     (map cons lvars (iota (length lvars) (add1 (- (length env) (sub1 argument-register-count)))))
+     (map cons lvars (iota (length lvars) (add1 (- nenv (sub1 argument-register-count)))))
      environment)))
 
 (define (lookup-variable var)
