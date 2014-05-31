@@ -18,5 +18,6 @@
 	"program.scm"
 	"cmplr.scm")
  (cond-expand
+   (mips-target (files "mips.scm"))
    (else (files "x86_64.scm")))		; default target
  (code (main (cdr (command-line)))))

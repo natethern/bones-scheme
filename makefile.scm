@@ -32,9 +32,10 @@
 	  (run (./bones1 bones.scm -o bones-x86_64-linux.s))))))
 
 (define (bones-mips-linux.s)
+  (bones)
   (make (("bones-mips-linux.s" ("bones.scm"
 				"moresyntax.scm"
-				"mips/intrinsics.scm"
+				"x86_64/intrinsics.scm" ; sic
 				"r5rs.scm"
 				"match.scm"
 				"support.scm"
@@ -49,7 +50,7 @@
 				"cmplr.scm"
 				"mips.scm"
 				"bones.scm")
-	  (run (./bones1 bones.scm -o bones-mips-linux.s))))))
+	  (run (./bones bones.scm -feature mips-target -o bones-mips-linux.s))))))
 
 (define (bones-x86_64-linux.o)
   (bones-x86_64-linux.s)
@@ -59,7 +60,7 @@
 (define (bones-mips-linux.o)
   (bones-mips-linux.s)
   (make (("bones-mips-linux.o" ("bones-mips-linux.s")
-	  (run (nasm -f elf64 -g -F dwarf bones-x86_64-linux.s -o bones-x86_64-linux.o))))))
+	  (run (nasm -f elf64 -g -F dwarf bones-mips-linux.s -o bones-mips-linux.o))))))
 
 (define (bones)
   (bones-x86_64-linux.o)
