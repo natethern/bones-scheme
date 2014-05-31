@@ -627,31 +627,69 @@
     ($inline "CALL copy_bytes" (cons str from) (cons str2 0) len)
     str2))
 
-(define (string->number str . base)
+(define string->number
   (cond-expand
     (flonums
-     ;;XXX does not parse "nan.0", "inf.0"
-     ($inline "CALL syscall_str2num" str (optional base 10)))
+     (lambda (str . base)
+       ;;XXX does not parse "nan.0", "inf.0"
+       ($inline "CALL syscall_str2num" str (optional base 10))))
+    (else
+     ;;XXX untested
+     (lambda (str . base)
+       (let ((base (optional base 10))
+	     (len (string-length str))
+	     (s 1)
+	     (p 0))
+	 (cond ((eq? 0 len) #f)
+	       (else
+		(case (string-ref str 0)
+		  ((#\-) 
+		   (set! s -1)
+		   (set! p 1))
+		  ((#\+)
+		   (set! p 1)))
+		(%fx* s
+		      (let loop ((p p) (n 0))
+			(if (%fx>=? p len) 
+			    n
+			    (let ((c (char-downcase (string-ref str p))))
+			      (loop (%fx+ p 1)
+				    (%fx+ (%fx* n base)
+					  (if (char>=? c #\a)
+					      (%fx- (char->integer c) 97)
+					      (%fx- (char->integer c) 48)))))))))))))))
 
-    ;;XXX provide integer-only variant
-
-    ))
-
-(define (number->string num . base)
+(define number->string
   (cond-expand
     (flonums
-     (cond ((nan? num) "+nan.0")
-	   ((finite? num)
-	    (let ((str ($inline "CALL syscall_num2str" num (optional base 10))))
-	      (if (and (inexact? num) (integer? num))
-		  (string-append str ".0")
-		  str)))
-	   ((negative? num) "-inf.0")
-	   (else "+inf.0")))
-
-    ;;XXX provide integer-only variant
-
-    ))
+     (lambda (num . base)
+       (cond ((nan? num) "+nan.0")
+	     ((finite? num)
+	      (let ((str ($inline "CALL syscall_num2str" num (optional base 10))))
+		(if (and (inexact? num) (integer? num))
+		    (string-append str ".0")
+		    str)))
+	     ((negative? num) "-inf.0")
+	     (else "+inf.0"))))
+    (else
+     (let-syntax ((buflen 100))
+       (let ((buffer (make-string buflen)))
+	 (lambda (num . base)
+	   (if (eq? num 0)
+	       "0"
+	       (let ((neg (if (negative? num) -1 1)))
+		 (let loop ((p (%fx- buflen 1)) (n num))
+		   (cond ((eq? n 0)
+			  (when neg
+			    (string-set! buffer p #\-)
+			    (set! p (%fx- p 1)))
+			  (substring buffer p))
+			 (else
+			  (%fx-divmod 
+			   n base
+			   (lambda (q r)
+			     (string-set! buffer p (integer->char (%fx+ (if (%fx>=? r 10) 97 48) r)))
+			     (loop (%fx- p 1) q))))))))))))))
 
 (define-inline (vector-fill! v x)
   ($inline "CALL fill_slots" v x))
