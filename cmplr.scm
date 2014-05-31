@@ -10,8 +10,12 @@
 (define string-literals '())
 (define symbol-table '())
 (define label-counter 0)
-(define environment '())
 (define allocating #f)
+(define emit-expr-comments #f)
+
+(define environment '())
+(define locals-counter 0)
+(define available-registers '())
 
 (define (cells n) (* word-size n))
 
@@ -109,8 +113,7 @@
   (translate/registers args temporary-registers))
 
 (define (blocked-register? reg)
-  (or (eq? reg self-register)		; always considered blocked
-      (any (match-lambda ((_ . r) (eq? r reg))) environment)))
+  (not (memq reg available-registers)))
 
 (define (translate x t)
   ;;(pp (if (pair? x) (car x) x))
@@ -130,54 +133,32 @@
      (generate-add alloc-register (cells (+ 2 (length cap))))
      #t)
     (('let ((vars vals) ...) body)
-     (let* ((oldenv environment)
-	    (env (extend-environment vars))
-	    (single (= 1 (length vars))))
-       ;; evaluate vals and push on stack
-       ;;XXX if we could state that certain registers are used, we wouldn't need to use the
-       ;;    stack here and simply compile each value, with all registers assigned to previous
-       ;;    bindings being marked as unavailable.
-       (unless single
-	 (generate-reserve-on-stack (cells (length vars))))
-       (do ((vars vars (cdr vars))
-	    (vals vals (cdr vals))
-	    (i 0 (add1 i)))
-	   ((null? vars))
-	 (let ((var (car vars))
-	       (val (car vals)))
-	   (cond ((assq var env) => 
-		  (lambda (a)
-		    (cond (single
-			   (let ((dest (cdr a)))
-			     (cond ((symbol? dest)
-				    (translate val arg-register)
-				    (generate-move dest arg-register))
-				   (else
-				    (translate val arg-register)
-				    (generate-move-to-local (cells dest) arg-register)))))
-			  (else
-			   (translate val arg-register)
-			   (generate-slot-store stack-register (cells i) arg-register)))))
-		 ((simple-expression? val))   ; unused and simple
-		 (else (translate val arg-register))))) ; unused but not simple
-       (unless single
-	 (do ((vars vars (cdr vars))
-	      (vals vals (cdr vals))
-	      (i 0 (add1 i)))
-	     ((null? vars))
-	   (let ((var (car vars))
-		 (val (cdr vals)))
-	     (cond ((assq var env) =>
-		    (lambda (a)
-		      (let ((dest (cdr a)))
-			(generate-comment dest " = " var)
-		       (cond ((symbol? dest)
-			      (generate-slot-ref dest stack-register (cells i)))
-			     (else
-			      (generate-slot-ref arg-register stack-register (cells i))
-			      (generate-move-to-local (cells dest) arg-register)))))))))
-	 (generate-pop-stack (cells (length vars))))
-       (fluid-let ((environment env))
+     (fluid-let ((environment environment)
+		 (locals-counter locals-counter)
+		 (available-registers available-registers))
+       (let ((newenv environment))
+	 (for-each
+	  (lambda (var val)
+	    (cond ((eq? var '$unused)
+		   ;; drop if simple or just evaluate but don't bind
+		   (unless (simple-expression? val)
+		     (translate val arg-register)))
+		  ((null? available-registers)
+		   ;; evaluate and move into local
+		   (translate val arg-register)
+		   (generate-comment var " = local #" locals-counter)
+		   (generate-move-to-local (cells locals-counter) arg-register)
+		   (push! (cons var locals-counter) newenv)
+		   (inc! locals-counter))
+		  (else
+		   ;; evaluate into target register
+		   (let ((reg (car available-registers)))
+		     (translate val reg)
+		     (generate-comment var " = " reg)
+		     (pop! available-registers)
+		     (push! (cons var reg) newenv)))))
+	  vars vals)
+	 (set! environment newenv)
 	 (translate body t))))
     (('$global-set! var val)
      (translate val t)
@@ -364,18 +345,26 @@
      (translate body arg-register))))
 
 (define (translate-llist llist)
-  (let* ((vars argc rest (parse-lambda-list llist))
-	 (nvars (length vars))
-	 (lvars (- nvars (length (cdr argument-registers)))))
-    ;;XXX the registers for unused variables are not made available
-    (set! environment
-      (map cons
-	   vars
-	   (append 
-	    (take nvars (cdr argument-registers))
-	    (if (positive? lvars)
-		(iota lvars)
-		'()))))
+  (set! available-registers (cdr argument-registers))
+  (set! locals-counter 0)
+  (set! environment '())
+  (let ((vars argc rest (parse-lambda-list llist))
+	(unused '()))
+    (for-each
+     (lambda (var)
+       (cond ((null? available-registers)
+	      (unless (eq? var '$unused)
+		(push! (cons var locals-counter) environment)
+		(inc! locals-counter)))
+	     ((eq? var '$unused)
+	      ;; this register is not used for arguments but may be later used in "let" bindings
+	      (push! (pop! available-registers) unused))
+	     (else
+	      (let ((reg (pop! available-registers)))
+		(push! (cons var reg) environment)))))
+     vars)
+    ;; add unused argument registers back to available registers
+    (set! available-registers (append unused available-registers))
     (generate-comment environment)
     (when (and rest (not (eq? '$unused rest)))
       (let ((rdest (cdr (assq rest environment))))
@@ -435,17 +424,6 @@
 
 (define (encode-fixnum n)
   (bitwise-ior (arithmetic-shift n 1) 1))
-
-(define (extend-environment vars)
-  (let* ((vars (filter (lambda (var) (not (eq? var '$unused))) vars))
-	 (nenv (length environment))
-	 (avail (max 0 (- argument-register-count nenv)))
-	 (rcount (min argument-register-count nenv))
-	 (rvars lvars (split-at avail vars)))
-    (append 
-     (map cons rvars (take (length rvars) (drop rcount (cdr argument-registers))))
-     (map cons lvars (iota (length lvars) (add1 (- nenv (sub1 argument-register-count)))))
-     environment)))
 
 (define (lookup-variable var)
   (cond ((assq var environment) =>
