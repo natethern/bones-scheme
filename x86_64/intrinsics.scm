@@ -131,3 +131,6 @@
   (let ((q ($inline "FIX2INT rax; FIX2INT r11; push rdx; idiv r11; mov r15, rdx; pop rdx" x y)))
     ;; bold hack: we assume r15 will not be clobbered by "k"
     (k q ($inline "mov rax, r15"))))
+
+(define-syntax-rule (%free)
+  ($inline "mov rax, [fromspace_end]; sub rax, ALLOC; INT2FIX rax"))

@@ -127,3 +127,5 @@
 (define (print . args)
   (for-each display args)
   (newline))
+
+(define-inline (free) (%free))
