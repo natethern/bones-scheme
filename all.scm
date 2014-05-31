@@ -12,5 +12,6 @@
 (load "program.scm")
 (load "cmplr.scm")
 (load "x86_64.scm")
+(load "main.scm")
 
 (load "repl.scm")

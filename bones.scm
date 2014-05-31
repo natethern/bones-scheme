@@ -16,7 +16,8 @@
 	"cps.scm"
 	"mangle.scm"
 	"program.scm"
-	"cmplr.scm")
+	"cmplr.scm"
+	"main.scm")
  (cond-expand
    (mips-target (files "mips.scm"))
    (else (files "x86_64.scm")))		; default target

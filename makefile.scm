@@ -28,6 +28,7 @@
 				  "program.scm"
 				  "cmplr.scm"
 				  "x86_64.scm"
+				  "main.scm"
 				  "bones.scm")
 	  (run (./bones1 bones.scm -o bones-x86_64-linux.s))))))
 
@@ -98,6 +99,7 @@
     "cps.scm"
     "x86_64/intrinsics.scm"
     "mangle.scm"
+    "main.scm"
     "match.scm"
     "megalet.scm"
     "moresyntax.scm"
