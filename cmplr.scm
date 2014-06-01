@@ -302,8 +302,12 @@
 	     (do ((i 0 (add1 i))
 		  (hard hard (cdr hard)))
 		 ((null? hard))
-	       (translate (caar hard) arg-register)
-	       (generate-slot-store stack-register (cells i) arg-register)))
+	       (let* ((arg (caar hard))
+		      (reg (argument-register arg)))
+		 (cond (reg (generate-slot-store stack-register (cells i) reg))
+		       (else
+			(translate arg arg-register)
+			(generate-slot-store stack-register (cells i) arg-register))))))
 	   ;; assign easy destinations first to avoid clobbering rbx
 	   (for-each
 	    (match-lambda
@@ -326,6 +330,14 @@
 			 (generate-move-to-local (cells reg) arg-register))))))
 	     (generate-pop-stack reserve)))))
     rargs))
+
+;; return register that holds this value of #f
+(define (argument-register arg)
+  (match arg
+    (('$local-ref var)
+     (let ((reg (lookup-variable var)))
+       (and (symbol? reg) reg)))
+    (_ #f)))
 
 (define (translate-call x)
   (let ((n (length x)))
