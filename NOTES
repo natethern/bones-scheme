@@ -37,7 +37,7 @@ BONES                                                                           
     - then evict recursively.
   - also, keep GC-count 
 * TODO pre-allocated chars in the range 0-255
-* TODO "(if X S1 S2)" can be computed more efficiently
+* TODO "(if X S1 S2)" can be computed more effiiently
   - use "cmovCC" if S1, S2 are simple-expressions.
 * TODO write file:README
 * Add partial R7RS support?
@@ -242,8 +242,23 @@ BONES                                                                           
 	MsgBox "ArcSin(0.5) = " & ArcSin(0.5)
 	MsgBox "ArcCos(0.5) = " & ArcCos(0.5)
     End Sub
-* TODO we need some sort of register-allocation
-  - see Appel's book, perhaps a variant of the Sethi-Ullman RA.
+* TODO improve "translate/registers"
+  - avoid using stack as much as possible.
+  - potential approach:
+    1. collect for each argument: target-register and registers used
+    2. iteratively spill arguments until no circular dependencies are
+       left by finding argument with circular dependency
+       (target-register is used by other which uses target-register)
+       and spill to stack and start again
+    3. topologically sort arguments by register-dependencies
+    4. translate in final order obtained
+* TODO native support for "case-lambda"
+  - expands into "($case-lambda ID ARGC1 LAMBDA1 ...)"
+  - handled by all passes.
+  - canonicalization inlines this if in operator position.
+  - "($case-closure ...)" contains closure for each body, captured vars
+    are the union of the captures of all contained lambdas.
+  - dispatch by argc/rest on entry.
 * TODO log: "fld1; fld XXX; fyl2x"
   - seems to be broken.
 * TODO remove unused globals
@@ -294,6 +309,7 @@ BONES                                                                           
    void
    nan?
    port?
+   return-to-host
    bitwise-and bitwise-ior bitwise-xor bitwise-not arithmetic-shift
    finite?
    system
