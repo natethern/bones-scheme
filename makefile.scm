@@ -77,8 +77,9 @@
 
 (define (check-embedded)
   (and (zero? (run* (./bones embedded.scm -o embedded.s)))
-       (zero? (run* (nasm -f elf64 -g -F dwarf embedded.s -o embedded.o -DEMBEDDED -DPREFIX=my)))
-       (zero? (run* (gcc -g -I. embedded.c embedded.o -o embedded)))
+       (zero? (run* (nasm -f elf64 -g -F dwarf embedded.s -o embedded1.o -DEMBEDDED -DPREFIX=my)))
+       (zero? (run* (nasm -f elf64 -g -F dwarf embedded.s -o embedded2.o -DEMBEDDED -DPREFIX=my_other)))
+       (zero? (run* (gcc -g -I. embedded.c embedded1.o embedded2.o -o embedded)))
        (zero? (run* (./embedded)))))
 
 (define (bench)
