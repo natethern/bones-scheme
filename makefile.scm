@@ -70,20 +70,26 @@
   (bones)
   (run (mkdir -p tmp))
   (print
-   (if (and (every compile+run
-		   '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler"))
-	    (compile+run "bones" "./bones" '(bones.scm -o tmp/bones.s))
-	    (zero? (run* (cmp bones-x86_64-linux.s tmp/bones.s)))
-	    (check-embedded))
-       "\nall checks succeeded."
-       "\nsome checks failed.")))
+   (let ((ok #t))
+     (for-each
+      (lambda (prg)
+	(unless (compile+run prg) (set! ok #f)))
+      '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler"))
+     (unless (compile+run "bones" "./bones" '(bones.scm -o tmp/bones.s))
+       (set! ok #f))
+     (unless (zero? (run* (cmp bones-x86_64-linux.s tmp/bones.s)))
+       (set! ok #f))
+     (unless (check-embedded) (set! ok #f))
+     (if ok
+	 "\nall checks succeeded."
+	 "\nsome checks failed."))))
 
 (define (check-embedded)
-  (and (zero? (run* (./bones embedded.scm -o embedded.s)))
-       (zero? (run* (nasm -f elf64 -g -F dwarf embedded.s -o embedded1.o -DEMBEDDED -DPREFIX=my)))
-       (zero? (run* (nasm -f elf64 -g -F dwarf embedded.s -o embedded2.o -DEMBEDDED -DPREFIX=my_other)))
-       (zero? (run* (gcc -g -I. embedded.c embedded1.o embedded2.o -o embedded)))
-       (zero? (run* (./embedded)))))
+  (and (zero? (run* (./bones embedded.scm -o tmp/embedded.s)))
+       (zero? (run* (nasm -f elf64 -g -F dwarf tmp/embedded.s -o tmp/embedded1.o -DEMBEDDED -DPREFIX=my)))
+       (zero? (run* (nasm -f elf64 -g -F dwarf tmp/embedded.s -o tmp/embedded2.o -DEMBEDDED -DPREFIX=my_other)))
+       (zero? (run* (gcc -g -I. embedded.c tmp/embedded1.o tmp/embedded2.o -o tmp/embedded)))
+       (zero? (run* (tmp/embedded)))))
 
 (define (bench)
   (bones)
