@@ -77,6 +77,14 @@
 ;; get type-number from value pointed to by %1
 %define TYPENUMBER_REF(x) [x + CELLS(1) - 1]
 
+%ifdef EMBEDDED
+ %ifdef PREFIX
+  %define ENTRYPOINT PREFIX %+ _bones
+ %else
+  %define ENTRYPOINT bones
+ %endif
+%endif
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -210,13 +218,32 @@
 
 section .text
 
+%ifdef EMBEDDED
+global ENTRYPOINT
+ENTRYPOINT:
+  SAVE
+  push rbp
+  mov rax, [saved_k]
+  test rax, rax
+  if z
+    jmp init
+  endif
+  mov FALSE, false
+  mov ALLOC, [saved_ALLOC]
+  mov LIMIT, [saved_LIMIT]
+  mov [toplevel_rsp], rsp
+  mov rcx, rdi			; argument
+  mov SELF, rax			; saved K
+  mov rax, [SELF + CELLS(1)]
+  jmp rax
+%else
 global main
-
 main:
   SAVE
   mov [argc], rdi
   mov [argv], rsi
   jmp init
+%endif
 	      
 
 init:
@@ -1863,6 +1890,18 @@ member_cmp_equal:
   ret
 
 
+;; return to host program: rcx = k, rdx = result
+return_to_host:
+  mov [saved_k], rcx
+  mov [saved_ALLOC], ALLOC
+  mov [saved_LIMIT], LIMIT
+  mov rax, rdx
+  mov rsp, [toplevel_rsp]
+  pop rbp
+  RESTORE
+  ret
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -1904,6 +1943,8 @@ terminate_closure:
 temporary_flonum: dq FLONUM | CELLS(1), 0
 flonum_0: dq FLONUM | CELLS(1), __float64__(0.0)
 flonum_1: dq FLONUM | CELLS(1), __float64__(1.0)
+argc: dq 0
+saved_k: dq 0
 
 error_msg_1: db `store to non-heap data detected\n`
 error_msg_2: db `out of memory\n`
@@ -1944,6 +1985,7 @@ locals:	resq 1024		; must be right after "tempregisters"!
 area1: resb TOTAL_HEAP_SIZE / 2
 area2: resb TOTAL_HEAP_SIZE / 2
 argv: resq 1
-argc: resq 1
+saved_ALLOC: resq 1
+saved_LIMIT: resq 1
 	      
 section .text

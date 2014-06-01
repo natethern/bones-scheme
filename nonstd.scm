@@ -129,3 +129,5 @@
   (newline))
 
 (define-inline (free) (%free))
+
+(define return-to-host ($primitive "return_to_host"))
