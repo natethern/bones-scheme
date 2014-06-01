@@ -153,10 +153,11 @@
 		  (else
 		   ;; evaluate into target register
 		   (let ((reg (car available-registers)))
-		     (translate val reg)
+		     (translate val arg-register)
 		     (generate-comment var " = " reg)
-		     (pop! available-registers)
-		     (push! (cons var reg) newenv)))))
+		     (generate-move reg arg-register)
+		     (push! (cons var reg) newenv)
+		     (pop! available-registers)))))
 	  vars vals)
 	 (set! environment newenv)
 	 (translate body t))))
