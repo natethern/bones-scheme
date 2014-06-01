@@ -27,10 +27,10 @@
 
 
 %ifndef TOTAL_HEAP_SIZE
- %define TOTAL_HEAP_SIZE 100000000
+ %define TOTAL_HEAP_SIZE 100_000_000
 %endif
 
-%define FROMSPACE_RESERVE 10000000
+%define FROMSPACE_RESERVE 1_000_000
 %define MARK_BIT	0x8000000000000000
 %define SIZE_MASK       0x00ffffffffffffff
 %define BYTEBLOCK_BIT   0x1000000000000000
@@ -1891,6 +1891,7 @@ member_cmp_equal:
 
 
 ;; return to host program: rcx = k, rdx = result
+;; crashes if used and not embedded
 return_to_host:
   mov [saved_k], rcx
   mov [saved_ALLOC], ALLOC
