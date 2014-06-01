@@ -1,8 +1,3 @@
-
-(program
- (include "base.scm")
- (code
-  
 ;;; The Computer Language Benchmarks Game
 ;;; http://shootout.alioth.debian.org/
 ;;;
@@ -52,5 +47,3 @@
       (cut display (get-output-string out)))))
 
 (main '("1000"))
-
-))

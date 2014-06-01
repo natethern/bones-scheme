@@ -1,8 +1,3 @@
-
-(program
- (include "base.scm")
- (code
-  
 ;; r5rs_pitfalls.scm
 ;; 
 ;; This program attempts to test a Scheme implementation's conformance
@@ -345,5 +340,3 @@
   (newline))
 
 (if failed (error "failed"))
-
-))

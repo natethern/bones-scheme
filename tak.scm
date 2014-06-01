@@ -1,7 +1,3 @@
-(program
- (include "base.scm")
- (code
-
 (define (tak x y z)
   (if (not (< y x))
       z
@@ -14,5 +10,3 @@
     (unless (eq? 7 r)
       (display "failed.")
       (exit 1))))
-
-))

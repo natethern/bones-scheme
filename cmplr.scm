@@ -35,7 +35,10 @@
   (let ((prg (match code
 	       (('begin ('program . _))
 		(expand-program (cadr code)))
-	       (_ code))))
+	       (_ (if (option 'nostdlib: options)
+		      code
+		      (expand-program
+		       `(program (include "base.scm") (code ,code))))))))
     (when (option 'dump-features: options)
       (for-each print implementation-features)
       (exit))

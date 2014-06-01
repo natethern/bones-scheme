@@ -67,7 +67,7 @@
   (bones)
   (run (mkdir -p tmp))
   (if (and (every compile+run
-		  '("fac" "tak" "mandelbrot" "r4test" "r5rs_pitfalls" "dyn" "comp"))
+		  '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler"))
 	   (and (compile+run "bones" "./bones" '(bones.scm -o tmp/bones.s))
 		(and (zero? (run* (cmp bones-x86_64-linux.s tmp/bones.s))))))
       (print "\nall checks succeeded.")
@@ -78,12 +78,12 @@
   (run (echo >>benchmark.txt))
   (run (date +%Y-%m-%d: >>benchmark.txt))
   (run (git rev-parse HEAD >>benchmark.txt))
-  (run (echo bones:))
-  (run (memtime ./bones comp.scm -o /dev/null 2>>benchmark-txt))
-  (run (echo dynamic:))
-  (run (./run dyn.scm 2>>benchmark.txt))
-  (run (echo mandelbrot:))
-  (run (./run mandelbrot.scm 2>>benchmark.txt))
+  (run (echo bones: >>benchmark.txt))
+  (run (memtime ./bones comp.scm -o /dev/null >>benchmark.txt 2>&1))
+  (run (echo dynamic: >>benchmark.txt))
+  (run (./run dynamic.scm >>benchmark.txt 2>&1))
+  (run (echo mandelbrot: >>benchmark.txt))
+  (run (./run mandelbrot.scm >>benchmark.txt 2>&1))
   (run (tail benchmark.txt)))
 
 (define distfiles
