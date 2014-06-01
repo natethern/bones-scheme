@@ -29,12 +29,15 @@
 				  "cmplr.scm"
 				  "x86_64.scm"
 				  "main.scm"
-				  "bones.scm")
+				  "bones.scm"
+				  "nonstd.scm"
+				  "base.scm")
 	  (run (./bones1 bones.scm -o bones-x86_64-linux.s))))))
 
 (define (bones-x86_64-linux.o)
   (bones-x86_64-linux.s)
-  (make (("bones-x86_64-linux.o" ("bones-x86_64-linux.s")
+  (make (("bones-x86_64-linux.o" ("bones-x86_64-linux.s" "x86_64/linux/boneslib.s" 
+				  "x86_64/linux/libcalls.s" "x86_64/structured.s")
 	  (run (nasm -f elf64 -g -F dwarf bones-x86_64-linux.s -o bones-x86_64-linux.o))))))
 
 (define (bones)
