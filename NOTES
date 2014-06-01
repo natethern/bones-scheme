@@ -1,7 +1,10 @@
 BONES                                                                               -*- Org -*-
 
 
-* TODO [#A] test improvements in "better-let" branch
+* TODO "eqv?" does structural compare, not excluding strings or vectors
+  - somewhat weakly defined by depending on distinct storage locations.
+  - alternatively: return true if headers are the same, size == 1 and the 1st slots are equal
+    (this shoudld cover flonums and chars).
 * TODO test integer-only string<->number conversion
 * TODO test file:fft.scm benchmark
 * TODO unboxing
