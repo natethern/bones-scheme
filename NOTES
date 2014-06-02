@@ -40,6 +40,9 @@ BONES                                                                           
 * TODO "(if X S1 S2)" can be computed more effiiently
   - use "cmovCC" if S1, S2 are simple-expressions.
 * TODO write file:README
+* TODO think about windows port
+  - does program reside in low memory? check file:/archive/optimizing_assembly.pdf
+* TODO try "default rel" (RIP-relative addressing)
 * Add partial R7RS support?
   - modulo libraries.
 * Possible R7RS exception-handling stuff from srfi-34
