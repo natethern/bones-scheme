@@ -39,40 +39,43 @@
 		      code
 		      (expand-program
 		       `(program (include "base.scm") (code ,code))))))))
-    (when (option 'dump-features: options)
-      (for-each print implementation-features)
-      (exit))
-    (expand-syntax (generate-cond-expand implementation-features))
-    (let* ((code (expand-syntax prg))
-	   (_ (when (option 'expand: options) 
-		(pp code)
-		(exit)))
-	   (dumpcc (option 'dump-cc: options))
-	   (dumpcps (option 'dump-cps: options))
-	   (dumpserial (not (option 'dump-nested: options)))
-	   (dumpcompiled (option 'dump: options))
-	   (outfile (option 'output-file: options))
-	   (code (canonicalize-expression code))
-	   (defs code (cps code))
-	   (_ (when dumpcps
-		(dump-expressions code dumpserial)
-		(exit)))
-	   (code (detect-unused-variables code))
-	   (_ (when dumpcompiled
-		(dump-expressions code dumpserial)
-		(exit)))
-	   (ccode (cc code '())))
-      (set! emit-expr-comments (option 'comment: options))
-      (when dumpcc
-	(dump-expressions ccode dumpserial)
-	(exit))
-      ;;XXX add pass that assigns closure-id's to target variables, for adding comments in
-      ;;    generated output.
-      ((if outfile
-	   (lambda (thunk)
-	     (with-output-to-file outfile thunk))
-	   (lambda (thunk) (thunk)))
-       (cut generate-code defs ccode)))))
+    (call/cc
+     (lambda (return)
+       (define (stop) (return #f))
+       (when (option 'dump-features: options)
+	 (for-each print implementation-features)
+	 (stop))
+       (expand-syntax (generate-cond-expand implementation-features))
+       (let* ((code (expand-syntax prg))
+	      (_ (when (option 'expand: options) 
+		   (pp code)
+		   (stop)))
+	      (dumpcc (option 'dump-cc: options))
+	      (dumpcps (option 'dump-cps: options))
+	      (dumpserial (not (option 'dump-nested: options)))
+	      (dumpcompiled (option 'dump: options))
+	      (outfile (option 'output-file: options))
+	      (code (canonicalize-expression code))
+	      (defs code (cps code))
+	      (_ (when dumpcps
+		   (dump-expressions code dumpserial)
+		   (stop)))
+	      (code (detect-unused-variables code))
+	      (_ (when dumpcompiled
+		   (dump-expressions code dumpserial)
+		   (stop)))
+	      (ccode (cc code '())))
+	 (set! emit-expr-comments (option 'comment: options))
+	 (when dumpcc
+	   (dump-expressions ccode dumpserial)
+	   (stop))
+	 ;;XXX add pass that assigns closure-id's to target variables, for adding comments in
+	 ;;    generated output.
+	 ((if outfile
+	      (lambda (thunk)
+		(with-output-to-file outfile thunk))
+	      (lambda (thunk) (thunk)))
+	  (cut generate-code defs ccode)))))))
 
 (define (compile-file fname . options)
   (apply compile (read-forms fname) options))
