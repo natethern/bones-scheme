@@ -240,6 +240,7 @@ ENTRYPOINT:
 global main
 main:
   SAVE
+  push rbp
   mov [argc], rdi
   mov [argv], rsi
   jmp init
@@ -263,6 +264,7 @@ terminate:
   mov rsp, [toplevel_rsp]
   mov rax, [exit_code]
   FIX2INT rax
+  pop rbp
   RESTORE
   ret
 
