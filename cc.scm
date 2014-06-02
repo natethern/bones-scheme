@@ -209,12 +209,12 @@
 			      (set! total-fv (union total-fv fv fv2))
 			      (set! total-fvrefs (union total-fvrefs fvrefs))
 			      (list llist
-				    ,(if (null? ubs)
-					 body
-					 `(let ,ubs ,body)))))))
+				    (if (null? ubs)
+					body
+					`(let ,ubs ,body)))))))
 		      llists bodies)))
 	   (values 
-	    `($case-closure ,id ,fvrefs ,@ll+bd)
+	    `($case-closure ,id ,total-fvrefs ,@ll+bd)
 	    total-fv)))
 	((op args ...) (mapwalk x e))
 	(_ (error "bad expression" x))))
