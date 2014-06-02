@@ -37,6 +37,7 @@
       ((or ('quote _)
 	   (? symbol?)
 	   ('$lambda . _)
+	   ('$case-lambda . _)
 	   ('$undefined)
 	   ('$uninitialized)
 	   ('$primitive _))
@@ -56,7 +57,7 @@
   (and (pair? exp) 
        (not (memq (car exp)
 		  '($inline $allocate if begin $primitive quote letrec* let define set!
-			    $lambda $undefined $uninitialized)))))
+			    $case-lambda $lambda $undefined $uninitialized)))))
 
 
 ;; Convert to canonical form
@@ -67,6 +68,7 @@
 ; - "begin" forms only have 2 subforms.
 ; - does a few simplifications (empty bindings, begin-flattening, etc.)
 ; - marks "lambda" forms with id (converting them to "$lambda").
+; - simplifies "$case-lambda".
 ; - also marks user lambdas as 'user entries in LDB.
 ; - does alpha-conversion.
 
@@ -86,15 +88,32 @@
 	 (cond ((null? vars)
 		(if (null? args)
 		    (walk `(let ,(reverse bs) ,@body) env)
-		    (error "too many arguments in manifest lambda call" x)))
+		    (error "too many arguments in manifest `lambda' call" x)))
 	       ((symbol? vars)
 		(walk `(let ,(append (reverse bs) `((,vars (%list ,@args)))) ,@body)
 		      env))
 	       ((null? args)
-		(error "too few arguments in manifest lambda call" x))
+		(error "too few arguments in manifest `lambda' call" x))
 	       ((pair? vars)
 		(loop (cdr vars) (cdr args) (cons (list (car vars) (car args)) bs)))
 	       (else (error "invalid lambda list" llist)))))
+      ((('$case-lambda ('lambda llists . bodies) ...) args ...)
+       (let loop1 ((llists llists) (bodies bodies))
+	 (if (null? llists)
+	     (error "no matching clause in manifest `case-lambda' call" x)
+	 (let loop2 ((vars (car llists)) (args args) (bs '()))
+	   (cond ((null? vars)
+		  (if (null? args)
+		      (walk `(let ,(reverse bs) ,@(car bodies)) env)
+		      (loop1 (cdr llists) (cdr bodies))))
+		 ((symbol? vars)
+		  (walk `(let ,(append (reverse bs) `((,vars (%list ,@args)))) ,@body)
+			env))
+		 ((null? args)
+		  (loop1 (cdr llists) (cdr bodies)))
+		 ((pair? vars)
+		  (loop2 (cdr vars) (cdr args) (cons (list (car vars) (car args)) bs)))
+		 (else (error "invalid lambda list" (car llists))))))))
       (((or 'letrec* 'let) () body ...)
        (walk `(begin ,@body) env))
       (('letrec* ((vars vals) ...) body ...)
@@ -120,11 +139,18 @@
        (let* ((id (inc! lambda-id-counter))
 	      (vars argc rest (parse-lambda-list llist))
 	      (rvars (map (lambda (var) (cons var (rename-var var))) vars)))
-	 `($lambda ,id ,(build-lambda-list 
-			 (map cdr rvars)
-			 argc
-			 (and rest (cdr (last rvars))))
+	 `($lambda ,id ,(build-lambda-list (map cdr rvars) argc (and rest (cdr (last rvars))))
 		   ,(walk `(begin ,@body) (append rvars env)))))
+      (('$case-lambda ('$lambda llists bodies) ...)
+       (let ((id (inc! lambda-id-counter)))
+	 `($case-lambda 
+	   ,id
+	   ,@(map (lambda (llist body)
+		    (let* ((vars argc rest (parse-lambda-list llist))
+			   (rvars (map (lambda (var) (cons var (rename-var var))) vars)))
+		      (list (build-lambda-list (map cdr rvars) argc (and rest (cdr (last rvars))))
+			    body)))
+		  llists bodies))))
       (('if x y) (walk `(if ,x ,y ($undefined)) env))
       (('if x y z) `(if ,(walk x env) ,(walk y env) ,(walk z env)))
       (('set! var x)
@@ -169,6 +195,19 @@
 			 argc
 			 (and rest (if (used? rest env2) rest '$unused)))
 		   ,body)))
+      (('$case-lambda id (llists bodies) ...)
+       `($case-lambda
+	 ,id
+	 ,@(map (lambda (llist body)
+		  (let* ((vars argc rest (parse-lambda-list llist))
+			 (env2 (append (map (cut cons <> #f) vars) env))
+			 (body (walk body env2)))
+		    (list (build-lambda-list 
+			   (map (lambda (var) (if (used? var env2) var '$unused)) vars)
+			   argc
+			   (and rest (if (used? rest env2) rest '$unused)))
+			  body)))
+		llists bodies)))
       (('if x y z) `(if ,(walk x env) ,(walk y env) ,(walk z env)))
       (('set! var x)
        (used var env)
@@ -237,6 +276,9 @@
 	      (('$lambda id . _)
 	       (push! x ls)
 	       `($lambda ,id ...))
+	      (('$case-lambda id . _)
+	       (push! x ls)
+	       `($case-lambda ,id ...))
 	      (('$closure id . _)
 	       (push! x ls)
 	       `($closure ,id ...))
@@ -251,6 +293,8 @@
 	       (match-lambda
 		(('$lambda id llist xs ...)
 		 (pp `($lambda ,id ,llist ,@(map prepare xs)) port))
+		(('$case-lambda id (llists . bodies) ...)
+		 (pp `($case-lambda ,id ,@(map (lambda (ll xs) (cons ll (map prepare xs))))) port))
 		(('$closure id cap llist body)
 		 (pp `($closure ,id ,cap ,llist ,(prepare body)) port))
 		(form

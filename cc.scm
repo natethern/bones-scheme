@@ -14,6 +14,7 @@
 ;   ($word-box-ref X)
 ;   ($float-box-ref X)
 ;   ($closure NAME (CAP1 ...) LLIST X)
+;   ($case-closure NAME (CAP1 ...) (LLIST1 X1) ...)
 ;   ($closure-ref I)
 ;   ($global-ref V)
 ;   ($global-set! V X)
@@ -184,6 +185,37 @@
 			      body
 			      `(let ,ubs ,body)))
 		       (union fv fv2))))))
+	(('$case-lambda id (llists bodies) ...)
+	 (let* ((total-fv '())
+		(total-fvrefs '())
+		(ll+bd
+		 (map (lambda (llist body)
+			(let* ((vars argc rest (parse-lambda-list llist))
+			       (e2 (cons (filter-map
+					  (lambda (var)
+					    (and (not (eq? var '$unused))
+						 (list var #f #f)))
+					  vars)
+					 e))
+			       (body fv (walk body e2)))
+			  (let ((fv (difference fv vars)))
+			    (fixup! (car e2)) ; fixup closure-refs and boxing
+			    (let ((fvrefs fv2 (mapwalk fv e)) ; create variable-references for closed-over variables
+				  (ubs (filter-map
+					(match-lambda
+					  ((v #t #t . _) (list v (list (box-op v) `($local-ref ,v))))
+					  (_ #f))
+					(car e2))))
+			      (set! total-fv (union total-fv fv fv2))
+			      (set! total-fvrefs (union total-fvrefs fvrefs))
+			      (list llist
+				    ,(if (null? ubs)
+					 body
+					 `(let ,ubs ,body)))))))
+		      llists bodies)))
+	   (values 
+	    `($case-closure ,id ,fvrefs ,@ll+bd)
+	    total-fv)))
 	((op args ...) (mapwalk x e))
 	(_ (error "bad expression" x))))
     ;; now walk cc'd code and convert closure-ref'd names to indices
@@ -211,6 +243,15 @@
 		 fv)
 	   ,llist
 	   ,(index-walk body (refs-vars fv))))
+	(('$case-closure n fv (llists bodies) ...)
+	 `($case-closure 
+	   ,n
+	   ,(map (lambda (v)
+		   (match (index-walk v cap)
+		     (((or '$word-box-ref '$float-box-ref '$box-ref) x) x) ; hack
+		     (x x)))
+		 fv)
+	   ,@(map (lambda (llist body) (list llist (index-walk body (refs-vars fv)))) llists bodies)))
 	(('$box x)
 	 (inc! bcount)
 	 `($box ,(index-walk x cap)))

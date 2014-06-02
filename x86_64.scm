@@ -128,3 +128,7 @@
 
 (define (generate-call name)
   (emit " call " name "\n"))
+
+(define (generate-argc-check argc rest? lbl)
+  (emit " cmp r11, " argc "\n "
+	(if rest? "jb " "jne ") lbl "\n"))

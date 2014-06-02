@@ -100,3 +100,6 @@
 (define-syntax-rule (define-inline (name . llist) body ...)
   (define-syntax name
     (lambda llist body ...)))
+
+(define-syntax-rule (case-lambda (llist . body) ...)
+  ($case-lambda (lambda llist . body) ...))

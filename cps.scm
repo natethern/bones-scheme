@@ -104,9 +104,16 @@
       ;;(pp `(TWO: ,x))			
       (match x
 	((? symbol?) x)
-	(('$lambda id llist body ...)	; Cproc
+	(('$lambda id llist body)	; Cproc
 	 (let ((k (temp "k")))
-	   `($lambda ,id (,k . ,llist) ,(one `(begin ,@body) k))))
+	   `($lambda ,id (,k . ,llist) ,(one body k))))
+	(('$case-lambda id (llists bodies) ...)	; Cproc
+	 `($case-lambda
+	   ,id
+	   ,@(map (lambda (llist body)
+		    (let ((k (temp "k")))
+		      (list `(,k . ,llist) (one body k))))
+		  llists bodies)))
 	(('if xs ...) `(if ,@(map two xs)))
 	(('$inline name xs ...) `($inline ,name ,@(map two xs)))
 	(('$allocate t s xs ...) `($allocate ,t ,s ,@(map two xs)))
@@ -141,7 +148,7 @@
 				     ,(loop (cdr xs) (cons t xs2))))))))))
     (define (simple? x)
       (match x
-	(((or '$lambda 'quote '$undefined '$uninitialized '$primitive) . _) #t)
+	(((or '$lambda '$case-lambda 'quote '$undefined '$uninitialized '$primitive) . _) #t)
 	((? symbol?) #t)
 	(('if (? simple?) ...) #t)
 	(('let ((_ (? simple?)) ...) (? simple?) ...) #t)

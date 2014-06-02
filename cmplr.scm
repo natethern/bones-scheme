@@ -123,7 +123,7 @@
   (when emit-expr-comments
     (generate-expr-comment (fragment x 4)))
   (match x
-    (('$closure id cap _ _)
+    (((or '$closure '$case-closure) id cap . _)
      (push! x closures-to-be-translated)
      (set! allocating #t)
      (generate-closure-alloc (length cap) id)
@@ -354,11 +354,24 @@
 
 (define (translate-closure exp)
   (match exp
-    ((_ id cap llist body)
+    (('$closure id cap llist body)
      (emit "\nf_" id ":\n")
-     (translate-llist llist)
+     (translate-llist llist #f)
      (set! allocating #f)
-     (translate body arg-register))))
+     (translate body arg-register))
+    (('$case-closure id cap (llists bodies) ...)
+     (emit "\nf_" id ":\n")
+     (do ((i 0 (add1 i))
+	  (llists llists (cdr llists))
+	  (bodies bodies (cdr bodies)))
+	 ((null? llists)
+	  (let ((vars argc rest (parse-lambda-list llist))
+		(next (string-append "c_" (number->string id) "_" (number->string (add1 i)))))
+	    (generate-argc-check (add1 argc) rest next)
+	    (translate-llist llist #t)
+	    (set! allocating #f)
+	    (translate body arg-register)
+	    (emit next ":\n")))))))
 
 (define (translate-llist llist)
   (set! available-registers (cdr argument-registers))
