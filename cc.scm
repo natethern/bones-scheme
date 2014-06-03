@@ -13,8 +13,7 @@
 ;   ($box-ref X)
 ;   ($word-box-ref X)
 ;   ($float-box-ref X)
-;   ($closure NAME (CAP1 ...) LLIST X)
-;   ($case-closure NAME (CAP1 ...) (LLIST1 X1) ...)
+;   ($closure NAME (CAP1 ...) (LLIST1 X1) ...)
 ;   ($closure-ref I)
 ;   ($global-ref V)
 ;   ($global-set! V X)
@@ -180,10 +179,11 @@
 			   (_ #f))
 			 (car e2))))
 	       (values `($closure
-			 ,id ,fvrefs ,llist
-			 ,(if (null? ubs)
-			      body
-			      `(let ,ubs ,body)))
+			 ,id ,fvrefs 
+			 (,llist
+			  ,(if (null? ubs)
+			       body
+			       `(let ,ubs ,body))))
 		       (union fv fv2))))))
 	(('$case-lambda id (llists bodies) ...)
 	 (let* ((total-fv '())
@@ -213,9 +213,7 @@
 					body
 					`(let ,ubs ,body)))))))
 		      llists bodies)))
-	   (values 
-	    `($case-closure ,id ,total-fvrefs ,@ll+bd)
-	    total-fv)))
+	   (values `($closure ,id ,total-fvrefs ,@ll+bd) total-fv)))
 	((op args ...) (mapwalk x e))
 	(_ (error "bad expression" x))))
     ;; now walk cc'd code and convert closure-ref'd names to indices
@@ -233,18 +231,8 @@
 	    ,(index-walk body cap)))
 	(('$allocate t s args ...)
 	 `($allocate ,t ,s ,@(map (cut index-walk <> cap) args)))
-	(('$closure n fv llist body)
+	(('$closure n fv (llists bodies) ...)
 	 `($closure 
-	   ,n
-	   ,(map (lambda (v)
-		   (match (index-walk v cap)
-		     (((or '$word-box-ref '$float-box-ref '$box-ref) x) x) ; hack
-		     (x x)))
-		 fv)
-	   ,llist
-	   ,(index-walk body (refs-vars fv))))
-	(('$case-closure n fv (llists bodies) ...)
-	 `($case-closure 
 	   ,n
 	   ,(map (lambda (v)
 		   (match (index-walk v cap)

@@ -283,9 +283,6 @@
 	      (('$closure id . _)
 	       (push! x ls)
 	       `($closure ,id ...))
-	      (('$case-closure id . _)
-	       (push! x ls)
-	       `($case-closure ,id ...))
 	      (((and op (or 'let 'letrec*)) ((vars vals) ...) xs ...)
 	       (cons* op (map (lambda (var val) (list var (prepare val))) vars vals)
 		      (map prepare xs)))
@@ -299,11 +296,9 @@
 		 (pp `($lambda ,id ,llist ,@(map prepare xs)) port))
 		(('$case-lambda id (llists . bodies) ...)
 		 (pp `($case-lambda ,id ,@(map (lambda (ll xs) (cons ll (map prepare xs))) llists bodies)) port))
-		(('$closure id cap llist body)
-		 (pp `($closure ,id ,cap ,llist ,(prepare body)) port))
-		(('$case-closure id cap (llists bodies) ...)
-		 (pp `($case-closure ,id ,cap 
-				     ,@(map (lambda (ll bd) (list ll (prepare bd))) llists bodies))
+		(('$closure id cap (llists bodies) ...)
+		 (pp `($closure ,id ,cap 
+				,@(map (lambda (ll bd) (list ll (prepare bd))) llists bodies))
 		     port))
 		(form
 		 (pp (prepare form) port)))

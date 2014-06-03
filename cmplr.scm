@@ -126,7 +126,7 @@
   (when emit-expr-comments
     (generate-expr-comment (fragment x 4)))
   (match x
-    (((or '$closure '$case-closure) id cap . _)
+    (('$closure id cap . _)
      (push! x closures-to-be-translated)
      (set! allocating #t)
      (generate-closure-alloc (length cap) id)
@@ -357,12 +357,7 @@
 
 (define (translate-closure exp)
   (match exp
-    (('$closure id cap llist body)
-     (emit "\nf_" id ":\n")
-     (translate-llist llist)
-     (set! allocating #f)
-     (translate body arg-register))
-    (('$case-closure id cap (llists bodies) ...)
+    (('$closure id cap (llists bodies) ...)
      (emit "\nf_" id ":\n")
      (do ((i 0 (add1 i))
 	  (llists llists (cdr llists))
