@@ -7,7 +7,9 @@ BONES                                                                           
   - alternatively: return true if headers are the same, size == 1 and the 1st slots are equal
     (this shoudld cover flonums and chars).
 * TODO test integer-only string<->number conversion
-* TODO test file:fft.scm benchmark
+* TODO [#A] file:fft.scm crashes
+  - looks like the stack is overflowing, somewhere stack-adjustment is unbalanced.
+  - works for small number of iterations.
 * TODO unboxing
   - "($the TYPE EXP)" annotates with type.
   - "let" can check for "$the" and assign FP-register.
