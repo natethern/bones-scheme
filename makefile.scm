@@ -103,6 +103,8 @@
   (run (memtime ./bones compiler.scm -o /dev/null >>benchmark.txt 2>&1))
   (run (echo dynamic: >>benchmark.txt))
   (run (./run dynamic.scm >>benchmark.txt 2>&1))
+  (run (echo mandelbrot: >>benchmark.txt))
+  (run (./run mandelbrot.scm >>benchmark.txt 2>&1))
   (run (echo fft: >>benchmark.txt))
   (run (./run fft.scm >>benchmark.txt 2>&1))
   (print "--------------------------------------------------------------------------------")
