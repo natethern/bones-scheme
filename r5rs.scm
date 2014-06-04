@@ -334,11 +334,14 @@
       #t fd
       (lambda (p)
 	(%slot-set! p 4 #f)
-	($inline "CALL syscall_close" (%slot-ref p 0))) ;XXX file-error
+	($inline "FIX2INT rax; LIBCALL1 close, rax; INT2FIX rax" (%slot-ref p 0))) ;XXX file-error
       (lambda (p n) 
 	(let* ((str (%allocate-block #x11 n #f n #f #f))
-	       (nr ($inline "CALL syscall_read" str (%slot-ref p 0) n)))
+	       (nr ($inline 
+		    "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); LIBCALL3 read, r11, rax, r15; INT2FIX rax"
+		    str (%slot-ref p 0) n)))
 	  (cond ((eq? nr 0) (eof-object))
+		((eq? n nr) str)
 		((%fx>? nr 0)
 		 (let ((str2 (%allocate-block #x11 nr #f nr #f #f)))
 		   ($inline "CALL copy_bytes" (cons str 0) (cons str2 0) nr)
@@ -350,9 +353,11 @@
      (%make-port 
       #f fd
       (lambda (p)
-	($inline "CALL syscall_close" (%slot-ref p 0))) ;XXX file-error
+	($inline "FIX2INT rax; LIBCALL1 close, rax; INT2FIX rax" (%slot-ref p 0))) ;XXX file-error
       (lambda (p str)
-	($inline "CALL syscall_write" str (%slot-ref p 0) (string-length str))) ;XXX filke-error
+	($inline 
+	 "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); LIBCALL3 write, r11, rax, r15; INT2FIX rax"
+	 str (%slot-ref p 0) (string-length str))) ;XXX file-error
       #f))
 
    (define %standard-input-port (%make-file-input-port 0))
@@ -397,11 +402,13 @@
   (file-ports
 
    (define (open-input-file name)
-     (let ((fd ($inline "CALL syscall_open_input" name))) ;XXX file-error
+     ;; flags: O_RDONLY, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
+     (let ((fd ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 0, 420; INT2FIX rax" name))) ;XXX file-error
        (%make-file-input-port fd)))
 
    (define (open-output-file name)
-     (let ((fd ($inline "CALL syscall_open_output" name))) ;XXX file-error
+     ;; flags: O_WRONLY|O_CREAT|O_TRUNC, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
+     (let ((fd ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 577, 420; INT2FIX rax" name))) ;XXX file-error
        (%make-file-output-port fd))))
 
   (else))
@@ -632,7 +639,7 @@
     (flonums
      (lambda (str . base)
        ;;XXX does not parse "nan.0", "inf.0"
-       ($inline "CALL syscall_str2num" str (optional base 10))))
+       ($inline "CALL str2num" str (optional base 10))))
     (else
      ;;XXX untested
      (lambda (str . base)
@@ -665,7 +672,7 @@
      (lambda (num . base)
        (cond ((nan? num) "+nan.0")
 	     ((finite? num)
-	      (let ((str ($inline "CALL syscall_num2str" num (optional base 10))))
+	      (let ((str ($inline "CALL num2str" num (optional base 10))))
 		(if (and (inexact? num) (integer? num))
 		    (string-append str ".0")
 		    str)))

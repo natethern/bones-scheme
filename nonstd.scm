@@ -76,12 +76,17 @@
 
    (define (current-directory . dir)
      (if (null? dir)
-	 ($inline "CALL syscall_getcwd")	;XXX file-error
-	 (let ((r ($inline "CALL syscall_chdir" (car dir))))
+	 ($inline "LIBCALL2 getcwd, buffer, 1024; mov rax, buffer; CALL alloc_zstring")	;XXX file-error
+	 (let ((r ($inline "CALL copy_to_buffer; LIBCALL1 chdir, buffer; INT2FIX rax" (car dir))))
 	   r)))				;XXX file-error
 
-   (define-inline (delete-file str) ($inline "CALL syscall_delete_file" str))
-   (define-inline (file-exists? str) (and ($inline "CALL syscall_file_exists" str) str)))
+   (define-inline (delete-file str) 
+     ($inline "CALL copy_to_buffer; LIBCALL1 unlink, buffer; INT2FIX rax" str))
+
+   (define-inline (file-exists? str)
+     (and
+      ($inline "CALL copy_to_buffer; LIBCALL2 stat, buffer, stat_buffer; test rax, rax; SET_T rax; cmovnz rax, FALSE" str) 
+      str)))
 
   (else))
 
@@ -89,14 +94,20 @@
 
 (cond-expand
   (time
-   (define-inline (current-second) ($inline "CALL syscall_time")))
+   (define-inline (current-second) ($inline "LIBCALL1 time, 0; INT2FIX rax")))
   (else))
 
 (cond-expand
   (process-environment
-   (define-inline (current-process-id) ($inline "CALL syscall_getpid"))
-   (define-inline (get-environment-variable str) ($inline "CALL syscall_getenv" str))
-   (define-inline (system str) ($inline "CALL syscall_shell_command" str))
+   (define-inline (current-process-id) ($inline "LIBCALL0 getpid; INT2FIX rax"))
+
+   (define-inline (get-environment-variable str)
+     ($inline 
+      "CALL copy_to_buffer; LIBCALL1 getenv, buffer; test rax, rax; if z; mov rax, FALSE; endif; CALL alloc_zstring" 
+      str))
+
+   (define-inline (system str)
+     ($inline "CALL copy_to_buffer; LIBCALL1 system, buffer; INT2FIX rax" str))
 
    (define command-line
      (let* ((argc (%argc))
@@ -110,7 +121,7 @@
 
 (cond-expand
   (jiffy-clock
-   (define-inline (current-jiffy) ($inline "CALL syscall_clock"))
+   (define-inline (current-jiffy) ($inline "LIBCALL0 clock; INT2FIX rax"))
    (define-inline (jiffies-per-second) 1000000))
   (else))
 
@@ -119,7 +130,8 @@
 (cond-expand
   (file-ports
    (define (open-append-output-file name)
-     (let ((fd ($inline "CALL syscall_open_append" name)))
+     ;; open-flags: O_WRONLY|O_CREAT|O_APPEND, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
+     (let ((fd ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 1089, 420; INT2FIX rax" name)))
        ;;XXX check for error
        (%make-file-output-port fd))))
   (else))

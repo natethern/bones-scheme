@@ -102,27 +102,29 @@
 
 ;; save registers before C function call
 %macro SAVE 0
-  push rbx
-  push rcx
-  push rdx
-  push rsi
-  push rdi
-  push r8
-  push r9
-  push r10
+  sub rsp, CELLS(8)
+  mov [rsp + CELLS(0)], rbx
+  mov [rsp + CELLS(1)], rcx
+  mov [rsp + CELLS(2)], rdx
+  mov [rsp + CELLS(3)], rsi
+  mov [rsp + CELLS(4)], rdi
+  mov [rsp + CELLS(5)], r8
+  mov [rsp + CELLS(6)], r9
+  mov [rsp + CELLS(7)], r10
 %endmacro
 
 
 ;; restore registers after C function call
 %macro RESTORE 0
-  pop r10
-  pop r9
-  pop r8
-  pop rdi
-  pop rsi
-  pop rdx
-  pop rcx
-  pop rbx
+  mov r10, [rsp + CELLS(7)]
+  mov r9, [rsp + CELLS(6)]
+  mov r8, [rsp + CELLS(5)]
+  mov rdi, [rsp + CELLS(4)]
+  mov rsi, [rsp + CELLS(3)]
+  mov rdx, [rsp + CELLS(2)]
+  mov rcx, [rsp + CELLS(1)]
+  mov rbx, [rsp + CELLS(0)]
+  add rsp, CELLS(8)
 %endmacro
 
 
@@ -210,6 +212,59 @@
   mov rax, %%1
   mov r11, %%2 - %%1
   jmp write_error_and_exit
+%endmacro
+
+
+;; the x86-64 ABI requires rsp to be aligned on a 16-byte boundary, sets rax to 0
+%macro ALIGN_STACK 0
+  mov qword [rsp_save], rsp
+  and rsp, [rsp_alignment_mask]
+%endmacro
+
+%define RESTORE_STACK mov rsp, qword [rsp_save]
+
+
+;; call C function with 0-3 arguments
+%macro LIBCALL0 1
+  extern %1
+  SAVE
+  ALIGN_STACK
+  call %1
+  RESTORE_STACK
+  RESTORE
+%endmacro
+
+%macro LIBCALL1 2
+  extern %1
+  SAVE
+  mov rdi, %2
+  ALIGN_STACK
+  call %1
+  RESTORE_STACK
+  RESTORE
+%endmacro
+
+%macro LIBCALL2 3
+  extern %1
+  SAVE
+  mov rdi, %2
+  mov rsi, %3
+  ALIGN_STACK
+  call %1
+  RESTORE_STACK
+  RESTORE
+%endmacro
+
+%macro LIBCALL3 4
+  extern %1
+  SAVE
+  mov rdi, %2
+  mov rsi, %3
+  mov rdx, %4
+  ALIGN_STACK
+  call %1
+  RESTORE_STACK
+  RESTORE
 %endmacro
 
 
@@ -1133,6 +1188,66 @@ heap_full_trap:
   call write_error_and_exit  
 
 
+;; write error message and exit: rax = raw string, r11 = length
+extern write
+write_error_and_exit:
+  mov rdi, 2			; stderr
+  mov rsi, rax
+  mov rdx, r11
+  ALIGN_STACK
+  call write			; no need to restore stack here
+  mov rax, FIX(70)			; EXIT_FAILURE
+  mov [exit_code], rax
+  jmp terminate
+
+
+;; allocate 0-terminated string: rax = charbuffer-ptr -> rax (string)
+;; does not check the heap-limit, so is only usable for small strings.
+alloc_zstring:
+  push rdi
+  push rsi
+  mov rsi, rax
+  lea rdi, [ALLOC + CELLS(1)]
+  repeat
+    lodsb
+    test al, al
+  while nz
+    stosb
+  again
+  mov rax, rdi
+  sub rax, ALLOC
+  sub rax, CELLS(1)
+  mov rsi, STRING
+  or rax, rsi
+  mov [ALLOC], rax
+  add rdi, 7			; align
+  mov rsi, ~7
+  and rdi, rsi
+  mov rax, ALLOC
+  mov ALLOC, rdi
+  pop rsi
+  pop rdi
+  ret
+
+
+;; copy string into buffer and adds 0-terminator: rax = string
+copy_to_buffer:
+  push rdi
+  push rsi
+  push rcx
+  mov rcx, [rax]
+  and rcx, [size_mask]
+  lea rsi, [rax + CELLS(1)]
+  mov rdi, buffer
+  rep movsb
+  xor rcx, rcx
+  mov [rdi], cl
+  pop rcx
+  pop rsi
+  pop rdi
+  ret
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
 ; a simple Cheney-style semispace collector
@@ -1213,8 +1328,7 @@ reclaim:
   while b
     mov rax, [rsi]		; get header
     mov rcx, rax		; rcx = block size
-    mov rdx, SIZE_MASK
-    and rcx, rdx
+    and rcx, [size_mask]
     mov rdx, BYTEBLOCK_BIT
     test rax, rdx
     if nz
@@ -1293,8 +1407,7 @@ mark:
   push rcx
   ;; compute size
   mov rcx, rbx
-  mov rdx, SIZE_MASK
-  and rcx, rdx
+  and rcx, [size_mask]
   mov rdx, BYTEBLOCK_BIT
   test rbx, rdx
   if nz
@@ -1329,8 +1442,7 @@ fill_bytes:
   push rsi
   push rdi
   mov rcx, [rax]
-  mov r15, SIZE_MASK
-  and rcx, r15
+  and rcx, [size_mask]
   shl rcx, CELL_SHIFT
   lea rdi, [rax + CELLS(1)]
   mov rax, r11
@@ -1343,14 +1455,33 @@ fill_bytes:
   ret
 
 
+;; format string using sprintf(3) and write to stderr: rax = raw format-string, r11, r15 = args
+extern sprintf
+format_string:
+  SAVE
+  mov rdi, buffer
+  mov rsi, rax
+  mov rdx, r11
+  mov rcx, r15
+  ALIGN_STACK
+  xor rax, rax
+  call sprintf
+  mov rdi, 2
+  mov rsi, buffer
+  mov rdx, rax
+  call write
+  RESTORE_STACK
+  RESTORE
+  ret  
+
+
 ;; fill block with pointers: rax = block, r11 = value -> rax, clobbers r15
 fill_slots:
   push rax
   push rcx
   push rdi
   mov rcx, [rax]
-  mov r15, SIZE_MASK
-  and rcx, r15
+  and rcx, [size_mask]
   if nz
     lea rdi, [rax + CELLS(1)]
     repeat
@@ -1514,8 +1645,7 @@ structurally_equal:
   push rsi
   push rdi
   mov rcx, r15
-  mov rsi, SIZE_MASK
-  and rcx, rsi
+  and rcx, [size_mask]
   mov rdi, BYTEBLOCK_BIT
   test r15, rdi
   if z
@@ -1560,8 +1690,7 @@ recursively_equal:
   push rsi
   push rdi
   mov rcx, r15
-  mov rsi, SIZE_MASK
-  and rcx, rsi
+  and rcx, [size_mask]
   if z				; zero size?
     SET_T rax
     jmp .done
@@ -1621,8 +1750,7 @@ debug_hook:
 hash_string:
   push rcx
   mov rcx, [rax]
-  mov r11, SIZE_MASK
-  and rcx, r11
+  and rcx, [size_mask]
   if z
     mov r11, FIX(0)
     pop rcx
@@ -1905,13 +2033,99 @@ return_to_host:
   ret
 
 
+;; convert string to number: rax = string, r11 = base -> rax (number)
+extern strtol
+extern strtod
+str2num:
+  SAVE
+  call copy_to_buffer
+  push rax			; endptr
+  mov rdi, buffer
+  mov rsi, rsp
+  FIX2INT r11
+  mov rdx, r11
+  ALIGN_STACK
+  call strtol
+  RESTORE_STACK
+  ;; check endptr being identical to startptr
+  pop r11
+  mov r15, buffer
+  cmp r11, buffer
+  if e
+    mov rax, FALSE
+    jmp .done
+  endif
+  ;; check endptr for being '\0'
+  mov bl, [r11]
+  test bl, bl
+  if z
+    ;; it is an integer
+    INT2FIX rax
+  else
+    ;; now try if it is a float
+    mov rdi, buffer
+    push rax			; endptr
+    mov rsi, rsp
+    ALIGN_STACK
+    call strtod			; ignores base
+    RESTORE_STACK
+    pop r11
+    mov bl, [r11]
+    test bl, bl
+    if z
+      mov rax, FLONUM | 1
+      mov [ALLOC], rax
+      movsd [ALLOC + CELLS(1)], xmm0
+      mov rax, ALLOC
+      add ALLOC, CELLS(2)
+    else
+      mov rax, FALSE
+    endif
+  endif
+.done:
+  RESTORE
+  ret
+
+
+;; convert number to string: rax = number, r11 = base -> rax (string)
+num2str:
+  SAVE
+  FIX2INT r11
+  mov rdi, stat_buffer
+  test rax, 1
+  if nz
+    cmp r11, 8
+    if e
+      mov rsi, ocvt
+    else
+      cmp r11, 16
+      if e
+        mov rsi, xcvt
+      else
+        mov rsi, dcvt
+      endif
+    endif
+    mov rdx, rax
+    FIX2INT rdx
+    ALIGN_STACK
+    xor rax, rax
+    call sprintf
+  else
+    mov rsi, gcvt
+    movsd xmm0, [rax + CELLS(1)]
+    ALIGN_STACK
+    mov rax, 1			; 1 float argument
+    call sprintf
+  endif
+  RESTORE_STACK
+  mov rax, stat_buffer
+  call alloc_zstring
+  RESTORE
+  ret    
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-%include "x86_64/linux/libcalls.s"
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 section .data
@@ -1973,6 +2187,14 @@ random_numbers:
   db 238,87,240,155,180,170,242,212,191,163,78,218,137,194,175,110
   db 43,119,224,71,122,142,42,160,104,48,247,103,15,11,138,239
 
+dcvt: db "%ld", 0
+ocvt: db "%lo", 0
+xcvt: db "%lx", 0
+gcvt: db "%.15g", 0
+
+rsp_alignment_mask: dq ~(CELLS(2) - 1)
+size_mask: dq SIZE_MASK
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1990,5 +2212,7 @@ area2: resb TOTAL_HEAP_SIZE / 2
 argv: resq 1
 saved_ALLOC: resq 1
 saved_LIMIT: resq 1
+rsp_save: resq 1
+stat_buffer: resb 1024
 	      
 section .text
