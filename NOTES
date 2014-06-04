@@ -1,6 +1,8 @@
 BONES                                                                               -*- Org -*-
 
 
+* TODO [#A] test and finish "case-lambda" branch
+* TODO get rid of file:moresyntax.scm by adding all defs to file:r5rs.scm and file:nonstd.scm
 * TODO "eqv?" does structural compare, not excluding strings or vectors
   - somewhat weakly defined by depending on distinct storage locations.
   - alternatively: return true if headers are the same, size == 1 and the 1st slots are equal
@@ -17,6 +19,8 @@ BONES                                                                           
   - have local FA pass ("lfa") that expands $typed-case-lambda according to inferred
     types and convert "let"-bound flonum vars using a custom binding form
     - e.g. "($let-float ...)" or something like this.
+* TODO Consider port to Windows
+  - use mingw64.
 * TODO try compiling grond
 * TODO move code to bitbucket?
 * TODO something is wrong with musl's "sprintf" (or varargs) implementation
