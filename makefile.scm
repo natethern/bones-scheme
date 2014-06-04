@@ -9,7 +9,7 @@
   (bones))
 
 (define (clean)
-  (run (rm -f fac fac.o fac.s)))
+  (run (rm -f *.o bones bones-x86_64-linux.s)))
 
 (define (bones-x86_64-linux.s)
   (make (("bones-x86_64-linux.s" ("bones.scm"
@@ -37,7 +37,7 @@
 (define (bones-x86_64-linux.o)
   (bones-x86_64-linux.s)
   (make (("bones-x86_64-linux.o" ("bones-x86_64-linux.s" "x86_64/linux/boneslib.s" 
-				  "x86_64/linux/libcalls.s" "x86_64/structured.s")
+				  "x86_64/structured.s")
 	  (run (nasm -f elf64 -g -F dwarf bones-x86_64-linux.s -o bones-x86_64-linux.o))))))
 
 (define (bones)
@@ -128,7 +128,6 @@
     "source.scm"
     "x86_64/structured.s"
     "x86_64/linux/boneslib.s"
-    "x86_64/linux/libcalls.s"
     "support.scm"))
 
 (define (dist)

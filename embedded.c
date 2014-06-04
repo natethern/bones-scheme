@@ -20,4 +20,5 @@ int main(int argc, char *argv[])
   assert(x == BONES_int2fix(43));
   x = my_other_bones(BONES_int2fix(42));
   assert(x == BONES_int2fix(43));
+  return 0;
 }
