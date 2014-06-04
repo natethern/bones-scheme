@@ -85,11 +85,14 @@
 	 "\nsome checks failed."))))
 
 (define (check-embedded)
-  (and (zero? (run* (./bones embedded.scm -o tmp/embedded.s)))
-       (zero? (run* (nasm -f elf64 -g -F dwarf tmp/embedded.s -o tmp/embedded1.o -DEMBEDDED -DPREFIX=my)))
-       (zero? (run* (nasm -f elf64 -g -F dwarf tmp/embedded.s -o tmp/embedded2.o -DEMBEDDED -DPREFIX=my_other)))
-       (zero? (run* (gcc -g -I. embedded.c tmp/embedded1.o tmp/embedded2.o -o tmp/embedded)))
-       (zero? (run* (tmp/embedded)))))
+  (let ((r (and (zero? (run* (./bones embedded.scm -o tmp/embedded.s)))
+		(zero? (run* (nasm -f elf64 -g -F dwarf tmp/embedded.s -o tmp/embedded1.o -DEMBEDDED -DPREFIX=my)))
+		(zero? (run* (nasm -f elf64 -g -F dwarf tmp/embedded.s -o tmp/embedded2.o -DEMBEDDED -DPREFIX=my_other)))
+		(zero? (run* (gcc -g -I. embedded.c tmp/embedded1.o tmp/embedded2.o -o tmp/embedded)))
+		(zero? (run* (tmp/embedded))))))
+    (unless r
+      (print "embedding check failed."))
+    r))
 
 (define (bench)
   (bones)
@@ -97,12 +100,13 @@
   (run (date +%Y-%m-%d: >>benchmark.txt))
   (run (git rev-parse HEAD >>benchmark.txt))
   (run (echo bones: >>benchmark.txt))
-  (run (memtime ./bones comp.scm -o /dev/null >>benchmark.txt 2>&1))
+  (run (memtime ./bones compiler.scm -o /dev/null >>benchmark.txt 2>&1))
   (run (echo dynamic: >>benchmark.txt))
   (run (./run dynamic.scm >>benchmark.txt 2>&1))
   (run (echo mandelbrot: >>benchmark.txt))
   (run (./run mandelbrot.scm >>benchmark.txt 2>&1))
-  (run (tail benchmark.txt)))
+  (print "--------------------------------------------------------------------------------")
+  (run (tail -n 30 benchmark.txt)))
 
 (define distfiles
   '("README"

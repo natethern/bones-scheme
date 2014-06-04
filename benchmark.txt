@@ -27,3 +27,16 @@ dynamic:
 Exit [0]
 mandelbrot:
 5.91 user, 0.06 system, 6.01 elapsed -- Max VSize = 105276KB, Max RSS = 85532KB
+
+2014-06-04:
+a360c8e2015baba0350d8f69a3dadbfc55e3cf05
+bones:
+Exit [0]
+2.48 user, 0.26 system, 2.80 elapsed -- Max VSize = 100084KB, Max RSS = 97944KB
+dynamic:
+done
+Exit [0]
+0.46 user, 0.16 system, 0.70 elapsed -- Max VSize = 98168KB, Max RSS = 95832KB
+mandelbrot:
+Exit [0]
+5.99 user, 0.06 system, 6.11 elapsed -- Max VSize = 105344KB, Max RSS = 103224KB
