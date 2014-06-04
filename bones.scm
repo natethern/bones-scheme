@@ -16,6 +16,7 @@
 	"cps.scm"
 	"mangle.scm"
 	"program.scm"
+	"tsort.scm"
 	"cmplr.scm"
 	"main.scm")
  (cond-expand
