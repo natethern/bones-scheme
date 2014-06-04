@@ -1,7 +1,6 @@
 BONES                                                                               -*- Org -*-
 
 
-* TODO [#A] test and finish "case-lambda" branch
 * TODO get rid of file:moresyntax.scm by adding all defs to file:r5rs.scm and file:nonstd.scm
 * TODO "eqv?" does structural compare, not excluding strings or vectors
   - somewhat weakly defined by depending on distinct storage locations.
@@ -249,7 +248,7 @@ BONES                                                                           
 	MsgBox "ArcSin(0.5) = " & ArcSin(0.5)
 	MsgBox "ArcCos(0.5) = " & ArcCos(0.5)
     End Sub
-* TODO improve "translate/registers"
+* TODO [#B] improve "translate/registers"
   - avoid using stack as much as possible.
   - potential approach:
     1. collect for each argument: target-register and registers used
@@ -259,13 +258,6 @@ BONES                                                                           
        and spill to stack and start again
     3. topologically sort arguments by register-dependencies
     4. translate in final order obtained
-* TODO native support for "case-lambda"
-  - expands into "($case-lambda ID ARGC1 LAMBDA1 ...)"
-  - handled by all passes.
-  - canonicalization inlines this if in operator position.
-  - "($case-closure ...)" contains closure for each body, captured vars
-    are the union of the captures of all contained lambdas.
-  - dispatch by argc/rest on entry.
 * TODO log: "fld1; fld XXX; fyl2x"
   - seems to be broken.
 * TODO remove unused globals
