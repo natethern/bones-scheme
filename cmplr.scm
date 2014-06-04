@@ -275,6 +275,7 @@
      #f)
     (_ (error "bad expression" x))))
 
+
 ;;XXX replace this with a decent ra
 ;
 ; - at least we could check whether later expressions don't use a particular register anymore
@@ -337,6 +338,84 @@
 			 (generate-move-to-local (cells reg) arg-register))))))
 	     (generate-pop-stack reserve)))))
     rargs))
+
+
+;;; compute set of registers used by an expression
+;
+; - does not remove duplicates.
+; - does not take the target-register into account.
+
+(define (used-registers x)
+  (match x
+    (('$closure id cap . _)
+     (cons arg-register (append-map used-registers cap)))
+    (('let ((vars vals) ...) body)
+     (fluid-let ((environment environment)
+		 (locals-counter locals-counter)
+		 (available-registers available-registers))
+       (let ((newenv environment))
+	 (append
+	  (append-map
+	   (lambda (var val)
+	     (cond ((eq? var '$unused)
+		    (if (simple-expression? val)
+			'()
+			(cons arg-register (used-registers val))))
+		   ((null? available-registers)
+		    (push! (cons var locals-counter) newenv)
+		    (inc! locals-counter)
+		    (cons arg-register (used-registers val)))
+		   (else
+		    (let ((reg (car available-registers)))
+		      (push! (cons var reg) newenv)
+		      (pop! available-registers)
+		      (cons* arg-register reg (used-registers val))))))
+	   vars vals)
+	  (begin 
+	    (set! environment newenv)
+	    (used-registers body))))))
+    (('$global-set! var val) (used-registers val))
+    (('$global-ref var) '())
+    (('$local-ref var)
+     (let ((ref (lookup-variable var)))
+       (if (symbol? ref)
+	   (list ref)
+	   '())))
+    (('$local-set! var val)
+     (let ((ref (lookup-variable var)))
+       (append
+	(if (symbol? ref)
+	    (list ref)
+	    '())
+	(used-registers val))))
+    (('if x y z)
+     (append
+      (used-registers x)
+      (used-registers y)
+      (used-registers z)))
+    (('$primitive (or ('quote name) name)) '())
+    (('$box val) (used-registers val))
+    (('$box-ref val) (used-registers val))
+    (('$box-set! box val)
+     (append
+      temporary-registers
+      (used-registers box)
+      (used-registers val)))
+    (('$inline (or ('quote opr) opr) args ...)
+     (append 
+      (take (length args) temporary-registers)
+      (map used-registers args)))
+    (('$allocate (or ('quote type) type) (or ('quote size) size) args ...)
+     (append
+      (take (length args) temporary-registers)
+      (map used-registers args)))
+    (((or '$undefined '$uninitialized)) '())
+    (('$closure-ref i) (list self-register))
+    (('quote c) '())
+    ((op args ...)
+     (error "CPS-call in non-tail position" x))
+    (_ (error "bad expression" x))))
+
 
 ;; return register that holds this value of #f
 (define (argument-register arg)
