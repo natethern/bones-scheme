@@ -67,9 +67,10 @@
 	    (string-append (%char->string pc) str)
 	    str)))))
 
-(define (write-string str . p)
-  (let ((p (optional p %standard-output-port)))
-    ((%slot-ref p 3) p str)))
+(define-syntax write-string
+  (case-lambda
+   ((str) ((%slot-ref %standard-output-port 3) %standard-output-port str))
+   ((str p) ((%slot-ref p 3) p str))))
 
 (cond-expand
   (file-system
@@ -90,12 +91,15 @@
 
   (else))
 
+
 (define reclaim ($primitive "reclaim_garbage"))
+
 
 (cond-expand
   (time
    (define-inline (current-second) ($inline "LIBCALL1 time, 0; INT2FIX rax")))
   (else))
+
 
 (cond-expand
   (process-environment
@@ -119,13 +123,16 @@
 
   (else))
 
+
 (cond-expand
   (jiffy-clock
    (define-inline (current-jiffy) ($inline "LIBCALL0 clock; INT2FIX rax"))
    (define-inline (jiffies-per-second) 1000000))
   (else))
 
+
 (define-syntax call/cc call-with-current-continuation)
+
 
 (cond-expand
   (file-ports
@@ -135,6 +142,7 @@
        ;;XXX check for error
        (%make-file-output-port fd))))
   (else))
+
 
 (define (print . args)
   (for-each display args)

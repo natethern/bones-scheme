@@ -191,14 +191,14 @@
    (define atan
      (let* ((pi (%ieee754-pi)) 
 	    (pi/2 (%/ pi 2)))
-       (lambda (y . x)
+       (case-lambda
+	((x) (%ieee754-atan1 x))
+	((y x)
 	 (let ((y (exact->inexact y)))
-	   (if (null? y)
-	       (%ieee754-atan1 y)
-	       (cond ((%= x 0) (if (%> y 0) pi/2 (%- pi/2))) ; y == 0 -> undefined
-		     ((%> x 0) (%ieee754-atan1 (%/ y x)))
-		     ((%< y 0) (%- (%ieee754-atan1 (%/ y x)) pi))
-		     (else (%+ (%ieee754-atan1 (%/ y x)) pi))))))))
+	   (cond ((%= x 0) (if (%> y 0) pi/2 (%- pi/2))) ; y == 0 -> undefined
+		 ((%> x 0) (%ieee754-atan1 (%/ y x)))
+		 ((%< y 0) (%- (%ieee754-atan1 (%/ y x)) pi))
+		 (else (%+ (%ieee754-atan1 (%/ y x)) pi))))))))
 
    ;;XXX this seems to be broken
    #;(define-inline (log x)
@@ -383,20 +383,20 @@
    (define %standard-error-port (%make-null-output-port))) )
    
 
-(define (current-input-port . p)
-  (if (null? p)
-      %standard-input-port
-      (set! %standard-input-port (car p))))
+(define-syntax current-input-port
+  (case-lambda
+   (() %standard-input-port)
+   ((p) (set! %standard-input-port p))))
 
-(define (current-output-port . p)
-  (if (null? p)
-      %standard-output-port
-      (set! %standard-output-port (car p))))
+(define-syntax current-output-port
+  (case-lambda 
+   (() %standard-output-port)
+   ((p) (set! %standard-output-port p))))
 
-(define (current-error-port . p)
-  (if (null? p)
-      %standard-error-port
-      (set! %standard-error-port (car p))))
+(define-syntax current-error-port
+  (case-lambda
+   (() %standard-error-port)
+   ((p) (set! %standard-error-port p))))
 
 (cond-expand
   (file-ports
@@ -421,18 +421,18 @@
     (%byte-set! str 0 (char->integer c))
     str))
 
-(define (write-char c . p)
-  (let ((p (optional p %standard-output-port)))
-    ((%slot-ref p 3) p (%char->string c))))
+(define-syntax write-char
+  (case-lambda
+   ((c) ((%slot-ref %standard-output-port 3) %standard-output-port (%char->string c)))
+   ((c p) ((%slot-ref p 3) p (%char->string c)))))
 
-(define newline
-  (let ((write-char write-char))
-    (lambda p
-      (write-char #\newline (optional p %standard-output-port)))))
+(define-syntax newline
+  (case-lambda
+    (() (write-char #\newline %standard-output-port))
+    ((p) (write-char #\newline p))))
 
-(define (read-char . p)
-  (let* ((p (optional p %standard-input-port))
-	 (pc (%slot-ref p 4)))
+(define-inline (%read-char p)
+  (let ((pc (%slot-ref p 4)))
     (cond (pc 
 	   (%slot-set! p 4 #f)
 	   pc)
@@ -442,9 +442,13 @@
 		 str
 		 (string-ref str 0)))))))
 
-(define (peek-char . p)
-  (let* ((p (optional p %standard-input-port))
-	 (pc (%slot-ref p 4)))
+(define-syntax read-char
+  (case-lambda
+   (() (%read-char %standard-input-port))
+   ((p) (%read-char p))))
+
+(define-inline (%peek-char p)
+  (let ((pc (%slot-ref p 4)))
     (or pc
 	(let ((str ((%slot-ref p 3) p 1)))
 	  (if (eof-object? str)
@@ -452,6 +456,11 @@
 	      (let ((c (string-ref str 0)))
 		(%slot-set! p 4 c)
 		c))))))
+
+(define-syntax peek-char
+  (case-lambda
+   (() (%peek-char %standard-input-port))
+   ((p) (%peek-char p))))
 
 (define-inline (vector-ref x i) (%slot-ref x i))
 (define-inline (vector-set! x i y) (%slot-set! x i y))
@@ -601,11 +610,13 @@
 (define-inline (string-fill! s c)
   ($inline "CALL fill_bytes" s (char->integer c)))
 
-(define (make-string n . c)
-  (let ((str (%allocate-block #x11 n #f n #f #f)))
-    (unless (null? c)
-      (string-fill! str (car c)))
-    str))
+(define-syntax make-string
+  (case-lambda
+   ((n) (%allocate-block #x11 n #f n #f #f))
+   ((n c)
+    (let ((str (%allocate-block #x11 n #f n #f #f)))
+      (string-fill! str c)
+      str))))
 
 (define (string-append . slst)
   (let loop ((ss slst) (n 0))
@@ -627,12 +638,19 @@
     ($inline "CALL copy_bytes" (cons str 0) (cons str2 0) len)
     str2))
 
-(define (substring str from . to)
-  (let* ((to (optional to (string-length str)))
-	 (len (%fx- to from))
-	 (str2 (%allocate-block #x11 len #f len #f #f)))
-    ($inline "CALL copy_bytes" (cons str from) (cons str2 0) len)
-    str2))
+(define-syntax substring
+  (case-lambda
+   ((str from)
+    (let* ((to (string-length str))
+	   (len (%fx- to from))
+	   (str2 (%allocate-block #x11 len #f len #f #f)))
+      ($inline "CALL copy_bytes" (cons str from) (cons str2 0) len)
+      str2))
+   ((str from to)
+    (let* ((len (%fx- to from))
+	   (str2 (%allocate-block #x11 len #f len #f #f)))
+      ($inline "CALL copy_bytes" (cons str from) (cons str2 0) len)
+      str2))))
 
 (define string->number
   (cond-expand
@@ -707,8 +725,10 @@
     ($inline "CALL copy_slots" (cons vec 0) (cons vec2 0) len)
     vec2))
 
-(define (make-vector n . x)
-  (%allocate-block 3 (arithmetic-shift n 3) #f n (pair? x) (optional x (%undefined))))
+(define-syntax make-vector
+  (case-lambda 
+   ((n) (%allocate-block 3 (arithmetic-shift n 3) #f n #f (%undefined)))
+   ((n x) (%allocate-block 3 (arithmetic-shift n 3) #f n #t x))))
 
 (define (list->vector lst) ;XXX this can probably be done more efficiently
   (let* ((n (length lst))
