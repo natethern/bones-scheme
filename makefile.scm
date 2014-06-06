@@ -36,7 +36,7 @@
 
 (define (bones-x86_64-linux.o)
   (bones-x86_64-linux.s)
-  (make (("bones-x86_64-linux.o" ("bones-x86_64-linux.s" "x86_64/linux/boneslib.s" 
+  (make (("bones-x86_64-linux.o" ("bones-x86_64-linux.s" "x86_64/boneslib.s" 
 				  "x86_64/structured.s")
 	  (run (nasm -f elf64 -g -F dwarf bones-x86_64-linux.s -o bones-x86_64-linux.o))))))
 
@@ -133,7 +133,7 @@
     "program.scm"
     "source.scm"
     "x86_64/structured.s"
-    "x86_64/linux/boneslib.s"
+    "x86_64/boneslib.s"
     "support.scm"))
 
 (define (dist)
@@ -141,7 +141,7 @@
 	 (arch (string-append "bones-" date)))
     (bones-x86_64-linux.s)
     (run (rm -fr ,arch))
-    (run (mkdir -p ,(string-append arch "/x86_64/linux")))
+    (run (mkdir -p ,(string-append arch "/x86_64")))
     (for-each
      (lambda (df)
        (run (cp ,df ,(string-append arch "/" df))))
