@@ -1,4 +1,23 @@
-;;;; barebones R5RS library for files compiled with barebones
+;;;; R5RS library for files compiled with barebones
+
+
+(define-syntax-rule (when x y z ...)
+  (if x (begin y z ...)))
+
+(define-syntax-rule (unless x y z ...)
+  (if (not x) (begin y z ...)))
+
+(define-syntax optional
+  (syntax-rules ()
+    ((_ x y) (if (pair? x) (car x) y))
+    ((_ x) (optional x #f))))
+
+(define-syntax-rule (define-inline (name . llist) body ...)
+  (define-syntax name
+    (lambda llist body ...)))
+
+(define-syntax-rule (case-lambda (llist . body) ...)
+  ($case-lambda (lambda llist . body) ...))
 
 
 (define (%list . lst) lst)
@@ -652,37 +671,40 @@
       ($inline "CALL copy_bytes" (cons str from) (cons str2 0) len)
       str2))))
 
-(define string->number
-  (cond-expand
-    (flonums
-     (lambda (str . base)
-       ;;XXX does not parse "nan.0", "inf.0"
-       ($inline "CALL str2num" str (optional base 10))))
-    (else
-     ;;XXX untested
-     (lambda (str . base)
-       (let ((base (optional base 10))
-	     (len (string-length str))
-	     (s 1)
-	     (p 0))
-	 (cond ((eq? 0 len) #f)
-	       (else
-		(case (string-ref str 0)
-		  ((#\-) 
-		   (set! s -1)
-		   (set! p 1))
-		  ((#\+)
-		   (set! p 1)))
-		(%fx* s
-		      (let loop ((p p) (n 0))
-			(if (%fx>=? p len) 
-			    n
-			    (let ((c (char-downcase (string-ref str p))))
-			      (loop (%fx+ p 1)
-				    (%fx+ (%fx* n base)
-					  (if (char>=? c #\a)
-					      (%fx- (char->integer c) 97)
-					      (%fx- (char->integer c) 48)))))))))))))))
+(cond-expand
+  (flonums
+   ;;XXX does not parse "nan.0", "inf.0"
+   (define-syntax string->number
+     (case-lambda 
+       ((str base)
+	($inline "CALL str2num" str base))
+       ((str)
+	($inline "CALL str2num" str 10)))))
+  (else
+   ;;XXX untested
+   (define (string->number str . base)
+     (let ((base (optional base 10))
+	   (len (string-length str))
+	   (s 1)
+	   (p 0))
+       (cond ((eq? 0 len) #f)
+	     (else
+	      (case (string-ref str 0)
+		((#\-) 
+		 (set! s -1)
+		 (set! p 1))
+		((#\+)
+		 (set! p 1)))
+	      (%fx* s
+		    (let loop ((p p) (n 0))
+		      (if (%fx>=? p len) 
+			  n
+			  (let ((c (char-downcase (string-ref str p))))
+			    (loop (%fx+ p 1)
+				  (%fx+ (%fx* n base)
+					(if (char>=? c #\a)
+					    (%fx- (char->integer c) 97)
+					    (%fx- (char->integer c) 48))))))))))))))
 
 (define number->string
   (cond-expand

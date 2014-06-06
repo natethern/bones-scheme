@@ -13,7 +13,6 @@
 
 (define (bones-x86_64-linux.s)
   (make (("bones-x86_64-linux.s" ("bones.scm"
-				  "moresyntax.scm"
 				  "x86_64/intrinsics.scm"
 				  "r5rs.scm"
 				  "match.scm"
@@ -126,7 +125,6 @@
     "main.scm"
     "match.scm"
     "megalet.scm"
-    "moresyntax.scm"
     "nonstd.scm"
     "pp.scm"
     "r5rs.scm"

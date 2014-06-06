@@ -1,0 +1,113 @@
+;;;; partial R7RS support
+
+
+(define-syntax define-values
+  (syntax-rules ()
+    ((_ "1" () exp ((var tmp) ...))
+     (define
+       (call-with-values (lambda () exp)
+	 (lambda (tmp ...)
+	   (set! var tmp) ...))))
+    ((_ "1" (var . more) exp (binding ...))
+     (define-values "1" more exp (binding ... (var tmp))))
+    ((_ () exp) 
+     (define 
+       (call-with-values (lambda () exp)
+	 (lambda _ (void)))))
+    ((_ (var) exp) 
+     (define var exp))
+    ((_ (var ...) exp)
+     (begin
+       (define var #f) ...
+       (define-values "1" (var ...) exp ())))))
+
+
+(define open-input-string
+  (let ((substring substring))
+    (lambda (str)
+      (let ((data (cons (string-copy str) 0)))
+	(%make-port 
+	 #t #f 
+	 (lambda (p)
+	   (set-car! data "")
+	   (set-cdr! data 0))
+	 (lambda (p n)
+	   (let* ((p1 (cdr data))
+		  (s (car data))
+		  (len (string-length s))
+		  (p2 (%fx+ p1 n))
+		  (p2 (if (%fx<=? p2 len) p2 len)))
+	     (if (eq? p1 p2)
+		 (eof-object)
+		 (let ((r (substring s p1 p2)))
+		   (set-cdr! data p2)
+		   r))))
+	 data)))))
+
+(define open-output-string
+  (let ((make-string make-string))
+    (lambda ()
+      (let ((data (cons (make-string 1024) 0)))
+	(%make-port
+	 #f #f
+	 (lambda (p)
+	   (set-car! data "")
+	   (set-cdr! data 0))
+	 (lambda (p str)
+	   (let* ((p1 (cdr data))
+		  (s (car data))
+		  (n (string-length str))
+		  (len (string-length s))
+		  (p2 (%fx+ p1 n)))
+	     (when (%fx>? p2 len)
+	       (let ((new (make-string (%fx+ p2 5000))))
+		 ($inline "CALL copy_bytes" (cons s 0) (cons new 0) p1)
+		 (set! s new))
+	       (set-car! data s))
+	     (set-cdr! data p2)
+	     ($inline "CALL copy_bytes" (cons str 0) (cons s p1) n)
+	     str))
+	 data)))))
+
+(define get-output-string
+  (let ((substring substring))
+    (lambda (port)
+      (let* ((data (%slot-ref port 5))
+	     (str (car data))
+	     (p (cdr data)))
+	(substring str 0 p)))))
+
+
+(cond-expand
+  (time
+   (define-inline (current-second) ($inline "LIBCALL1 time, 0; INT2FIX rax")))
+  (else))
+
+
+(cond-expand
+  (process-environment
+
+   (define-inline (get-environment-variable str)
+     ($inline 
+      "CALL copy_to_buffer; LIBCALL1 getenv, buffer; test rax, rax; if z; mov rax, FALSE; endif; CALL alloc_zstring" 
+      str))
+
+   (define command-line
+     (let* ((argc (%argc))
+	    (lst (let loop ((i 0))
+		   (if (%fx>=? i argc)
+		       '()
+		       (cons (%argv-ref i) (loop (%fx+ i 1)))))))
+       (lambda () lst))))
+
+  (else))
+
+
+(cond-expand
+  (jiffy-clock
+   (define-inline (current-jiffy) ($inline "LIBCALL0 clock; INT2FIX rax"))
+   (define-inline (jiffies-per-second) 1000000))
+  (else))
+
+
+(define-syntax call/cc call-with-current-continuation)

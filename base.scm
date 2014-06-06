@@ -1,7 +1,5 @@
 ;; default base
 
-(files "moresyntax.scm")
-
 (cond-expand
   (x86_64
    (provide flonums ieee754)
@@ -13,4 +11,5 @@
   (else))
 
 (files "r5rs.scm"
+       "r7rs.scm"
        "nonstd.scm")
