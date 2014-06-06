@@ -276,68 +276,80 @@
     (_ (error "bad expression" x))))
 
 
-;;XXX replace this with a decent ra
+;;; order argument-evulation to minimize spills
 ;
-; - at least we could check whether later expressions don't use a particular register anymore
-;   and assign directly.
-; - reordering of arguments might also be an option.
+; - compute registers used for each argument.
+; - identify circular dependencies between target registers and target-registers
+;   of dependant arguments, and spill these cases to stack.
+; - finally, topologically sort arguments by dependencies and evaluate in reverse
+;   order.
 
 (define (translate/registers args regs)
   (let* ((argc (length args))
-	 (rargs (map cons args 
+	 (rargs (map (lambda (arg reg)
+		       (list reg arg (delete-duplicates (used-registers arg))))
+		     args
 		     (append (take argc regs)
 			     (iota (- argc (length regs)))))))
-    (match rargs
-      (((arg . reg))			; just a single argument
-       (translate arg arg-register)
-       (if (symbol? reg)
-	   (generate-move reg arg-register)
-	   (generate-move-to-local (cells reg) arg-register)))
-      (_ (let* ((easy hard (partition
-			    (match-lambda
-			      ((arg . reg)
-			       (and (simple-expression? arg)
-				    ;;XXX could check whether arg is a var already stored in reg
-				    (not (blocked-register? reg))
-				    (match arg
-				      (('$closure-ref i) (not (any (lambda (ra) (eq? self-register (cdr ra))) rargs)))
-				      (('$local-ref var) (not (memq (cdr (assq var environment)) regs)))
-				      (_ #t)))))
-			    rargs))
-		(reserve (cells (length hard))))
-	   (unless (null? hard)
-	     (generate-reserve-on-stack reserve)
-	     (do ((i 0 (add1 i))
-		  (hard hard (cdr hard)))
-		 ((null? hard))
-	       (let* ((arg (caar hard))
-		      (reg (argument-register arg)))
-		 (cond (reg (generate-slot-store stack-register (cells i) reg))
-		       (else
-			(translate arg arg-register)
-			(generate-slot-store stack-register (cells i) arg-register))))))
-	   ;; assign easy destinations first to avoid clobbering rbx
-	   (for-each
-	    (match-lambda
-	      ((arg . reg)
-	       (cond ((symbol? reg) (translate arg reg))
-		     (else
-		      (translate arg arg-register)
-		      (generate-move-to-local (cells reg) arg-register)))))
-	    easy)
-	   (unless (null? hard)
-	     (do ((i 0 (add1 i))
-		  (hard hard (cdr hard)))
-		 ((null? hard))
-	       (match (car hard)
-		 ((_ . reg)
-		  (cond ((symbol? reg)
-			 (generate-slot-ref reg stack-register (cells i)))
-			(else
-			 (generate-slot-ref arg-register stack-register (cells i))
-			 (generate-move-to-local (cells reg) arg-register))))))
-	     (generate-pop-stack reserve)))))
-    rargs))
+    (define (circular? ra rargs)
+      (match-let (((tr _ deps) ra))
+	(any (match-lambda
+	       ((tr2 _ deps2) 
+		(and (memv tr2 deps)
+		     (memv tr deps2))))
+	     rargs)))
+    (define (translate-arguments spilled unspilled)
+      (let* ((n (length spilled))
+	     (reserve (cells n)))
+	(pp `(SPILLED: ,spilled))	;XXX
+	(pp `(UNSPILLED: ,unspilled))	;XXX
+	(unless (zero? n)
+	  (generate-reserve-on-stack reserve)
+	  (do ((rargs spilled (cdr rargs))
+	       (i 0 (add1 i)))
+	      ((null? rargs))
+	    (match-let ((((tr arg _) . _) rargs))
+	      (let ((reg (argument-register arg)))
+		(cond (reg (generate-slot-store stack-register (cells i) reg))
+		      (else
+		       (translate arg arg-register)
+		       (generate-slot-store stack-register (cells i) arg-register)))))))
+	(let ((sorted (reverse (topological-sort
+				(map (match-lambda
+				       ((tr _ deps) (cons tr deps)))
+				     unspilled)
+				eqv?))))
+	  (pp sorted)			;XXX
+	  (for-each
+	   (lambda (sr)
+	     (cond ((assv sr unspilled) =>
+		    (match-lambda
+		      ((tr arg _)
+		       (cond ((symbol? tr) (translate arg tr))
+			     (else 
+			      (translate arg arg-register)
+			      (generate-move-to-local (cells tr) arg-register))))))))
+	   sorted))
+	(unless (zero? n)
+	  (do ((rargs spilled (cdr rargs))
+	       (i 0 (add1 i)))
+	      ((null? rargs))
+	    (match-let ((((tr arg _) . _) rargs))
+	      (cond ((symbol? tr)
+		     (generate-slot-ref tr stack-register (cells i)))
+		    (else
+		     (generate-slot-ref arg-register stack-register (cells i))
+		     (generate-move-to-local (cells tr) arg-register)))))
+	  (generate-pop-stack reserve))))
+    (pp rargs)				;XXX
+    (let loop ((rargs rargs) (spilled '()) (unspilled '()))
+      (match rargs
+	(()
+	 (translate-arguments spilled unspilled))
+	((ra . more)
+	 (if (circular? ra (append unspilled rargs))
+	     (loop more (cons ra spilled) unspilled)
+	     (loop more spilled (cons ra unspilled))))))))
 
 
 ;;; compute set of registers used by an expression
@@ -404,11 +416,11 @@
     (('$inline (or ('quote opr) opr) args ...)
      (append 
       (take (length args) temporary-registers)
-      (map used-registers args)))
+      (append-map used-registers args)))
     (('$allocate (or ('quote type) type) (or ('quote size) size) args ...)
      (append
       (take (length args) temporary-registers)
-      (map used-registers args)))
+      (append-map used-registers args)))
     (((or '$undefined '$uninitialized)) '())
     (('$closure-ref i) (list self-register))
     (('quote c) '())
