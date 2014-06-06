@@ -724,7 +724,7 @@ multiply_2:
   FIX2INT rbx
   imul rbx
   INT2FIX rax
-  CONTINUE rax
+  ret
 .l1:
   test rbx, 1			; rax = !fixnum
   jz .l3
