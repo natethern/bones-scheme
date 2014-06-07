@@ -10,6 +10,7 @@
    (provide file-ports time jiffy-clock file-system process-environment))
   (else))
 
+(provide srfi-6)
+
 (files "r5rs.scm"
-       "r7rs.scm"
        "nonstd.scm")
