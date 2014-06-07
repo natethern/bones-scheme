@@ -345,6 +345,14 @@
     (%slot-set! p 5 data)
     p))
 
+
+(cond-expand
+  ((or file-ports file-system)
+   (define (%file-error loc . args)
+     (%apply %error loc ($inline "CALL get_last_error") args)))
+  (else))
+
+
 (cond-expand
   (file-ports
 
@@ -353,7 +361,8 @@
       #t fd
       (lambda (p)
 	(%slot-set! p 4 #f)
-	($inline "FIX2INT rax; LIBCALL1 close, rax; INT2FIX rax" (%slot-ref p 0))) ;XXX file-error
+	(when (%fx<? ($inline "FIX2INT rax; LIBCALL1 close, rax; INT2FIX rax" (%slot-ref p 0)) 0)
+	  (%file-error 'close-input-port p)))
       (lambda (p n) 
 	(let* ((str (%allocate-block #x11 n #f n #f #f))
 	       (nr ($inline 
@@ -365,18 +374,21 @@
 		 (let ((str2 (%allocate-block #x11 nr #f nr #f #f)))
 		   ($inline "CALL copy_bytes" (cons str 0) (cons str2 0) nr)
 		   str2))
-		(else #f))))		;XXX file-error
+		(else (%file-error 'read-string p n)))))
       #f))
 
    (define (%make-file-output-port fd)
      (%make-port 
       #f fd
       (lambda (p)
-	($inline "FIX2INT rax; LIBCALL1 close, rax; INT2FIX rax" (%slot-ref p 0))) ;XXX file-error
+	(when (%fx<? ($inline "FIX2INT rax; LIBCALL1 close, rax; INT2FIX rax" (%slot-ref p 0)) 0)
+	  (%file-error 'close-output-port p)))
       (lambda (p str)
-	($inline 
-	 "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); LIBCALL3 write, r11, rax, r15; INT2FIX rax"
-	 str (%slot-ref p 0) (string-length str))) ;XXX file-error
+	(when (%fx<? ($inline 
+		      "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); LIBCALL3 write, r11, rax, r15; INT2FIX rax"
+		      str (%slot-ref p 0) (string-length str))
+		     0)
+	  (%file-error 'write-string p str)))
       #f))
 
    (define %standard-input-port (%make-file-input-port 0))
@@ -422,14 +434,18 @@
 
    (define (open-input-file name)
      ;; flags: O_RDONLY, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-     (let ((fd ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 0, 420; INT2FIX rax" name))) ;XXX file-error
-       (%make-file-input-port fd)))
+     (let ((fd ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 0, 420; INT2FIX rax" name)))
+       (if (%fx<? fd 0)
+	   (%file-error 'open-input-file name)
+	   (%make-file-input-port fd))))
 
    (define (open-output-file name)
      ;; flags: O_WRONLY|O_CREAT|O_TRUNC, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-     (let ((fd ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 577, 420; INT2FIX rax" name))) ;XXX file-error
-       (%make-file-output-port fd))))
-
+     (let ((fd ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 577, 420; INT2FIX rax" name)))
+       (if (%fx<? fd 0)
+	   (%file-error 'open-output-file name)
+	   (%make-file-output-port fd)))))
+  
   (else))
 
 (define-inline (close-input-port p) ((%slot-ref p 2) p))
@@ -1084,10 +1100,12 @@
 	(call-with-current-continuation call-with-current-continuation)
 	(case-sensitive case-sensitive)
 	(string->symbol string->symbol))
+    (define (read-error msg . args)
+      (%apply %error 'read msg args))
     (lambda p
       (let ((port (optional p %standard-input-port))
 	    (cs (case-sensitive))
-	    (eol (lambda (c) (%error 'read "unexpected delimiter" c)))) ;XXX read-error
+	    (eol (lambda (c) (read-error "unexpected delimiter" c))))
 	(define (parse-token t)
 	  (or (string->number t)
 	      (string->symbol t)))
@@ -1129,7 +1147,7 @@
 	(define (read-sharp)
 	  (let ((c (read-char port)))
 	    (if (eof-object? c)
-		(%error 'read "unexpected EOF after `#'") ;XXX read-error
+		(read-error "unexpected EOF after `#'")
 		(case c
 		  ((#\f #\F) #f)
 		  ((#\t #\T) #t)
@@ -1140,7 +1158,7 @@
 		   (let* ((tok (read-token '() #f))
 			  (n (string->number tok)))
 		     (if (not (number? n))
-			 (%error 'read "invalid number syntax" tok) ;XXX read-error
+			 (read-error "invalid number syntax" tok)
 			 (cond-expand
 			   (flonums
 			    (if (inexact? n) 
@@ -1151,7 +1169,7 @@
 		   (let* ((tok (read-token '() #f))
 			  (n (string->number tok)))
 		     (if (not (number? n))
-			 (%error 'read "invalid number syntax" tok) ;XXX read-error
+			 (read-error "invalid number syntax" tok)
 			 (cond-expand
 			   (flonums
 			    (if (exact? n) 
@@ -1171,7 +1189,7 @@
 			   ((eq? 0 (string-length t)) (read-char port))
 			   (else (string-ref t 0)))))
 		  ((#\') `(syntax ,(read1))) ; for...whatever
-		  (else (%error 'read "invalid `#' syntax" c)))))) ;XXX read-error
+		  (else (read-error "invalid `#' syntax" c))))))
 	(define (read-list delim)
 	  (call-with-current-continuation
 	   (lambda (return)
@@ -1182,11 +1200,11 @@
 		   (set! eol old)
 		   (if (eqv? c delim)
 		       (return (reverse lst))
-		       (%error 'read "missing closing delimiter" delim)))) ;XXX read-error
+		       (read-error "missing closing delimiter" delim))))
 	       (let loop ()
 		 (let ((c (skip-whitespace)))
 		   (cond ((eof-object? c)
-			  (%error 'read "unexpected EOF while reading list")) ;XXX read-error
+			  (read-error "unexpected EOF while reading list"))
 			 ((char=? c delim)
 			  (read-char port)
 			  (set! eol old)
@@ -1200,7 +1218,7 @@
 				      (set! eol old)
 				      (if (eqv? (read-char port) delim)
 					  (return (append (reverse lst) rest))
-					  (%error 'read "missing closing delimiter" delim))) ;XXX read-error
+					  (read-error "missing closing delimiter" delim)))
 				    (set! lst (cons (parse-token t) lst))))
 			      (set! lst (cons (read1) lst)))
 			  (loop)))))))))
@@ -1208,13 +1226,13 @@
 	  (let loop ((lst '()))
 	    (let ((c (read-char port)))
 	      (cond ((eof-object? c)
-		     (%error 'read "unexpected EOF while reading delimited token")) ;XXX read-error
+		     (read-error "unexpected EOF while reading delimited token"))
 		    ((char=? delim c) 
 		     (list->string (reverse lst)))
 		    ((char=? #\\ c)
 		     (let ((c (read-char port)))
 		       (if (eof-object? c)
-			   (%error 'read "unexpected EOF while reading delimited token") ;XXX read-error
+			   (read-error "unexpected EOF while reading delimited token")
 			   (case c
 			     ((#\n) (loop (cons #\newline lst)))
 			     ((#\a) (loop (cons (integer->char 9) lst)))
@@ -1224,7 +1242,7 @@
 			      (let loop2 ((v 0) (i 0))
 				(let ((c (read-char port)))
 				  (cond ((eof-object? c)
-					 (%error 'read "unexpected EOF while reading delimited token")) ;XXX read-error
+					 (read-error "unexpected EOF while reading delimited token"))
 					((char=? #\; c) 
 					 (loop (cons (integer->char v) lst)))
 					((and (char>=? c #\0) (char<=? c #\9))
@@ -1233,8 +1251,7 @@
 					 (loop2 (%fx+ (arithmetic-shift v 4) (%fx- (char->integer c) 87)) (%fx+ i 1)))
 					((and (char>=? c #\A) (char<=? c #\F))
 					 (loop2 (%fx+ (arithmetic-shift v 4) (%fx- (char->integer c) 55)) (%fx+ i 1)))
-					(else (%error
-					       'read "invalid escaped hexadecimal character in delimited token" c)))))) ;XXX read-error
+					(else (read-error "invalid escaped hexadecimal character in delimited token" c))))))
 			     (else (loop (cons c lst)))))))
 		    (else (loop (cons c lst)))))))
 	(define (read-string) (read-delimited #\"))

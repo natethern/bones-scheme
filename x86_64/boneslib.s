@@ -2124,6 +2124,22 @@ num2str:
   ret    
 
 
+;; get string representation of "errno": -> rax (string)
+extern __errno_location
+extern strerror
+get_last_error:
+  SAVE
+  ALIGN_STACK
+  call __errno_location
+  mov eax, dword [rax]
+  mov rdi, rax
+  call strerror
+  RESTORE_STACK
+  call alloc_zstring
+  RESTORE
+  ret  
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
