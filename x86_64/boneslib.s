@@ -1150,8 +1150,8 @@ call_cc_wrapper:
   ;; extract original k
   mov rcx, [SELF + CELLS(2)]
   ;; check for values_continuation
-  mov r11, values_continuation
-  cmp r11, [rcx + CELLS(1)]
+  mov r15, values_continuation
+  cmp r15, [rcx + CELLS(1)]
   if e
     ;; extract consumer
     mov SELF, [rcx + CELLS(3)]
