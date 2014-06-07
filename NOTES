@@ -35,19 +35,13 @@ BONES                                                                           
   - beta-contraction (needs knowledge about FVs).
   - direct-calls (implies loops).
   - perhaps a bit of constant-propagation.
-* TODO [#B] report errors where appropriate
-  - file-errors (input/output and opening files).
-    - file-error errno-codes can be retrieved via __errno_location (linux only).
-  - reader errors.
-  - allow later integration with exn-handling.
-  - needs [[exception-handling stuff]]
 * TODO try using libgc as 2nd heap generation
   - needs write-barrier to record assignments of heap-data into non-heap objects.
     - then evict recursively.
   - also, keep GC-count in block header.
 * TODO pre-allocated chars in the range 0-255
   - means: all chars are preallocated, unless we allow chars with arbitrary code.
-* TODO "(if X S1 S2)" can be computed more effiiently
+* TODO "(if X S1 S2)" can be computed more efficiently
   - use "cmovCC" if S1, S2 are simple-expressions.
 * TODO write file:README
   - introduction
@@ -55,6 +49,8 @@ BONES                                                                           
 * TODO think about windows port
   - does program reside in low memory? check file:/archive/optimizing_assembly.pdf
 * TODO try "default rel" (RIP-relative addressing)
+  - seems to work without problems.
+  - no noticable difference in speed, but slightly smaller.
 * TODO add partial R7RS support
   - modulo libraries.
     - or can we parse "define-library" manually and expand it into some
