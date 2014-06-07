@@ -123,7 +123,8 @@
 
 (define (print . args)
   (for-each display args)
-  (newline))
+  (newline)
+  (void))
 
 (define-inline (free) (%free))
 
