@@ -91,7 +91,7 @@
 
 ;; crash
 %macro CRASH 0
-  mov [0], rax
+  jmp 0
 %endmacro
 
 
