@@ -1,15 +1,19 @@
 BONES                                                                               -*- Org -*-
 
 
-* TODO get rid of file:moresyntax.scm by adding all defs to file:r5rs.scm and file:nonstd.scm
-* TODO "eqv?" does structural compare, not excluding strings or vectors
+* TODO [#B] test "smart-spill" branch
+* TODO Write manual
+  - document: usage, caveats, differences to the standard, extensions
+    to the standard, embedding, building, register-usage, using
+    $inline/$primitive, code-generation strategy, optimizations
+    performed, GC, data-representation, interesting projects (in-core
+    compilation, emitting elf-modules directly, etc.), porting guide,
+    performance guide.
+* TODO "eqv?" does structural compare, not excluding pairs, strings or vectors
   - somewhat weakly defined by depending on distinct storage locations.
   - alternatively: return true if headers are the same, size == 1 and the 1st slots are equal
     (this shoudld cover flonums and chars).
 * TODO test integer-only string<->number conversion
-* TODO [#A] file:fft.scm crashes
-  - looks like the stack is overflowing, somewhere stack-adjustment is unbalanced.
-  - works for small number of iterations.
 * TODO unboxing
   - "($the TYPE EXP)" annotates with type.
   - "let" can check for "$the" and assign FP-register.
@@ -22,8 +26,8 @@ BONES                                                                           
     - e.g. "($let-float ...)" or something like this.
 * TODO Consider port to Windows
   - use mingw64.
-* TODO try compiling grond
-* TODO move code to bitbucket?
+* TODO [#B] try compiling grond
+* TODO move code to bitbucket
 * TODO something is wrong with musl's "sprintf" (or varargs) implementation
   - "(number->string (expt 2.1 3))" returns "nan".
   - ok with glibc.
@@ -45,126 +49,20 @@ BONES                                                                           
 * TODO "(if X S1 S2)" can be computed more effiiently
   - use "cmovCC" if S1, S2 are simple-expressions.
 * TODO write file:README
+  - introduction
+  - build-instructions
 * TODO think about windows port
   - does program reside in low memory? check file:/archive/optimizing_assembly.pdf
 * TODO try "default rel" (RIP-relative addressing)
-* Add partial R7RS support?
+* TODO add partial R7RS support
   - modulo libraries.
+    - or can we parse "define-library" manually and expand it into some
+      alexpander magic?
+  - needed: parameters, numerical stuff, copying primitives,
+    bytevectors.
 * Possible R7RS exception-handling stuff from srfi-34
 #+BEGIN_SRC scheme
-  (define (with-exception-handler handler thunk)
-    (with-exception-handlers (cons handler %current-exception-handlers)
-                             thunk))
-  
-  (define (with-exception-handlers new-handlers thunk)
-    (let ((previous-handlers %current-exception-handlers))
-      (dynamic-wind
-        (lambda ()
-          (set! %current-exception-handlers new-handlers))
-        thunk
-        (lambda ()
-          (set! %current-exception-handlers previous-handlers)))))
-  
-  (define (raise obj)
-    (let ((handlers %current-exception-handlers))
-      (with-exception-handlers (cdr handlers)
-        (lambda ()
-          ((car handlers) obj)
-          (error "exception-handler returned" (car handlers) obj)))))
-  
-  (define (raise-continuable obj)
-    (let ((handlers %current-exception-handlers))
-      (call-with-current-continuation
-       (lambda (return)
-         (with-exception-handlers
-          (cdr handlers)
-          (lambda ()
-            ;;XXX is this according to R7RS?
-            (return ((car handlers) obj))))))))
-  
-  (define-syntax guard
-    (syntax-rules ()
-      ((guard (var clause ...) e1 e2 ...)
-       ((call-with-current-continuation
-         (lambda (guard-k)
-           (with-exception-handler
-            (lambda (condition)
-              ((call-with-current-continuation
-                 (lambda (handler-k)
-                   (guard-k
-                    (lambda ()
-                      (let ((var condition))      ; clauses may SET! var
-                        (guard-aux (handler-k (lambda ()
-                                                (raise condition)))
-                                   clause ...))))))))
-            (lambda ()
-              (call-with-values
-               (lambda () e1 e2 ...)
-               (lambda args
-                 (guard-k (lambda ()
-                            (apply values args)))))))))))))
-  
-  (define-syntax guard-aux
-    (syntax-rules (else =>)
-      ((guard-aux reraise (else result1 result2 ...))
-       (begin result1 result2 ...))
-      ((guard-aux reraise (test => result))
-       (let ((temp test))
-         (if temp 
-             (result temp)
-             reraise)))
-      ((guard-aux reraise (test => result) clause1 clause2 ...)
-       (let ((temp test))
-         (if temp
-             (result temp)
-             (guard-aux reraise clause1 clause2 ...))))
-      ((guard-aux reraise (test))
-       test)
-      ((guard-aux reraise (test) clause1 clause2 ...)
-       (let ((temp test))
-         (if temp
-             temp
-             (guard-aux reraise clause1 clause2 ...))))
-      ((guard-aux reraise (test result1 result2 ...))
-       (if test
-           (begin result1 result2 ...)
-           reraise))
-      ((guard-aux reraise (test result1 result2 ...) clause1 clause2 ...)
-       (if test
-           (begin result1 result2 ...)
-           (guard-aux reraise clause1 clause2 ...)))))
-  
-  (define (%make-error-object kinds msg irritants loc)
-    (let ((err ($allocate 10 4 'error-object 1)))
-      (%slot-set! err 2 kind)
-      (%slot-set! 
-       err 3 
-       `((((error-object . 1) . message) . ,msg)
-         (((error-object . 1) . irritants) . ,irritants)
-         (((error-object . 1) . location) . ,location)))
-      err))
-  
-  (define-inline (error-object? x)
-    (and (record? x)
-         (eq 'error-object (%slot-ref x 0))
-         (eq? 1 (%slot-ref x 1))))
-  
-  (define-inline (error-object-message x) 
-    (cdr (assoc '((error-object . 1) . message) (%slot-ref x 3))))
-  
-  (define-inline (error-object-irritants x)
-    (cdr (assoc '((error-object . 1) . irritants) (%slot-ref x 3))))
-  
-  (define-inline (error-object-location x)
-    (cdr (assoc '((error-object . 1) . location) (%slot-ref x 3))))
-  
-  (define-inline (read-error? x)
-    (and (error-object? x)
-         (member '(read-error . 1) (%slot-ref x 2))))
-  
-  (define-inline (file-error? x)
-    (and (error-object? x)
-         (member '(file-error . 1) (%slot-ref x 2))))
+  ;;; r5rs.scm
   
   (define (%read-error loc msg . args)
     (raise (%make-error-object '((read-error . 1)) msg args loc)))
@@ -250,20 +148,10 @@ BONES                                                                           
 	MsgBox "ArcSin(0.5) = " & ArcSin(0.5)
 	MsgBox "ArcCos(0.5) = " & ArcCos(0.5)
     End Sub
-* TODO [#B] improve "translate/registers"
-  - avoid using stack as much as possible.
-  - potential approach:
-    1. collect for each argument: target-register and registers used
-    2. iteratively spill arguments until no circular dependencies are
-       left by finding argument with circular dependency
-       (target-register is used by other which uses target-register)
-       and spill to stack and start again
-    3. topologically sort arguments by register-dependencies
-    4. translate in final order obtained
 * TODO log: "fld1; fld XXX; fyl2x"
   - seems to be broken.
 * TODO remove unused globals
-* TODO lexically save references to primitives defined as syntax (inline functions)?
+* TODO secure inline-primitives against redefinition of internally used primitives
   - like this:
     (let-syntax ((PRIMITIVE PRIMITIVE))
       (define-inline (OTHER-PRIMITIVE ...) ...))
@@ -340,6 +228,14 @@ BONES                                                                           
    command-line
    error
    print
+* TODO mark places in file:x86_64/boneslib.s for 32-bit alignment issues
+  - flonum allocation
+    - "ALLOCATE_FLONUM"
+    - "$allocate", perhaps align bytevectors in general.
+    - "alloc_block"
+  - GC
+    - mark: insert alignment marker when copying bytevector block.
+    - scan: skip alignment marker.
 * Issues
 ** "inexact->exact" uses "fisttp", so needs SSE3
 ** i don't fully trust that "integer?" handles all cases correctly
