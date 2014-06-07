@@ -1053,7 +1053,7 @@
 	     (set! args (cons msg args))))
       (cond ((null? args) (newline %standard-error-port))
 	    (else
-	     (display ":\n" %standard-error-port)
+	     (newline %standard-error-port)
 	     (for-each
 	      (lambda (arg)
 		(newline %standard-error-port)
