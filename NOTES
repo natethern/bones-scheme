@@ -44,8 +44,9 @@ BONES                                                                           
 * TODO try using libgc as 2nd heap generation
   - needs write-barrier to record assignments of heap-data into non-heap objects.
     - then evict recursively.
-  - also, keep GC-count 
+  - also, keep GC-count in block header.
 * TODO pre-allocated chars in the range 0-255
+  - means: all chars are preallocated, unless we allow chars with arbitrary code.
 * TODO "(if X S1 S2)" can be computed more effiiently
   - use "cmovCC" if S1, S2 are simple-expressions.
 * TODO write file:README
@@ -60,71 +61,6 @@ BONES                                                                           
       alexpander magic?
   - needed: parameters, numerical stuff, copying primitives,
     bytevectors.
-* Possible R7RS exception-handling stuff from srfi-34
-#+BEGIN_SRC scheme
-  ;;; r5rs.scm
-  
-  (define (%read-error loc msg . args)
-    (raise (%make-error-object '((read-error . 1)) msg args loc)))
-  
-  (define (%file-error loc msg . args)
-    (raise (%make-error-object '((file-error . 1)) msg args loc)))
-  
-  ;; replacement
-  (define %error
-    (let ((write write)
-          (display display)
-          (newline newline)
-          (emergency-exit emergency-exit)
-          (string-append string-append))
-      (lambda (msg . args)
-        (let ((msg "<unknown error>")
-              (irrs args)
-              (loc #f))
-          (cond ((and (symbol? msg) (pair? args) (string? (car args)))
-                 (set! loc (symbol->string msg))
-                 (set! msg (car args))
-                 (set! irrs (cdr args)))
-                ((not (string? msg))
-                 (set! irrs (cons msg args))))
-          (raise
-           (%make-error-object
-            '((error-object . 1))
-            msg irrs loc))))))
-  
-  (define %current-exception-handlers
-    (list
-     (let ((write write)
-           (display display)
-           (newline newline)
-           (emergency-exit emergency-exit)
-           (string-append string-append))
-       (lambda (condition)
-         (cond ((error-object? condition)
-                (let ((args (error-object-irritants condition))
-                      (loc (error-object-location condition)))
-                  (display
-                   (string-append
-                    "\nError: "
-                    (if loc (string-append "(" loc ")") "")
-                    (error-object-message condition))
-                   %standard-error-port)
-                  (cond ((null? args) (newline %standard-error-port))
-                        (else
-                         (display ":\n" %standard-error-port)
-                         (for-each
-                          (lambda (arg)
-                            (newline %standard-error-port)
-                            (write arg)
-                            (newline %standard-error-port))
-                          args)))))
-               (else
-                (display "\nUnhandled exception: " %standard-error-port)
-                (write condition %standard-error-port)
-                (newline %standard-error-port)))
-         (emergency-exit 70)))))
-#+END_SRC
-
 * TODO code for "asin"
   - http://forums.codeguru.com/showthread.php?262979-How-to-compute-asin
     fld   st(0)             ;copy sine value
