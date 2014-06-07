@@ -60,7 +60,7 @@
        tmp))))
 
 
-;;XXX is this R7RS? extend, is needed
+;;XXX is this R7RS? extend, if needed
 (define read-string
   (let ((make-string make-string)
 	(string-append string-append))
