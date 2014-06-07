@@ -73,7 +73,7 @@
      (for-each
       (lambda (prg)
 	(unless (compile+run prg) (set! ok #f)))
-      '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler"))
+      '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth"))
      (unless (compile+run "bones" "./bones" '(bones.scm -o tmp/bones.s))
        (set! ok #f))
      (unless (zero? (run* (cmp bones-x86_64-linux.s tmp/bones.s)))
