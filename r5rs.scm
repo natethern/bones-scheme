@@ -1013,9 +1013,10 @@
 	      ((promise? x) (outs "#<promise>"))
 	      ((record? x)
 	       (let ((rt (%slot-ref x 0)))
-		 (out (string-append 
+		 (outs (string-append 
 		       "#<record "
-		       (%slot-ref rt 0)	; record-type name-symbol
+		       (symbol->string (%slot-ref rt 0))	; record-type name-symbol
+		       "/"
 		       (number->string (%slot-ref rt 1)) ; record-type id
 		       ">"))))
 	      ((input-port? x) (outs "#<input-port>"))
