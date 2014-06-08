@@ -1,0 +1,90 @@
+
+* Introduction
+
+  This is BONES, a compiler for R5RS Scheme that generates x86_64
+  assembler code. BONES is designed to be simple and easy to
+  understand, both to reduce the effort to learn and extend the system
+  and to keep the complexity of the compiler at a minimum, thus
+  striving for reliability and robustness.
+
+  BONES is a batch-compiler, it takes a Scheme source file and
+  produces an assembler file to be subsequently assembled into object
+  code. It is also a whole-program compiler, which means it does not
+  support producing code that is used as a library or for linking
+  together separately compiled Scheme programs. The runtime system is
+  by default added to user-code before it is compiled, so there are no
+  external libraries, with the exception of a few bits from the C
+  library ("libc").
+
+  BONES is mostly R5RS-compliant, but intentionally cuts some corners
+  to reduce code-size, increase performance and simplify the compiler
+  and runtime system. Type-checks are generally omitted, for example.
+  Very little error checking is done and arithmetic overflow of small
+  integers ("fixnums") is not detected.
+
+  Since BONES produces assembly-code, build-times are quite short. The
+  produced code is CPU- and OS-specific and currently supports only
+  x86_64 on Linux. Porting the system to other architectures and
+  operating systems should be (relatively) straightforward, as the
+  platform-specific parts of the compiler are small and the
+  runtime-system is just a single file of about two thousand lines of
+  assembler code. 
+
+  The compiler is self-compiling and uses just a few functions from
+  the C-library. Removing this dependency and using system-calls
+  directly is basically no problem but will need some hand-written
+  replacements (mostly related to number<->string conversion).  Code
+  compiled with BONES can be easily embedded into programs written in
+  other languages as long as they allow calling C functions.
+
+* Installation
+
+* Usage
+
+* Language Description
+
+** Program Specifications
+
+** Deviations from R5RS
+
+** Extensions to R5RS
+
+* Compiler Details
+
+** Compilation Strategy
+
+** Register Usage
+
+** Optimizations Performed
+
+* Data Representation
+
+* Garbage Collection
+
+* Interfacing to Native Code
+
+* Embedding
+
+* Bugs and Deficiencies
+
+* Porting Guide
+
+* Suggestions for Projects
+
+* References
+
+
+#+TITLE:     The BONES Manual
+#+AUTHOR:    felix
+#+EMAIL:     felix@call-with-current-continuation.org
+#+DESCRIPTION: 
+#+KEYWORDS: 
+#+LANGUAGE:  en
+#+OPTIONS:   H:3 num:t toc:t \n:nil @:t ::t |:t ^:{} -:t f:t *:t <:t
+#+OPTIONS:   TeX:nil LaTeX:nil skip:nil d:nil todo:t pri:nil tags:not-in-toc
+#+INFOJS_OPT: view:nil toc:nil ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
+#+EXPORT_SELECT_TAGS: export
+#+EXPORT_EXCLUDE_TAGS: noexport
+#+LINK_UP:   http://www.call-with-current-continuation.org/bones/
+#+LINK_HOME: http://www.call-with-current-continuation.org
+#+STYLE: <link rel="stylesheet" type="text/css" href="stylesheet.css" />
