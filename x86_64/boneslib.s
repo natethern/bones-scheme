@@ -1371,6 +1371,12 @@ reclaim:
   mov ALLOC, rdi
   mov LIMIT, [fromspace_end]
   sub LIMIT, FROMSPACE_RESERVE
+%ifdef ENABLE_GC_LOGGING
+  mov rax, gc_log_format2
+  mov r11, LIMIT
+  sub r11, ALLOC
+  call format_string
+%endif
   cmp ALLOC, LIMIT
   if ae 
     call heap_full_trap
@@ -1472,7 +1478,7 @@ format_string:
   call write
   RESTORE_STACK
   RESTORE
-  ret  
+  ret
 
 
 ;; fill block with pointers: rax = block, r11 = value -> rax, clobbers r15
@@ -2183,7 +2189,8 @@ error_msg_1: db `store to non-heap data detected\n`
 error_msg_2: db `out of memory\n`
 error_msg_3:
 
-gc_log_format: db `[GC #%d, remaining: %d bytes]\n`, 0
+gc_log_format: db `[GC #%d, reserve: %d bytes ...`, 0
+gc_log_format2: db ` remaining: %d bytes]\n`, 0
 
 random_numbers:
   db 98,6,85,150,36,23,112,164,135,207,169,5,26,64,165,219
