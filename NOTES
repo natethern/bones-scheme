@@ -27,6 +27,7 @@ BONES                                                                           
 * TODO Consider port to Windows
   - use mingw64.
 * TODO [#B] try compiling grond
+  - fails, either with OOM or, with resized heap, SIGILL.
 * TODO move code to bitbucket
 * TODO something is wrong with musl's "sprintf" (or varargs) implementation
   - "(number->string (expt 2.1 3))" returns "nan".
@@ -105,6 +106,7 @@ BONES                                                                           
    char-ready?
 * TODO write detailed list of differences to R5RS
   - no type or range checks.
+  - closing the same file twice will throw error.
   - no overflow-detection.
   - max/min do not change exactness (well, not always - identify cases).
   - primitives are not necessarily "eq?"
