@@ -1,6 +1,14 @@
 ;;;; low-level operations (x86_64)
 
 
+(define-syntax define-syntax-rule
+  (syntax-rules ___ ()
+    ((_ (name args ___) rule)
+     (define-syntax name
+       (syntax-rules ()
+	 ((_ args ___) rule))))))
+
+
 (define-syntax-rule (%eof) ($inline "mov rax, eof"))
 (define-syntax-rule (%undefined) ($inline "mov rax, undefined")) 
 

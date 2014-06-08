@@ -1,4 +1,4 @@
-;;;; bones.s - runtime system and core library (x86_64-linux) -*- nasm -*-
+;;;; bones.s - runtime system and core library (x86_64) -*- nasm -*-
 ;
 ;
 ; * Register usage: 
@@ -91,7 +91,7 @@
 
 ;; crash
 %macro CRASH 0
-  mov [0], rax
+  jmp 0
 %endmacro
 
 
@@ -724,7 +724,7 @@ multiply_2:
   FIX2INT rbx
   imul rbx
   INT2FIX rax
-  CONTINUE rax
+  ret
 .l1:
   test rbx, 1			; rax = !fixnum
   jz .l3
@@ -1150,8 +1150,8 @@ call_cc_wrapper:
   ;; extract original k
   mov rcx, [SELF + CELLS(2)]
   ;; check for values_continuation
-  mov r11, values_continuation
-  cmp r11, [rcx + CELLS(1)]
+  mov r15, values_continuation
+  cmp r15, [rcx + CELLS(1)]
   if e
     ;; extract consumer
     mov SELF, [rcx + CELLS(3)]
@@ -2122,6 +2122,22 @@ num2str:
   call alloc_zstring
   RESTORE
   ret    
+
+
+;; get string representation of "errno": -> rax (string)
+extern __errno_location
+extern strerror
+get_last_error:
+  SAVE
+  ALIGN_STACK
+  call __errno_location
+  mov eax, dword [rax]
+  mov rdi, rax
+  call strerror
+  RESTORE_STACK
+  call alloc_zstring
+  RESTORE
+  ret  
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

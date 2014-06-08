@@ -2031,4 +2031,4 @@
 	(inverse-fft-recursive-4 a table)))))
 
 ;(test 100 7)
-(test 2000 11)
+(test 1000 11)

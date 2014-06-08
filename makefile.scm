@@ -13,7 +13,6 @@
 
 (define (bones-x86_64-linux.s)
   (make (("bones-x86_64-linux.s" ("bones.scm"
-				  "moresyntax.scm"
 				  "x86_64/intrinsics.scm"
 				  "r5rs.scm"
 				  "match.scm"
@@ -37,7 +36,7 @@
 
 (define (bones-x86_64-linux.o)
   (bones-x86_64-linux.s)
-  (make (("bones-x86_64-linux.o" ("bones-x86_64-linux.s" "x86_64/linux/boneslib.s" 
+  (make (("bones-x86_64-linux.o" ("bones-x86_64-linux.s" "x86_64/boneslib.s" 
 				  "x86_64/structured.s")
 	  (run (nasm -f elf64 -g -F dwarf bones-x86_64-linux.s -o bones-x86_64-linux.o))))))
 
@@ -75,7 +74,7 @@
      (for-each
       (lambda (prg)
 	(unless (compile+run prg) (set! ok #f)))
-      '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler"))
+      '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth"))
      (unless (compile+run "bones" "./bones" '(bones.scm -o tmp/bones.s))
        (set! ok #f))
      (unless (zero? (run* (cmp bones-x86_64-linux.s tmp/bones.s)))
@@ -128,14 +127,13 @@
     "main.scm"
     "match.scm"
     "megalet.scm"
-    "moresyntax.scm"
     "nonstd.scm"
     "pp.scm"
     "r5rs.scm"
     "program.scm"
     "source.scm"
     "x86_64/structured.s"
-    "x86_64/linux/boneslib.s"
+    "x86_64/boneslib.s"
     "support.scm"))
 
 (define (dist)
@@ -143,7 +141,7 @@
 	 (arch (string-append "bones-" date)))
     (bones-x86_64-linux.s)
     (run (rm -fr ,arch))
-    (run (mkdir -p ,(string-append arch "/x86_64/linux")))
+    (run (mkdir -p ,(string-append arch "/x86_64")))
     (for-each
      (lambda (df)
        (run (cp ,df ,(string-append arch "/" df))))

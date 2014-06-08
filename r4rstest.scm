@@ -1150,7 +1150,7 @@
 (test #\( peek-char this-file)
 (test '(define errs '()) read this-file)
 (close-input-port this-file)
-(close-input-port this-file)
+;(close-input-port this-file)
 (define (check-test-file name)
   (define test-file (open-input-file name))
   (test #t 'input-port?
