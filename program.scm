@@ -62,7 +62,7 @@
 	(('or reqs ...)
 	 (any expand-req reqs))
 	(('not req) 
-	 (not (expand-req (list req))))
+	 (not (expand-req req)))
 	((? symbol? r)
 	 (memq r implementation-features))
 	(r (error "invalid feature requirement" r))))
