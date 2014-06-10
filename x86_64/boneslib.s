@@ -1731,6 +1731,10 @@ structurally_equal:
   push rdi
   mov rcx, r15
   and rcx, [size_mask]
+  if z
+    SET_T rax
+    jmp .l1
+  endif
   mov rdi, BYTEBLOCK_BIT
   test r15, rdi
   if z
@@ -1743,6 +1747,7 @@ structurally_equal:
   if e
     SET_T rax
   endif
+.l1:
   pop rdi
   pop rsi
   pop rcx
