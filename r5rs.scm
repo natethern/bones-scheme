@@ -450,14 +450,22 @@
 
    (define (open-input-file name)
      ;; flags: O_RDONLY, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-     (let ((fd ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 0, 420; INT2FIX rax" name)))
+     (let ((fd (cond-expand
+		 (bare
+		  ($inline "CALL copy_to_buffer; SYSCALL3 2, buffer, 0, 420; INT2FIX rax" name))
+		 (else
+		  ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 0, 420; INT2FIX rax" name)))))
        (if (%fx<? fd 0)
 	   (%file-error 'open-input-file name)
 	   (%make-file-input-port fd))))
 
    (define (open-output-file name)
      ;; flags: O_WRONLY|O_CREAT|O_TRUNC, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-     (let ((fd ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 577, 420; INT2FIX rax" name)))
+     (let ((fd (cond-expand
+		 (bare
+		  ($inline "CALL copy_to_buffer; SYSCALL3 2, buffer, 577, 420; INT2FIX rax" name))
+		 (else 
+		  ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 577, 420; INT2FIX rax" name)))))
        (if (%fx<? fd 0)
 	   (%file-error 'open-output-file name)
 	   (%make-file-output-port fd)))))
