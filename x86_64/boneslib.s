@@ -294,6 +294,8 @@
   mov rdx, %4
 %endif
   ALIGN_STACK
+  call MANGLE_LIBCALL(%1)	
+  RESTORE_STACK
   RESTORE
 %endmacro
 
