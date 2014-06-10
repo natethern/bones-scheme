@@ -713,7 +713,6 @@
        ((str)
 	($inline "CALL str2num" str 10)))))
   (else
-   ;;XXX untested
    (define (string->number str . base)
      (let ((base (optional base 10))
 	   (len (string-length str))
@@ -732,11 +731,11 @@
 		      (if (%fx>=? p len) 
 			  n
 			  (let ((c (char-downcase (string-ref str p))))
+			    (print (list p c n))
 			    (loop (%fx+ p 1)
 				  (%fx+ (%fx* n base)
-					(if (char>=? c #\a)
-					    (%fx- (char->integer c) 97)
-					    (%fx- (char->integer c) 48))))))))))))))
+					(%fx- (char->integer c)
+					      (if (char>=? c #\a) 87 48))))))))))))))
 
 (define number->string
   (cond-expand
@@ -756,19 +755,23 @@
 	 (lambda (num . base)
 	   (if (eq? num 0)
 	       "0"
-	       (let ((neg (if (negative? num) -1 1)))
-		 (let loop ((p (%fx- buflen 1)) (n num))
+	       (let ((neg (negative? num))
+		     (base (optional base 10)))
+		 (let loop ((p buflen) (n (if neg (%fx- 0 num) num)))
 		   (cond ((eq? n 0)
 			  (when neg
-			    (string-set! buffer p #\-)
-			    (set! p (%fx- p 1)))
+			    (set! p (%fx- p 1))
+			    (string-set! buffer p #\-))
 			  (substring buffer p))
 			 (else
 			  (%fx-divmod 
 			   n base
 			   (lambda (q r)
-			     (string-set! buffer p (integer->char (%fx+ (if (%fx>=? r 10) 97 48) r)))
-			     (loop (%fx- p 1) q))))))))))))))
+			     (let ((p (%fx- p 1)))
+			       (string-set! 
+				buffer p
+				(integer->char (%fx+ (if (%fx>=? r 10) 87 48) r)))
+			       (loop p q)))))))))))))))
 
 (define-inline (vector-fill! v x)
   ($inline "CALL fill_slots" v x))
