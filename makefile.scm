@@ -55,30 +55,42 @@
 
 (define (compile+run fname . opts)
   (let-optionals opts ((cmplr "./bones")
-		       (args '()))
+		       (runargs '())
+		       (features '()))
     (let* ((name fname)
 	   (sname (string-append "tmp/" name ".s"))
 	   (oname (string-append "tmp/" name ".o"))
 	   (xname (string-append "tmp/" name)))
-      (and (zero? (run* (,cmplr ,(string-append fname ".scm") -o ,sname)))
+      (and (zero? (run* (,cmplr ,(string-append fname ".scm") -o ,sname
+				,@(append-map (cut list '-feature <>) features))))
 	   (zero? (run* (nasm -f elf64 -g -F dwarf ,sname -o ,oname)))
 	   (zero? (run* (bin/musl-gcc ,oname -o ,xname)))
-	   (zero? (run* (memtime ,xname ,@args)))))))
+	   (zero? (run* (memtime ,xname ,@runargs)))))))
 
 (define (check)
   (bones)
   (run (mkdir -p tmp))
   (print
    (let ((ok #t))
+     (print "---------linux--------------------------------------------------")
      (for-each
       (lambda (prg)
 	(unless (compile+run prg) (set! ok #f)))
       '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth"))
+     (print "---------linux-bare---------------------------------------------")
+     (for-each
+      (lambda (prg)
+	(unless (compile+run prg '() '(linux-bare))
+	  (set! ok #f)))
+      '("fac" "tak" #;"dynamic" "forth"))
+     (print "---------self-compile-------------------------------------------")     
      (unless (compile+run "bones" "./bones" '(bones.scm -o tmp/bones.s))
        (set! ok #f))
      (unless (zero? (run* (cmp bones-x86_64-linux.s tmp/bones.s)))
        (set! ok #f))
+     (print "---------embedded-----------------------------------------------")     
      (unless (check-embedded) (set! ok #f))
+     (print "----------------------------------------------------------------")     
      (if ok
 	 "\nall checks succeeded."
 	 "\nsome checks failed."))))
