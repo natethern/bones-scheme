@@ -140,7 +140,7 @@
 (define-inline (positive? x)
   (cond-expand
     (flonums (%fx>? (if (exact? x) x (%ieee754-sign x)) 0))
-    (else (%fx>= x 0))))
+    (else (%fx>=? x 0))))
 
 (define-inline (zero? n)
   (cond-expand
