@@ -136,9 +136,10 @@
   ($inline "FIX2INT rax; mov r11, [argv]; mov rax, [r11 + rax * CELLS(1)]; call alloc_zstring" i))
 
 (define-syntax-rule (%fx-divmod x y k)
-  (let ((q ($inline "FIX2INT rax; FIX2INT r11; push rdx; idiv r11; mov r15, rdx; pop rdx" x y)))
+  ;; unsigned divide!
+  (let ((q ($inline "FIX2INT rax; FIX2INT r11; push rdx; xor rdx, rdx; div r11; mov r15, rdx; pop rdx; INT2FIX rax" x y)))
     ;; bold hack: we assume r15 will not be clobbered by "k"
-    (k q ($inline "mov rax, r15"))))
+    (k q ($inline "mov rax, r15; INT2FIX rax"))))
 
 (define-syntax-rule (%free)
   ($inline "mov rax, [fromspace_end]; sub rax, ALLOC; INT2FIX rax"))
