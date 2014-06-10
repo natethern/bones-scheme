@@ -12,6 +12,7 @@
 ;        | (include FILE ...)                      include other program clauses
 ;        | (feature-cond (REQ CLAUSE ...) ... [(else CLAUSE ...)])   process clauses depending on available features
 ;        | (cond-expand (REQ CLAUSE ...) ... [(else CLAUSE ...)])   alias for "feature-cond"
+;        | (error STRING)                          signal error and abort
 ;
 ; REQ = ID
 ;     | (and ID ...)
@@ -83,6 +84,8 @@
 	(('provide ids ...)
 	 (set! implementation-features (append ids implementation-features))
 	 '(begin #t))
+	(('error msg)
+	 (error msg))
 	(('include fns ...)
 	 `(begin
 	    ,@(map (lambda (fn)
