@@ -2,26 +2,25 @@ BONES                                                                          -
 
 
 * TODO [#B] test "smart-spill" branch
+  - file:tsort.scm is by MH, ask about licensing.
 * TODO Write manual
-  - document: usage, caveats, differences to the standard, extensions
-    to the standard, embedding, building, register-usage, using
+  - caveats, nonstd primitives, embedding, register-usage, using
     $inline/$primitive, code-generation strategy, optimizations
     performed, GC, data-representation, interesting projects (in-core
     compilation, emitting elf-modules directly, etc.), porting guide,
     performance guide.
   - document configuration features and available primitives for "bare" mode.
-  - clarify licensing.
-    - code by others: tsort (MH), alexpander (AP), pp (MF).
-  - provide as text in dist tarball and html on web-site.
+  - provide manual as text in dist tarball and html on web-site.
+  - portability.
 * TODO write web-page
-* TODO "eqv?" does structural compare, not excluding pairs, strings or vectors
-  - somewhat weakly defined by depending on distinct storage locations.
-  - alternatively: return true if headers are the same, size == 1 and the 1st slots are equal
-    (this shoudld cover flonums and chars).
 * TODO test integer-only string<->number conversion
 * TODO try syscall-only variant
   - currently missing (but should be possible to implement): getpid,
     system, getenv, time/clock.
+* TODO find out which tests can be run in "bare" mode
+  - dynamic, compiler, tak, fac, forth.
+    - dynamic fails with bogus results (counters seem to be wrong -
+      bug in integer-only arithmetic?)
 * TODO unboxing
   - "($the TYPE EXP)" annotates with type.
   - "let" can check for "$the" and assign FP-register.
@@ -37,13 +36,14 @@ BONES                                                                          -
   - either have to use "_start" or "mainCRTStartup" and specify
     entry-point, parsing command-line arguments by hand, or find the
     correct way to link a C program.
-  . or use mingw64.
-* TODO [#B] try compiling grond
-  - fails to compile bones-grond, either with OOM or, with 1GB heap, SIGILL.
+  - or use mingw64.
+  - not sure if we need "default rel".
+* TODO try compiling grond
+  + fails to compile bones-grond, either with OOM or, with 1GB heap, SIGILL.
 * TODO something is wrong with musl's "sprintf" (or varargs) implementation
   - "(number->string (expt 2.1 3))" returns "nan".
   - ok with glibc.
-* TODO implement basic known value optimization
+* TODO implement basic known procedure optimizations
   - beta-contraction (needs knowledge about FVs).
   - direct-calls (implies loops).
   - perhaps a bit of constant-propagation.
@@ -166,6 +166,11 @@ mainCRTStartup:
 * TODO try "default rel" (RIP-relative addressing)
   - seems to work without problems.
   - no noticable difference in speed, but slightly smaller.
+  - does this really cover all cases, especially jumptables?
+    - it doesn't, it seems. identify cases where we have to handle this.
+      - consrest.
+      - basically everywhere where "[ADDR + REG]" is used.
+  - would be needed for embedding in DLL anyway.
 * TODO code for "asin"
   - http://forums.codeguru.com/showthread.php?262979-How-to-compute-asin
     fld   st(0)             ;copy sine value
@@ -202,7 +207,6 @@ mainCRTStartup:
    asin acos
 ** TODO broken
    log
-** "string->number" does not support exactness or base prefixes
 ** Unimplemented
    numerator, denominator
    make-rectangular, make-polar, real-part, imag-part, magnitude, angle
@@ -212,16 +216,6 @@ mainCRTStartup:
    transcript-on, transcript-off
    interaction-environment, scheme-report-environment, null-environment
    char-ready?
-* TODO write detailed list of differences to R5RS
-  - no type or range checks.
-  - closing the same file twice will throw error.
-  - no overflow-detection.
-  - max/min do not change exactness (well, not always - identify cases).
-  - primitives are not necessarily "eq?"
-  - "set!" of primitive might not necessarily work ("define" is ok, though).
-  - 3rd arg to "substring" is optional.
-  - behaviour of transcendental functions with regard to nan/inf may be wrong.
-  - and more
 ** Non-standard extensions
 *** Alexpander extensions
     - generalized syntax-rules
