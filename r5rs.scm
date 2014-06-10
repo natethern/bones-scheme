@@ -584,10 +584,7 @@
 (define-inline (char-ci>=? x y) (%fx>=? (%char-downcase x) (%char-downcase y)))
 (define-inline (char-ci<=? x y) (%fx<=? (%char-downcase x) (%char-downcase y)))
 
-(define-inline (string=? x y)
-  (let ((len (string-length x)))
-    (and (eq? len (string-length y))
-	 (eq? ($inline "CALL compare_strings" x y len) 0))))
+(define-syntax string=? eqv?)
 
 (define-inline (string>? x y)
   (let* ((xlen (string-length x))
