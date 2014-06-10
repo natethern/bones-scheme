@@ -27,7 +27,7 @@
   (set! lambda-id-counter 0)
   (set! argument-register-count (sub1 (length argument-registers)))
   (set! implementation-features
-    (append (map string->symbol (collect-options 'feature: options))
+    (append (collect-options 'feature: options)
 	    (filter id (list target-os target-arch target-endianness))
 	    basic-implementation-features))
   (set! file-search-path
