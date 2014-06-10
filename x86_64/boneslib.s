@@ -224,45 +224,108 @@
 %define RESTORE_STACK mov rsp, qword [rsp_save]
 
 
+;; windows-specific name mangling
+%ifdef WINDOWS
+ %define MANGLE_LIBCALL(name)  _ %+ name
+%else
+ %define MANGLE_LIBCALL(name)  name
+%endif
+
+
 ;; call C function with 0-3 arguments
 %macro LIBCALL0 1
-  extern %1
+  extern MANGLE_LIBCALL(%1)
   SAVE
   ALIGN_STACK
-  call %1
+%ifdef WINDOWS
+  sub rsp, 32
+%endif
+  call MANGLE_LIBCALL(%1)
   RESTORE_STACK
   RESTORE
 %endmacro
 
 %macro LIBCALL1 2
-  extern %1
+  extern MANGLE_LIBCALL(%1)
   SAVE
+%ifdef WINDOWS
+  mov rcx, %2
+%else
   mov rdi, %2
+%endif
   ALIGN_STACK
-  call %1
+%ifdef WINDOWS
+  sub rsp, 32
+%endif
+  call MANGLE_LIBCALL(%1)
   RESTORE_STACK
   RESTORE
 %endmacro
 
 %macro LIBCALL2 3
-  extern %1
+  extern MANGLE_LIBCALL(%1)
   SAVE
+%ifdef WINDOWS
+  mov rcx, %2
+  mov rdx, %3
+%else
   mov rdi, %2
   mov rsi, %3
+%endif
   ALIGN_STACK
-  call %1
+%ifdef WINDOWS
+  sub rsp, 32
+%endif
+  call MANGLE_LIBCALL(%1)
   RESTORE_STACK
   RESTORE
 %endmacro
 
 %macro LIBCALL3 4
-  extern %1
+  extern MANGLE_LIBCALL(%1)
+  SAVE
+%ifdef WINDOWS
+  mov rcx, %2
+  mov rdx, %3
+  mov r8, %4
+%else
+  mov rdi, %2
+  mov rsi, %3
+  mov rdx, %4
+%endif
+  ALIGN_STACK
+  RESTORE
+%endmacro
+
+%macro SYSCALL1 2
+  SAVE
+  mov rdi, %2
+  ALIGN_STACK
+  mov rax, %1
+  syscall
+  RESTORE_STACK
+  RESTORE
+%endmacro
+
+%macro SYSCALL2 3
+  SAVE
+  mov rdi, %2
+  mov rsi, %3
+  ALIGN_STACK
+  mov rax, %1
+  syscall
+  RESTORE_STACK
+  RESTORE
+%endmacro
+
+%macro SYSCALL3 4
   SAVE
   mov rdi, %2
   mov rsi, %3
   mov rdx, %4
   ALIGN_STACK
-  call %1
+  mov rax, %1
+  syscall
   RESTORE_STACK
   RESTORE
 %endmacro
@@ -291,16 +354,29 @@ ENTRYPOINT:
   mov SELF, rax			; saved K
   mov rax, [SELF + CELLS(1)]
   jmp rax
+%elifdef BARE
+global _start
+_start:
+  pop rdi			; argc
+  mov [argc], rdi
+  mov [argv], rsp		; point to argument array
+  mov rax, .exit
+  push rax
+  SAVE
+  push rbp
+  jmp init
+.exit:
+  SYSCALL1 60, rax		; sys_exit
 %else
-global main
-main:
+global MANGLE_LIBCALL(main)
+MANGLE_LIBCALL(main):
   SAVE
   push rbp
   mov [argc], rdi
   mov [argv], rsi
   jmp init
 %endif
-	      
+
 
 init:
   xor rax, rax
@@ -1189,13 +1265,12 @@ heap_full_trap:
 
 
 ;; write error message and exit: rax = raw string, r11 = length
-extern write
 write_error_and_exit:
-  mov rdi, 2			; stderr
-  mov rsi, rax
-  mov rdx, r11
-  ALIGN_STACK
-  call write			; no need to restore stack here
+%ifdef BARE
+  SYSCALL3 1, 2, rax, r11
+%else
+  LIBCALL3 write, 2, rax, r11	
+%endif
   mov rax, FIX(70)			; EXIT_FAILURE
   mov [exit_code], rax
   jmp terminate
@@ -1462,22 +1537,24 @@ fill_bytes:
 
 
 ;; format string using sprintf(3) and write to stderr: rax = raw format-string, r11, r15 = args
-extern sprintf
 format_string:
-  SAVE
+%ifndef BARE
+extern MANGLE_LIBCALL(sprintf)
+extern MANGLE_LIBCALL(write)
   mov rdi, buffer
   mov rsi, rax
   mov rdx, r11
   mov rcx, r15
   ALIGN_STACK
   xor rax, rax
-  call sprintf
+  call MANGLE_LIBCALL(sprintf)
   mov rdi, 2
   mov rsi, buffer
   mov rdx, rax
-  call write
+  call MANGLE_LIBCALL(write)
   RESTORE_STACK
   RESTORE
+%endif
   ret
 
 
@@ -2040,8 +2117,9 @@ return_to_host:
 
 
 ;; convert string to number: rax = string, r11 = base -> rax (number)
-extern strtol
-extern strtod
+%ifndef BARE
+extern MANGLE_LIBCALL(strtol)
+extern MANGLE_LIBCALL(strtod)
 str2num:
   SAVE
   call copy_to_buffer
@@ -2051,7 +2129,7 @@ str2num:
   FIX2INT r11
   mov rdx, r11
   ALIGN_STACK
-  call strtol
+  call MANGLE_LIBCALL(strtol)
   RESTORE_STACK
   ;; check endptr being identical to startptr
   pop r11
@@ -2073,7 +2151,7 @@ str2num:
     push rax			; endptr
     mov rsi, rsp
     ALIGN_STACK
-    call strtod			; ignores base
+    call MANGLE_LIBCALL(strtod)			; ignores base
     RESTORE_STACK
     pop r11
     mov bl, [r11]
@@ -2094,6 +2172,7 @@ str2num:
 
 
 ;; convert number to string: rax = number, r11 = base -> rax (string)
+extern MANGLE_LIBCALL(sprintf)
 num2str:
   SAVE
   FIX2INT r11
@@ -2115,39 +2194,41 @@ num2str:
     FIX2INT rdx
     ALIGN_STACK
     xor rax, rax
-    call sprintf
+    call MANGLE_LIBCALL(sprintf)
   else
     mov rsi, gcvt
     movsd xmm0, [rax + CELLS(1)]
     ALIGN_STACK
     mov rax, 1			; 1 float argument
-    call sprintf
+    call MANGLE_LIBCALL(sprintf)
   endif
   RESTORE_STACK
   mov rax, stat_buffer
   call alloc_zstring
   RESTORE
   ret    
+%endif
 
 
 ;; get string representation of "errno": -> rax (string)
-extern __errno_location
-extern strerror
+%ifndef BARE
+extern MANGLE_LIBCALL(__errno_location)
+extern MANGLE_LIBCALL(strerror)
 get_last_error:
   SAVE
   ALIGN_STACK
-  call __errno_location
+  call MANGLE_LIBCALL(__errno_location)
   mov eax, dword [rax]
   mov rdi, rax
-  call strerror
+  call MANGLE_LIBCALL(strerror)
   RESTORE_STACK
   call alloc_zstring
   RESTORE
   ret  
+%endif
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 
 section .data
