@@ -110,7 +110,7 @@
   (run (tail -n 30 benchmark.txt)))
 
 (define distfiles
-  '("README"
+  '("MANUAL"
     "bones-x86_64-linux.s"
     "alexpand.scm"
     "all.scm"
