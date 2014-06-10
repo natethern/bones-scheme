@@ -225,7 +225,7 @@
 
 
 ;; windows-specific name mangling
-%ifdef WINDOWS
+%ifdef FEATURE_WINDOWS
  %define MANGLE_LIBCALL(name)  _ %+ name
 %else
  %define MANGLE_LIBCALL(name)  name
@@ -237,7 +237,7 @@
   extern MANGLE_LIBCALL(%1)
   SAVE
   ALIGN_STACK
-%ifdef WINDOWS
+%ifdef FEATURE_WINDOWS
   sub rsp, 32
 %endif
   call MANGLE_LIBCALL(%1)
@@ -248,13 +248,13 @@
 %macro LIBCALL1 2
   extern MANGLE_LIBCALL(%1)
   SAVE
-%ifdef WINDOWS
+%ifdef FEATURE_WINDOWS
   mov rcx, %2
 %else
   mov rdi, %2
 %endif
   ALIGN_STACK
-%ifdef WINDOWS
+%ifdef FEATURE_WINDOWS
   sub rsp, 32
 %endif
   call MANGLE_LIBCALL(%1)
@@ -265,7 +265,7 @@
 %macro LIBCALL2 3
   extern MANGLE_LIBCALL(%1)
   SAVE
-%ifdef WINDOWS
+%ifdef FEATURE_WINDOWS
   mov rcx, %2
   mov rdx, %3
 %else
@@ -273,7 +273,7 @@
   mov rsi, %3
 %endif
   ALIGN_STACK
-%ifdef WINDOWS
+%ifdef FEATURE_WINDOWS
   sub rsp, 32
 %endif
   call MANGLE_LIBCALL(%1)
@@ -284,7 +284,7 @@
 %macro LIBCALL3 4
   extern MANGLE_LIBCALL(%1)
   SAVE
-%ifdef WINDOWS
+%ifdef FEATURE_WINDOWS
   mov rcx, %2
   mov rdx, %3
   mov r8, %4
@@ -356,7 +356,7 @@ ENTRYPOINT:
   mov SELF, rax			; saved K
   mov rax, [SELF + CELLS(1)]
   jmp rax
-%elifdef BARE
+%elifdef FEATURE_LINUX_BARE
 global _start
 _start:
   pop rdi			; argc
@@ -1268,7 +1268,7 @@ heap_full_trap:
 
 ;; write error message and exit: rax = raw string, r11 = length
 write_error_and_exit:
-%ifdef BARE
+%ifdef FEATURE_LINUX_BARE
   SYSCALL3 1, 2, rax, r11
 %else
   LIBCALL3 write, 2, rax, r11	
@@ -1540,7 +1540,7 @@ fill_bytes:
 
 ;; format string using sprintf(3) and write to stderr: rax = raw format-string, r11, r15 = args
 format_string:
-%ifndef BARE
+%ifndef FEATURE_LINUX_BARE
 extern MANGLE_LIBCALL(sprintf)
 extern MANGLE_LIBCALL(write)
   mov rdi, buffer
@@ -2124,7 +2124,7 @@ return_to_host:
 
 
 ;; convert string to number: rax = string, r11 = base -> rax (number)
-%ifndef BARE
+%ifndef FEATURE_LINUX_BARE
 extern MANGLE_LIBCALL(strtol)
 extern MANGLE_LIBCALL(strtod)
 str2num:
@@ -2218,7 +2218,7 @@ num2str:
 
 
 ;; get string representation of "errno": -> rax (string)
-%ifndef BARE
+%ifndef FEATURE_LINUX_BARE
 extern MANGLE_LIBCALL(__errno_location)
 extern MANGLE_LIBCALL(strerror)
 get_last_error:
