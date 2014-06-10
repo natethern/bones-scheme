@@ -2,12 +2,18 @@
 
 (cond-expand
   (x86_64
-   (provide flonums ieee754)
+   (cond-expand 
+     ((not bare) (provide flonums ieee754))
+     (else))
    (files "x86_64/intrinsics.scm")))
 
 (cond-expand
   (linux 
-   (provide file-ports time jiffy-clock file-system process-environment))
+   (provide file-ports file-system)
+   (cond-expand
+     ((not bare)
+      (provide time jiffy-clock file-system process-environment))
+     (else)))
   (else))
 
 (provide srfi-6)

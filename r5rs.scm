@@ -349,51 +349,67 @@
 (cond-expand
   ((or file-ports file-system)
    (define (%file-error loc . args)
-     (%apply %error loc ($inline "CALL get_last_error") args)))
+     (cond-expand 
+       (bare (%apply %error loc "system call failed" args))
+       (else (%apply %error loc ($inline "CALL get_last_error") args)))))
   (else))
 
 
 (cond-expand
   (file-ports
 
-   (define (%make-file-input-port fd)
-     (%make-port 
-      #t fd
-      (lambda (p)
-	(%slot-set! p 4 #f)
-	(when (%fx<? ($inline "FIX2INT rax; LIBCALL1 close, rax; INT2FIX rax" (%slot-ref p 0)) 0)
-	  (%file-error 'close-input-port p)))
-      (lambda (p n) 
-	(let* ((str (%allocate-block #x11 n #f n #f #f))
-	       (nr ($inline 
-		    "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); LIBCALL3 read, r11, rax, r15; INT2FIX rax"
-		    str (%slot-ref p 0) n)))
-	  (cond ((eq? nr 0) (eof-object))
-		((eq? n nr) str)
-		((%fx>? nr 0)
-		 (let ((str2 (%allocate-block #x11 nr #f nr #f #f)))
-		   ($inline "CALL copy_bytes" (cons str 0) (cons str2 0) nr)
-		   str2))
-		(else (%file-error 'read-string p n)))))
-      #f))
+   (let-syntax ((close
+		 (syntax-rules ()
+		   ((_ fd)
+		    (cond-expand
+		      (bare ($inline "FIX2INT rax; SYSCALL1 3, rax; INT2FIX rax" fd))
+		      (else ($inline "FIX2INT rax; LIBCALL1 close, rax; INT2FIX rax" fd)))))))
+     (begin
 
-   (define (%make-file-output-port fd)
-     (%make-port 
-      #f fd
-      (lambda (p)
-	(when (%fx<? ($inline "FIX2INT rax; LIBCALL1 close, rax; INT2FIX rax" (%slot-ref p 0)) 0)
-	  (%file-error 'close-output-port p)))
-      (lambda (p str)
-	(when (%fx<? ($inline 
-		      "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); LIBCALL3 write, r11, rax, r15; INT2FIX rax"
-		      str (%slot-ref p 0) (string-length str))
-		     0)
-	  (%file-error 'write-string p str)))
-      #f))
+       (define (%make-file-input-port fd)
+	 (define (read buf fd n)
+	   (cond-expand
+	    (bare ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); SYSCALL3 0, r11, rax, r15; INT2FIX rax" buf fd n))
+	    (else
+	     ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); LIBCALL3 read, r11, rax, r15; INT2FIX rax" buf fd n))))
+	 (%make-port 
+	  #t fd
+	  (lambda (p)
+	    (%slot-set! p 4 #f)
+	    (when (%fx<? (close (%slot-ref p 0)) 0)
+	      (%file-error 'close-input-port p)))
+	  (lambda (p n) 
+	    (let* ((str (%allocate-block #x11 n #f n #f #f))
+		   (nr (read str (%slot-ref p 0) n)))
+	      (cond ((eq? nr 0) (eof-object))
+		    ((eq? n nr) str)
+		    ((%fx>? nr 0)
+		     (let ((str2 (%allocate-block #x11 nr #f nr #f #f)))
+		       ($inline "CALL copy_bytes" (cons str 0) (cons str2 0) nr)
+		       str2))
+		    (else (%file-error 'read-string p n)))))
+	  #f))
 
-   (define %standard-input-port (%make-file-input-port 0))
-   (define %standard-output-port (%make-file-output-port 1))
-   (define %standard-error-port (%make-file-output-port 2)))
+       (define (%make-file-output-port fd)
+	 (define (write buf fd n)
+	   (cond-expand
+	     (bare
+	      ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); SYSCALL3 1, r11, rax, r15; INT2FIX rax" buf fd n))
+	     (else
+	      ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); LIBCALL3 write, r11, rax, r15; INT2FIX rax" buf fd n))))
+	 (%make-port 
+	  #f fd
+	  (lambda (p)
+	    (when (%fx<? (close (%slot-ref p 0)) 0)
+	      (%file-error 'close-output-port p)))
+	  (lambda (p str)
+	    (when (%fx<? (write str (%slot-ref p 0) (string-length str)) 0)
+	      (%file-error 'write-string p str)))
+	  #f))
+       
+       (define %standard-input-port (%make-file-input-port 0))
+       (define %standard-output-port (%make-file-output-port 1))
+       (define %standard-error-port (%make-file-output-port 2)))))
   
   (else
 
