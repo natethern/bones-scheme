@@ -38,7 +38,7 @@
   ($inline "sub rax, r11; inc rax" x y))
 
 (define-syntax-rule (%fx* x y)
-  ($inline "FIX2INT rax; FIX2INT $r11; push rdx; imul r11; pop rdx; INT2FIX rax" x y))
+  ($inline "FIX2INT rax; FIX2INT r11; push rdx; imul r11; pop rdx; INT2FIX rax" x y))
 
 (define-syntax-rule (%fx>? x y)
   ($inline "cmp rax, r11; SET_T rax; cmovle rax, FALSE" x y))
