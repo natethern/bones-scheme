@@ -5,7 +5,6 @@
 (define temporary-registers '(rax r11 r15))
 (define argument-registers '(SELF rcx rdx rsi rdi r8 r9 r10 r12))
 (define word-size 8)			; bytes
-(define target-os 'linux)
 (define target-arch 'x86_64)
 (define target-endianness 'little-endian)
 (define arg-register 'rax)
