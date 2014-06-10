@@ -151,7 +151,7 @@
   (else))
 
 (cond-expand
-  ((or process-environment bare)
+  ((or process-environment linux-bare)
    (define command-line
      (let* ((argc (%argc))
 	    (lst (let loop ((i 0))
@@ -194,13 +194,13 @@
    (define (current-directory . dir)
      (define (getcwd)
        (cond-expand
-	 (bare
+	 (linux-bare
 	  ($inline "SYSCALL2 79, buffer, 1024; mov rax, buffer; CALL alloc_zstring"))
 	 (else
 	  ($inline "LIBCALL2 getcwd, buffer, 1024; mov rax, buffer; CALL alloc_zstring"))))
      (define (chdir dir)
        (cond-expand
-	 (bare
+	 (linux-bare
 	  ($inline "CALL copy_to_buffer; SYSCALL1 80, buffer; INT2FIX rax" dir))
 	 (else
 	  ($inline "CALL copy_to_buffer; LIBCALL1 chdir, buffer; INT2FIX rax" dir))))
@@ -212,7 +212,7 @@
 		 (%file-error 'current-directory (car dir)))))))
 
    (cond-expand
-     (bare
+     (linux-bare
       (define-inline (delete-file str) 
 	(when (%fx<? ($inline "CALL copy_to_buffer; SYSCALL1 87, buffer; INT2FIX rax" str) 0)
 	  (%file-error 'delete-file str)))
@@ -252,7 +252,7 @@
      ;; open-flags: O_WRONLY|O_CREAT|O_APPEND, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
      (define (open name)
        (cond-expand
-	 (bare 
+	 (linux-bare 
 	  ($inline "CALL copy_to_buffer; SYSCALL3 1, buffer, 1089, 420; INT2FIX rax" name))
 	 (else
 	  ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 1089, 420; INT2FIX rax" name))))

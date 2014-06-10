@@ -350,7 +350,7 @@
   ((or file-ports file-system)
    (define (%file-error loc . args)
      (cond-expand 
-       (bare (%apply %error loc "system call failed" args))
+       (linux-bare (%apply %error loc "system call failed" args))
        (else (%apply %error loc ($inline "CALL get_last_error") args)))))
   (else))
 
@@ -362,14 +362,14 @@
 		 (syntax-rules ()
 		   ((_ fd)
 		    (cond-expand
-		      (bare ($inline "FIX2INT rax; SYSCALL1 3, rax; INT2FIX rax" fd))
+		      (linux-bare ($inline "FIX2INT rax; SYSCALL1 3, rax; INT2FIX rax" fd))
 		      (else ($inline "FIX2INT rax; LIBCALL1 close, rax; INT2FIX rax" fd)))))))
      (begin
 
        (define (%make-file-input-port fd)
 	 (define (read buf fd n)
 	   (cond-expand
-	    (bare ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); SYSCALL3 0, r11, rax, r15; INT2FIX rax" buf fd n))
+	    (linux-bare ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); SYSCALL3 0, r11, rax, r15; INT2FIX rax" buf fd n))
 	    (else
 	     ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); LIBCALL3 read, r11, rax, r15; INT2FIX rax" buf fd n))))
 	 (%make-port 
@@ -393,7 +393,7 @@
        (define (%make-file-output-port fd)
 	 (define (write buf fd n)
 	   (cond-expand
-	     (bare
+	     (linux-bare
 	      ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); SYSCALL3 1, r11, rax, r15; INT2FIX rax" buf fd n))
 	     (else
 	      ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); LIBCALL3 write, r11, rax, r15; INT2FIX rax" buf fd n))))
@@ -451,7 +451,7 @@
    (define (open-input-file name)
      ;; flags: O_RDONLY, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
      (let ((fd (cond-expand
-		 (bare
+		 (linux-bare
 		  ($inline "CALL copy_to_buffer; SYSCALL3 2, buffer, 0, 420; INT2FIX rax" name))
 		 (else
 		  ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 0, 420; INT2FIX rax" name)))))
@@ -462,7 +462,7 @@
    (define (open-output-file name)
      ;; flags: O_WRONLY|O_CREAT|O_TRUNC, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
      (let ((fd (cond-expand
-		 (bare
+		 (linux-bare
 		  ($inline "CALL copy_to_buffer; SYSCALL3 2, buffer, 577, 420; INT2FIX rax" name))
 		 (else 
 		  ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 577, 420; INT2FIX rax" name)))))
@@ -736,7 +736,6 @@
 		      (if (%fx>=? p len) 
 			  n
 			  (let ((c (char-downcase (string-ref str p))))
-			    (print (list p c n))
 			    (loop (%fx+ p 1)
 				  (%fx+ (%fx* n base)
 					(%fx- (char->integer c)
