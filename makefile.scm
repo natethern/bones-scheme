@@ -11,27 +11,51 @@
 (define (clean)
   (run (rm -f *.o bones bones-x86_64-linux.s)))
 
+(define compiler-sources
+  '("bones.scm"
+    "r5rs.scm"
+    "match.scm"
+    "support.scm"
+    "pp.scm"
+    "alexpand.scm"
+    "megalet.scm"
+    "source.scm"
+    "cc.scm"
+    "cps.scm"
+    "mangle.scm"
+    "program.scm"
+    "cmplr.scm"
+    "main.scm"
+    "bones.scm"
+    "nonstd.scm"
+    "base.scm"))
+
+(define compiler-sources-x86_64
+  '("x86_64/intrinsics.scm"
+    "x86_64.scm"))
+
 (define (bones-x86_64-linux.s)
-  (make (("bones-x86_64-linux.s" ("bones.scm"
-				  "x86_64/intrinsics.scm"
-				  "r5rs.scm"
-				  "match.scm"
-				  "support.scm"
-				  "pp.scm"
-				  "alexpand.scm"
-				  "megalet.scm"
-				  "source.scm"
-				  "cc.scm"
-				  "cps.scm"
-				  "mangle.scm"
-				  "program.scm"
-				  "cmplr.scm"
-				  "x86_64.scm"
-				  "main.scm"
-				  "bones.scm"
-				  "nonstd.scm"
-				  "base.scm")
-	  (run (./bones1 bones.scm -o bones-x86_64-linux.s))))))
+  (make/proc
+   (list (list "bones-x86_64-linux.s"
+	       (append compiler-sources compiler-sources-x86_64)
+	       (lambda ()
+		 (run (./bones1 bones.scm -o bones-x86_64-linux.s -feature linux)))))))
+
+(define (bones-x86_64-windows.s)
+  (bones)
+  (make/proc
+   (list (list "bones-x86_64-windows.s"
+	       (append compiler-sources compiler-sources-x86_64)
+	       (lambda ()
+		 (run (./bones bones.scm -o bones-x86_64-windows.s -feature windows)))))))
+
+(define (bones-x86_64-macosx.s)
+  (bones)
+  (make/proc
+   (list (list "bones-x86_64-macosx.s"
+	       (append compiler-sources compiler-sources-x86_64)
+	       (lambda ()
+		 (run (./bones bones.scm -o bones-x86_64-windows.s -feature macosx)))))))
 
 (define (bones-x86_64-linux.o)
   (bones-x86_64-linux.s)
@@ -124,6 +148,8 @@
 (define distfiles
   '("MANUAL"
     "bones-x86_64-linux.s"
+    "bones-x86_64-windows.s"
+    "bones-x86_64-macosx.s"
     "alexpand.scm"
     "all.scm"
     "base.scm"
@@ -150,6 +176,7 @@
   (let* ((date (capture (date +%Y-%m-%d)))
 	 (arch (string-append "bones-" date)))
     (bones-x86_64-linux.s)
+    (bones-x86_64-windows.s)
     (run (rm -fr ,arch))
     (run (mkdir -p ,(string-append arch "/x86_64")))
     (for-each
