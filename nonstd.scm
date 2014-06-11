@@ -144,12 +144,14 @@
 
 (cond-expand
   (process-environment
-
    (define-inline (get-environment-variable str)
      ($inline 
       "CALL copy_to_buffer; LIBCALL1 getenv, buffer; test rax, rax; if z; mov rax, FALSE; endif; CALL alloc_zstring" 
-      str))
+      str)) )
+  (else))
 
+(cond-expand
+  ((or process-environment linux-bare)
    (define command-line
      (let* ((argc (%argc))
 	    (lst (let loop ((i 0))
@@ -157,7 +159,6 @@
 		       '()
 		       (cons (%argv-ref i) (loop (%fx+ i 1)))))))
        (lambda () lst))))
-
   (else))
 
 
@@ -191,21 +192,43 @@
   (file-system
 
    (define (current-directory . dir)
+     (define (getcwd)
+       (cond-expand
+	 (linux-bare
+	  ($inline "SYSCALL2 79, buffer, 1024; mov rax, buffer; CALL alloc_zstring"))
+	 (else
+	  ($inline "LIBCALL2 getcwd, buffer, 1024; mov rax, buffer; CALL alloc_zstring"))))
+     (define (chdir dir)
+       (cond-expand
+	 (linux-bare
+	  ($inline "CALL copy_to_buffer; SYSCALL1 80, buffer; INT2FIX rax" dir))
+	 (else
+	  ($inline "CALL copy_to_buffer; LIBCALL1 chdir, buffer; INT2FIX rax" dir))))
      (if (null? dir)
-	 (if (%fx<? ($inline "LIBCALL2 getcwd, buffer, 1024; mov rax, buffer; CALL alloc_zstring") 0)
+	 (if (%fx<? (getcwd) 0)
 	     (%file-error 'current-directory)
-	     (let ((r ($inline "CALL copy_to_buffer; LIBCALL1 chdir, buffer; INT2FIX rax" (car dir))))
+	     (let ((r (chdir (car dir))))
 	       (when (%fx<? r 0)
 		 (%file-error 'current-directory (car dir)))))))
 
-   (define-inline (delete-file str) 
-     (when (%fx<? ($inline "CALL copy_to_buffer; LIBCALL1 unlink, buffer; INT2FIX rax" str) 0)
-       (%file-error 'delete-file str)))
-
-   (define-inline (file-exists? str)
-     (and
-      ($inline "CALL copy_to_buffer; LIBCALL2 stat, buffer, stat_buffer; test rax, rax; SET_T rax; cmovnz rax, FALSE" str) 
+   (cond-expand
+     (linux-bare
+      (define-inline (delete-file str) 
+	(when (%fx<? ($inline "CALL copy_to_buffer; SYSCALL1 87, buffer; INT2FIX rax" str) 0)
+	  (%file-error 'delete-file str)))
+      (define-inline (file-exists? str)
+	(and
+	 ($inline "CALL copy_to_buffer; SYSCALL2 4, buffer, stat_buffer; test rax, rax; SET_T rax; cmovnz rax, FALSE" str) 
       str)))
+
+     (else
+      (define-inline (delete-file str) 
+	(when (%fx<? ($inline "CALL copy_to_buffer; LIBCALL1 unlink, buffer; INT2FIX rax" str) 0)
+	  (%file-error 'delete-file str)))
+      (define-inline (file-exists? str)
+	(and
+	 ($inline "CALL copy_to_buffer; LIBCALL2 stat, buffer, stat_buffer; test rax, rax; SET_T rax; cmovnz rax, FALSE" str) 
+	 str)))))
 
   (else))
 
@@ -227,7 +250,13 @@
   (file-ports
    (define (open-append-output-file name)
      ;; open-flags: O_WRONLY|O_CREAT|O_APPEND, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-     (let ((fd ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 1089, 420; INT2FIX rax" name)))
+     (define (open name)
+       (cond-expand
+	 (linux-bare 
+	  ($inline "CALL copy_to_buffer; SYSCALL3 1, buffer, 1089, 420; INT2FIX rax" name))
+	 (else
+	  ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 1089, 420; INT2FIX rax" name))))
+     (let ((fd (open name)))
        (if (%fx<? fd 0)
 	   (%file-error 'open-append-output-file name)
 	   (%make-file-output-port fd)))))

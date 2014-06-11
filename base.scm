@@ -2,12 +2,25 @@
 
 (cond-expand
   (x86_64
-   (provide flonums ieee754)
-   (files "x86_64/intrinsics.scm")))
+   (files "x86_64/intrinsics.scm"))
+  (else (error "no architecture selected")))
 
 (cond-expand
-  (linux 
-   (provide file-ports time jiffy-clock file-system process-environment))
+  ((not (or linux windows macosx linux-bare))
+   ;; map default-configuration to actual, if no specific target is given
+   (cond-expand
+     (default-windows (provide windows))
+     (default-macosx (provide macosx))
+     (default-linux (provide linux))))
+  (else))
+
+(cond-expand
+  ((or linux linux-bare windows macosx)
+   (provide file-ports file-system)
+   (cond-expand
+     ((or linux windows macosx)
+      (provide time jiffy-clock file-system process-environment flonums ieee754))
+     (else)))
   (else))
 
 (provide srfi-6)

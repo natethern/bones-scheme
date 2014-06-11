@@ -19,6 +19,12 @@
 
 (define (cells n) (* word-size n))
 
+(define default-configuration
+  (cond-expand 
+    (windows 'default-windows)
+    (macosx 'default-macosx)
+    (linux 'default-linux)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -27,8 +33,9 @@
   (set! lambda-id-counter 0)
   (set! argument-register-count (sub1 (length argument-registers)))
   (set! implementation-features
-    (append (map string->symbol (collect-options 'feature: options))
-	    (filter id (list target-os target-arch target-endianness))
+    (append (collect-options 'feature: options)
+	    (filter id (list target-arch target-endianness))
+	    (list default-configuration)
 	    basic-implementation-features))
   (set! file-search-path
     (append (collect-options 'library-path: options) '(".")))
@@ -46,6 +53,9 @@
 	 (for-each print implementation-features)
 	 (stop))
        (expand-syntax (generate-cond-expand implementation-features))
+       (when (option 'dump-source: options)
+	 (pp prg)
+	 (stop))
        (let* ((code (expand-syntax prg))
 	      (_ (when (option 'expand: options) 
 		   (pp code)
@@ -82,7 +92,7 @@
 
 (define (generate-code defs code)
   (set! label-counter 0)
-  (generate-header)
+  (generate-header (map mangle-feature-name implementation-features))
   (set! literals-to-be-translated '())
   (set! primitives '())
   (generate-closures code)
@@ -90,6 +100,16 @@
   (generate-literals)
   (generate-primitives)
   (generate-trailer))
+
+(define (mangle-feature-name name)
+  (string-append
+   "FEATURE_"
+   (list->string 
+    (map (lambda (c)
+	   (case c
+	     ((#\-) #\_)
+	     (else (char-upcase c))))
+	 (string->list (symbol->string name))))))
 
 (define (fixnum? n)
   (and (number? n) (exact? n) (<= (car fixnum-range) n (cdr fixnum-range))))

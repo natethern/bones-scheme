@@ -3,6 +3,13 @@
 ;; (too late...)
 
 
+(define-syntax + %fx+)
+
+(define-syntax -
+  (syntax-rules ()
+    ((_ x) (%fx- 0 x))
+    ((_ x y) (%fx- x y))))
+
 (define (vector-copy! from to . opts)
   (let-optionals opts ((start1 0)
 		       (end1 (vector-length from))

@@ -140,7 +140,7 @@
 (define-inline (positive? x)
   (cond-expand
     (flonums (%fx>? (if (exact? x) x (%ieee754-sign x)) 0))
-    (else (%fx>= x 0))))
+    (else (%fx>=? x 0))))
 
 (define-inline (zero? n)
   (cond-expand
@@ -349,51 +349,67 @@
 (cond-expand
   ((or file-ports file-system)
    (define (%file-error loc . args)
-     (%apply %error loc ($inline "CALL get_last_error") args)))
+     (cond-expand 
+       (linux-bare (%apply %error loc "system call failed" args))
+       (else (%apply %error loc ($inline "CALL get_last_error") args)))))
   (else))
 
 
 (cond-expand
   (file-ports
 
-   (define (%make-file-input-port fd)
-     (%make-port 
-      #t fd
-      (lambda (p)
-	(%slot-set! p 4 #f)
-	(when (%fx<? ($inline "FIX2INT rax; LIBCALL1 close, rax; INT2FIX rax" (%slot-ref p 0)) 0)
-	  (%file-error 'close-input-port p)))
-      (lambda (p n) 
-	(let* ((str (%allocate-block #x11 n #f n #f #f))
-	       (nr ($inline 
-		    "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); LIBCALL3 read, r11, rax, r15; INT2FIX rax"
-		    str (%slot-ref p 0) n)))
-	  (cond ((eq? nr 0) (eof-object))
-		((eq? n nr) str)
-		((%fx>? nr 0)
-		 (let ((str2 (%allocate-block #x11 nr #f nr #f #f)))
-		   ($inline "CALL copy_bytes" (cons str 0) (cons str2 0) nr)
-		   str2))
-		(else (%file-error 'read-string p n)))))
-      #f))
+   (let-syntax ((close
+		 (syntax-rules ()
+		   ((_ fd)
+		    (cond-expand
+		      (linux-bare ($inline "FIX2INT rax; SYSCALL1 3, rax; INT2FIX rax" fd))
+		      (else ($inline "FIX2INT rax; LIBCALL1 close, rax; INT2FIX rax" fd)))))))
+     (begin
 
-   (define (%make-file-output-port fd)
-     (%make-port 
-      #f fd
-      (lambda (p)
-	(when (%fx<? ($inline "FIX2INT rax; LIBCALL1 close, rax; INT2FIX rax" (%slot-ref p 0)) 0)
-	  (%file-error 'close-output-port p)))
-      (lambda (p str)
-	(when (%fx<? ($inline 
-		      "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); LIBCALL3 write, r11, rax, r15; INT2FIX rax"
-		      str (%slot-ref p 0) (string-length str))
-		     0)
-	  (%file-error 'write-string p str)))
-      #f))
+       (define (%make-file-input-port fd)
+	 (define (read buf fd n)
+	   (cond-expand
+	    (linux-bare ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); SYSCALL3 0, r11, rax, r15; INT2FIX rax" buf fd n))
+	    (else
+	     ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); LIBCALL3 read, r11, rax, r15; INT2FIX rax" buf fd n))))
+	 (%make-port 
+	  #t fd
+	  (lambda (p)
+	    (%slot-set! p 4 #f)
+	    (when (%fx<? (close (%slot-ref p 0)) 0)
+	      (%file-error 'close-input-port p)))
+	  (lambda (p n) 
+	    (let* ((str (%allocate-block #x11 n #f n #f #f))
+		   (nr (read str (%slot-ref p 0) n)))
+	      (cond ((eq? nr 0) (eof-object))
+		    ((eq? n nr) str)
+		    ((%fx>? nr 0)
+		     (let ((str2 (%allocate-block #x11 nr #f nr #f #f)))
+		       ($inline "CALL copy_bytes" (cons str 0) (cons str2 0) nr)
+		       str2))
+		    (else (%file-error 'read-string p n)))))
+	  #f))
 
-   (define %standard-input-port (%make-file-input-port 0))
-   (define %standard-output-port (%make-file-output-port 1))
-   (define %standard-error-port (%make-file-output-port 2)))
+       (define (%make-file-output-port fd)
+	 (define (write buf fd n)
+	   (cond-expand
+	     (linux-bare
+	      ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); SYSCALL3 1, r11, rax, r15; INT2FIX rax" buf fd n))
+	     (else
+	      ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); LIBCALL3 write, r11, rax, r15; INT2FIX rax" buf fd n))))
+	 (%make-port 
+	  #f fd
+	  (lambda (p)
+	    (when (%fx<? (close (%slot-ref p 0)) 0)
+	      (%file-error 'close-output-port p)))
+	  (lambda (p str)
+	    (when (%fx<? (write str (%slot-ref p 0) (string-length str)) 0)
+	      (%file-error 'write-string p str)))
+	  #f))
+       
+       (define %standard-input-port (%make-file-input-port 0))
+       (define %standard-output-port (%make-file-output-port 1))
+       (define %standard-error-port (%make-file-output-port 2)))))
   
   (else
 
@@ -434,14 +450,22 @@
 
    (define (open-input-file name)
      ;; flags: O_RDONLY, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-     (let ((fd ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 0, 420; INT2FIX rax" name)))
+     (let ((fd (cond-expand
+		 (linux-bare
+		  ($inline "CALL copy_to_buffer; SYSCALL3 2, buffer, 0, 420; INT2FIX rax" name))
+		 (else
+		  ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 0, 420; INT2FIX rax" name)))))
        (if (%fx<? fd 0)
 	   (%file-error 'open-input-file name)
 	   (%make-file-input-port fd))))
 
    (define (open-output-file name)
      ;; flags: O_WRONLY|O_CREAT|O_TRUNC, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-     (let ((fd ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 577, 420; INT2FIX rax" name)))
+     (let ((fd (cond-expand
+		 (linux-bare
+		  ($inline "CALL copy_to_buffer; SYSCALL3 2, buffer, 577, 420; INT2FIX rax" name))
+		 (else 
+		  ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 577, 420; INT2FIX rax" name)))))
        (if (%fx<? fd 0)
 	   (%file-error 'open-output-file name)
 	   (%make-file-output-port fd)))))
@@ -560,10 +584,7 @@
 (define-inline (char-ci>=? x y) (%fx>=? (%char-downcase x) (%char-downcase y)))
 (define-inline (char-ci<=? x y) (%fx<=? (%char-downcase x) (%char-downcase y)))
 
-(define-inline (string=? x y)
-  (let ((len (string-length x)))
-    (and (eq? len (string-length y))
-	 (eq? ($inline "CALL compare_strings" x y len) 0))))
+(define-syntax string=? eqv?)
 
 (define-inline (string>? x y)
   (let* ((xlen (string-length x))
@@ -697,7 +718,6 @@
        ((str)
 	($inline "CALL str2num" str 10)))))
   (else
-   ;;XXX untested
    (define (string->number str . base)
      (let ((base (optional base 10))
 	   (len (string-length str))
@@ -718,9 +738,8 @@
 			  (let ((c (char-downcase (string-ref str p))))
 			    (loop (%fx+ p 1)
 				  (%fx+ (%fx* n base)
-					(if (char>=? c #\a)
-					    (%fx- (char->integer c) 97)
-					    (%fx- (char->integer c) 48))))))))))))))
+					(%fx- (char->integer c)
+					      (if (char>=? c #\a) 87 48))))))))))))))
 
 (define number->string
   (cond-expand
@@ -740,19 +759,23 @@
 	 (lambda (num . base)
 	   (if (eq? num 0)
 	       "0"
-	       (let ((neg (if (negative? num) -1 1)))
-		 (let loop ((p (%fx- buflen 1)) (n num))
+	       (let ((neg (negative? num))
+		     (base (optional base 10)))
+		 (let loop ((p buflen) (n (if neg (%fx- 0 num) num)))
 		   (cond ((eq? n 0)
 			  (when neg
-			    (string-set! buffer p #\-)
-			    (set! p (%fx- p 1)))
+			    (set! p (%fx- p 1))
+			    (string-set! buffer p #\-))
 			  (substring buffer p))
 			 (else
 			  (%fx-divmod 
 			   n base
 			   (lambda (q r)
-			     (string-set! buffer p (integer->char (%fx+ (if (%fx>=? r 10) 97 48) r)))
-			     (loop (%fx- p 1) q))))))))))))))
+			     (let ((p (%fx- p 1)))
+			       (string-set! 
+				buffer p
+				(integer->char (%fx+ (if (%fx>=? r 10) 87 48) r)))
+			       (loop p q)))))))))))))))
 
 (define-inline (vector-fill! v x)
   ($inline "CALL fill_slots" v x))

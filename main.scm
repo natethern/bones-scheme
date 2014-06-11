@@ -8,7 +8,7 @@
 
 (define (usage)
   (display "usage: bones [-o OUTFILE] [-L LIBRARY_PATH] [-feature FEATURE] [-dump] [-expand]" (current-error-port))
-  (display "[-dump-cc] [-dump-nested] [-dump-cps] [-dump-features] [-comment] [-nostdlib] FILENAME\n" (current-error-port))
+  (display " [-dump-source] [-dump-cc] [-dump-nested] [-dump-cps] [-dump-features] [-comment] [-nostdlib] FILENAME\n" (current-error-port))
   (exit 1))
 
 (define (main args)

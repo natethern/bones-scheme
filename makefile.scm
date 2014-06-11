@@ -11,28 +11,52 @@
 (define (clean)
   (run (rm -f *.o bones bones-x86_64-linux.s)))
 
+(define compiler-sources
+  '("bones.scm"
+    "r5rs.scm"
+    "match.scm"
+    "support.scm"
+    "pp.scm"
+    "alexpand.scm"
+    "megalet.scm"
+    "source.scm"
+    "cc.scm"
+    "cps.scm"
+    "mangle.scm"
+    "program.scm"
+    "tsort.scm"
+    "cmplr.scm"
+    "main.scm"
+    "bones.scm"
+    "nonstd.scm"
+    "base.scm"))
+
+(define compiler-sources-x86_64
+  '("x86_64/intrinsics.scm"
+    "x86_64.scm"))
+
 (define (bones-x86_64-linux.s)
-  (make (("bones-x86_64-linux.s" ("bones.scm"
-				  "x86_64/intrinsics.scm"
-				  "r5rs.scm"
-				  "match.scm"
-				  "support.scm"
-				  "pp.scm"
-				  "alexpand.scm"
-				  "megalet.scm"
-				  "source.scm"
-				  "cc.scm"
-				  "cps.scm"
-				  "mangle.scm"
-				  "program.scm"
-				  "cmplr.scm"
-				  "tsort.scm"
-				  "x86_64.scm"
-				  "main.scm"
-				  "bones.scm"
-				  "nonstd.scm"
-				  "base.scm")
-	  (run (./bones1 bones.scm -o bones-x86_64-linux.s))))))
+  (make/proc
+   (list (list "bones-x86_64-linux.s"
+	       (append compiler-sources compiler-sources-x86_64)
+	       (lambda ()
+		 (run (./bones1 bones.scm -o bones-x86_64-linux.s -feature linux)))))))
+
+(define (bones-x86_64-windows.s)
+  (bones)
+  (make/proc
+   (list (list "bones-x86_64-windows.s"
+	       (append compiler-sources compiler-sources-x86_64)
+	       (lambda ()
+		 (run (./bones bones.scm -o bones-x86_64-windows.s -feature windows)))))))
+
+(define (bones-x86_64-macosx.s)
+  (bones)
+  (make/proc
+   (list (list "bones-x86_64-macosx.s"
+	       (append compiler-sources compiler-sources-x86_64)
+	       (lambda ()
+		 (run (./bones bones.scm -o bones-x86_64-windows.s -feature macosx)))))))
 
 (define (bones-x86_64-linux.o)
   (bones-x86_64-linux.s)
@@ -56,30 +80,42 @@
 
 (define (compile+run fname . opts)
   (let-optionals opts ((cmplr "./bones")
-		       (args '()))
+		       (runargs '())
+		       (features '()))
     (let* ((name fname)
 	   (sname (string-append "tmp/" name ".s"))
 	   (oname (string-append "tmp/" name ".o"))
 	   (xname (string-append "tmp/" name)))
-      (and (zero? (run* (,cmplr ,(string-append fname ".scm") -o ,sname)))
+      (and (zero? (run* (,cmplr ,(string-append fname ".scm") -o ,sname
+				,@(append-map (cut list '-feature <>) features))))
 	   (zero? (run* (nasm -f elf64 -g -F dwarf ,sname -o ,oname)))
 	   (zero? (run* (bin/musl-gcc ,oname -o ,xname)))
-	   (zero? (run* (memtime ,xname ,@args)))))))
+	   (zero? (run* (memtime ,xname ,@runargs)))))))
 
 (define (check)
   (bones)
   (run (mkdir -p tmp))
   (print
    (let ((ok #t))
+     (print "---------linux--------------------------------------------------")
      (for-each
       (lambda (prg)
 	(unless (compile+run prg) (set! ok #f)))
       '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth"))
+     (print "---------linux-bare---------------------------------------------")
+     (for-each
+      (lambda (prg)
+	(unless (compile+run prg '() '(linux-bare))
+	  (set! ok #f)))
+      '("fac" "tak" #;"dynamic" "forth"))
+     (print "---------self-compile-------------------------------------------")     
      (unless (compile+run "bones" "./bones" '(bones.scm -o tmp/bones.s))
        (set! ok #f))
      (unless (zero? (run* (cmp bones-x86_64-linux.s tmp/bones.s)))
        (set! ok #f))
+     (print "---------embedded-----------------------------------------------")     
      (unless (check-embedded) (set! ok #f))
+     (print "----------------------------------------------------------------")     
      (if ok
 	 "\nall checks succeeded."
 	 "\nsome checks failed."))))
@@ -111,8 +147,10 @@
   (run (tail -n 30 benchmark.txt)))
 
 (define distfiles
-  '("README"
+  '("MANUAL"
     "bones-x86_64-linux.s"
+    "bones-x86_64-windows.s"
+    "bones-x86_64-macosx.s"
     "alexpand.scm"
     "all.scm"
     "base.scm"
@@ -140,6 +178,7 @@
   (let* ((date (capture (date +%Y-%m-%d)))
 	 (arch (string-append "bones-" date)))
     (bones-x86_64-linux.s)
+    (bones-x86_64-windows.s)
     (run (rm -fr ,arch))
     (run (mkdir -p ,(string-append arch "/x86_64")))
     (for-each

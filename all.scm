@@ -3,6 +3,7 @@
 
 (require 'syntax 'match 'stuff 'megalet 'logical)
 
+(features (cons 'linux (features)))
 
 (load "alexpand.scm")
 (load "source.scm")

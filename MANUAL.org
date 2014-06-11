@@ -1,0 +1,574 @@
+
+* Introduction
+
+  This is BONES, a compiler for R5RS Scheme that generates x86_64
+  assembler code. BONES is designed to be simple and easy to
+  understand, both to reduce the effort to learn and extend the system
+  and to keep the complexity of the compiler at a minimum, thus
+  striving for reliability and robustness.
+
+  BONES is a batch-compiler, it takes a Scheme source file and
+  produces an assembler file to be subsequently assembled into object
+  code. It is also a whole-program compiler, which means it does not
+  support producing code that is used as a library or for linking
+  together separately compiled Scheme programs. The runtime system is
+  by default added to user-code before it is compiled, so there are no
+  external libraries, with the exception of a few bits from the C
+  library ("libc").
+
+  BONES is mostly R5RS-compliant, but intentionally cuts some corners
+  to reduce code-size, increase performance and simplify the compiler
+  and runtime system. Type-checks are generally omitted, for example.
+  Very little error checking is done and arithmetic overflow of small
+  integers ("fixnums") is not detected.
+
+  Since BONES produces assembly-code, build-times are quite short. The
+  produced code is CPU- and OS-specific and currently supports only
+  x86_64 on Linux. Porting the system to other architectures and
+  operating systems should be (relatively) straightforward, as the
+  platform-specific parts of the compiler are small and the
+  runtime-system is just a single file of about two thousand lines of
+  assembler code. 
+
+  The compiler is self-compiling and uses just a few functions from
+  the C-library. Removing this dependency and using system-calls
+  directly is basically no problem but will need some hand-written
+  replacements (mostly related to number<->string conversion).  Code
+  compiled with BONES can be easily embedded into programs written in
+  other languages as long as they allow calling C functions.
+
+* Portability
+
+  To run programs compiled with BONES (and to run the compiler
+  itself), an x86_64 system is required, with support for SSE2 and
+  SSE3 instructions. Currently the system only runs under Linux.
+
+* Installation
+
+  BONES is written in Scheme and translates Scheme to x86_64
+  assembler, specifically, in the syntax accepted by [[http://www.nasm.us][NASM]], which will
+  have to be installed on your system. To link the assembled code you
+  will need a linker and C runtime support files, including the C
+  library, so a C compiler should be installed as well.
+
+  To build the system, you need the pre-compiled assembler code for
+  the "bones" executable, which you can obtain by downloading
+  a distribution tarball at this location:
+
+    http://www.call-with-current-continuation.org/bones/bones.tar.gz
+
+  After downloading, unpack the file using the tar(1) command and 
+  assemble and link =bones-x86_64-linux.s=:
+
+    #+BEGIN_SRC sh
+    tar xfz bones.tar.gz
+    cd bones-<date>
+    nasm -f elf64 bones-x86_64-linux.s -o bones.o
+    gcc bones.o -o bones
+    #+END_SRC
+ 
+  Now you have a compiler, which you can test by entering 
+
+    #+BEGIN_SRC sh
+    ./bones
+    #+END_SRC
+
+  which should give you some usage information.
+
+* Usage
+
+** Compiling Scheme code
+
+   Compiling code is straightforward. "bones" will compile a single
+   Scheme source file given on the command-line and write the
+   generated assembler code to stdout. You will have to assemble and
+   link the generated code by hand, subprocesses to do this are not
+   invoked automatically. The compiler accepts a few command-line
+   options which are described below.
+
+   Optionally, the file given to "bones" may be a /program
+   specification/, an extended variant of the configuration language
+   described in [[http://srfi.schemers.org/srfi-7][SRFI-7]]. The compiler treats code that consists of a
+   single toplevel expression in the form =(program ...)= as a program
+   specification. If the source file does not have this form, it is
+   treated as if the code where embedded into the following
+   specification:
+
+   #+BEGIN_SRC scheme
+   (program
+     (include "base.scm")
+     (code <...your code...>))
+   #+END_SRC
+
+** Command-line Options
+
+   The compiler accepts the following options in any order.
+
+   - -o FILENAME :: Write generated code to =FILENAME= instead of
+                    stdout.
+
+   - -L LIBRARYPATH :: Tells the compiler where to look for files to
+                       include directly or indirectly from program
+		       specifications.
+
+   - -feature FEATURE :: Define =FEATURE=, for use in
+        program-specifications or =cond-expand= clauses.
+
+   - -expand :: Dump source code to stdout after syntax-expansion and
+                stop.
+
+   - -dump-source :: Dump source code after before syntax expansion.
+
+   - -dump-cps :: Dump source code to stdout after CPS-transformation 
+		  and stop.
+
+   - -dump :: Dump code after /canonicalization/, which is a normalizing
+	      step between CPS-transformation and closure-conversion.
+
+   - -dump-cc :: Dump code after closure conversion and stop.
+
+   - -dump-features :: Dump the set of enabled features after any
+                       program specification has been completely
+                       parsed.
+
+   - -dump-nested :: Instead of dumping the source code as separate
+		     =lambda= expressions, dump it in its real nested
+		     structure. Only useful in combination with =-dump=,
+		     =-dump-cps= or =-dump-cc=.
+
+   - -comment :: Emit source-code forms as comments in generated
+                 assembler code.
+
+   - -nostdlib :: Do not wrap the source code into a default program
+                  specification as described above. This is mainly
+                  useful when you have pre-expanded code that was
+                  earlier produced by using =-expand=.
+
+** Configuration Macros for Generated Assembler Code
+
+  - TOTAL_HEAP_SIZE :: Total size of the heap. Half of this space can be
+       in use at any time. Defaults to 100MB.
+
+  - EMBEDDED :: Embed the generated code in another program. The compiled
+		Scheme code can be invoked by calling the =bones= function,
+		unless =PREFIX= is defined.
+
+  - PREFIX :: Defines a custom prefix, so passing =-DEMBEDDED
+              -DPREFIX=my= to =nasm=, the Scheme toplevel can be run
+              by calling =my_bones=.
+
+  - DISABLE_WRITE_BARRIER :: When mutating data-structures that are
+       not stored in the heap, the program normally aborts with an
+       error message. Define this macro to disable this check.
+
+  - ENABLE_GC_LOGGING :: Write some informational output to stderr
+       every time a garbage collection is triggered.
+
+* Language Description
+
+** Program Specifications
+
+*** Syntax
+
+    Program specifications follow mostly the format as defined in the
+     [[http://srfi.schemers.org/srfi-7/srfi-7.html][SRFI-7 specification]], with the following extensions:
+
+    - =(cond-expand ...)= :: Can be used interchangebly with =feature-cond=.
+
+    - =(provide FEATURE ...)= :: Adds additional features to the set of
+         currently active features visible by =cond-expand= and
+         =feature-cond= clauses. =FEATURE= should be a symbol.
+
+    - =(include FILENAME ...)= :: Includes more program-specification
+         clauses from =FILENAME=.
+
+    - =(error STRING)= :: Report error and abort compilation.
+
+*** Builtin Features
+
+    Features available by default are: =bones=, =srfi-0=, =srfi-7=,
+    =srfi-46=.
+
+    By including =base.scm=, which contains the library of R5RS
+    standard definitions and some non-standard primitives, the
+    following addition features are available: =flonums=, =ieee-754=,
+    =linux=, =srfi-6=, =file-ports=, =jiffy-clock=, =file-system= and
+    =process-environment=.
+
+** Deviations from R5RS
+
+*** Section 1.3.2
+
+    Argument types to primitive procedures are not checked. The only
+    detected errors are errors related to port- and file-system
+    operations, mutating literal constants or when the heap is
+    exhausted.
+
+*** Section 3.4
+
+    Literal constants are immutable and destructively modifying such a
+    constant will result in an error message being printed and the
+    program will terminate.
+
+*** Section 6
+
+    Built-in procedures may be redefined (using =define= or
+    =define-syntax=), but modifying them using assignment may or may
+    not have the expected effect.
+
+*** Section 6.1
+
+    =eqv?= performs /structural/ comparison, which means it compares
+    the contents of its two arguments. That means it will will return
+    =#t= if both arguments have the same type and identical contents,
+    even if the arguments are not numbers or characters.
+
+    =eq?= will not necessarily return the expected result when
+    comparing primitive procedures. Many of these will be compiled
+    in-line using /identifier macros/, a feature of the used
+    syntax-expander, which means that for example the two occurrences of 
+    =zero?= below will refer to two different occurrences of the
+    code for that primitive:
+
+    #+BEGIN_SRC scheme
+    (eq? zero? zero?)  ==> #f
+    #+END_SRC
+
+*** Section 6.2.1
+
+    Only exact integers with 63 bits of magnitude (/fixnums/) and
+    IEEE-754 extended precision floating point numbers (/flonums/) are
+    supported. Numerical overflow is not detected, so arithmetic
+    operations on fixnums will silently wrap on overflow.
+
+*** Section 6.2.4
+    
+    The =#= character is not allowed inside inexact numeric constants.
+
+*** Section 6.2.5
+
+    =complex?= is not available.
+
+    =max= and =min= return the maximal or minimal argument unchanged,
+    without coercing between types in the case of arguments of mixes
+    types.
+
+    =numerator=, =denominator= and =rationalize= are not available.
+
+    =log= is currently not available.
+
+    =make-rectangular=, =make-polar=, =real-part=, =imag-part=,
+    =magnitude= and =angle= are not available.
+
+    The behaviour of the transcendental built-in procedures when given
+    one of the special IEEE-754 numbers like /nan/ and /infinity/ is
+    undefined.
+
+*** Section 6.2.6
+
+    =string->number= does not allow radix or exactness prefixes inside
+    the given string argument, nor is the =#= character in inexact
+    numeric strings supported.
+
+*** Section 6.3.5
+
+    The third argument to =substring= is optional and defaults to the
+    length of the argument string.
+
+*** Section 6.4
+
+    =map= and =foreach= will terminate once any argument list ends.
+
+    =force=, when given a argument that is not a promise will return
+    that argument unchanged.
+
+*** Section 6.5
+
+    =eval=, =scheme-report-environment=, =null-environment= and
+    =interaction-environment= are not avaialable.
+
+*** Section 6.6.1
+
+    =close-input-port= and =close-output-port= will signal an error
+    when the port has already been closed.
+
+*** Section 6.6.2
+
+    =char-ready?= is not available.
+
+*** Section 6.6.4
+
+    =load=, =transcript-on= and =transcript-off= are not available.
+
+** Extensions to R5RS
+
+*** Section 2.2
+
+    Expression-comments of the form =#;= are supported as in R7RS.
+
+*** Section 4.2.2
+
+    BONES supports the R7RS binding form =letrec*=.
+
+*** Section 4.3.1
+
+    BONES uses Al Petrofsky's "alexpander", which provides several
+    enhancements. Among these /transformer/ expressions in
+    =let-syntax= and =letrec-syntax= forms are extended to allow
+    arbitrary expressions.
+
+    The core generalization in this system is that both the
+    transformer-specification and the expression in operator
+    position of another expression may be any type of expression or
+    syntax.  The four forms of syntax allowed are: a transformer (as
+    allowed in the transformer-spec position in r5rs), a keyword (as
+    allowed in the operator position in r5rs), a macro use that
+    expands into a syntax, and a macro block (let-syntax or
+    letrec-syntax) whose body is a syntax.
+
+    Some examples:
+
+     #+BEGIN_SRC scheme
+     ;; a macro with a local macro
+     (let-syntax ((foo (let-syntax ((bar (syntax-rules () ((bar x) (- x)))))
+			   (syntax-rules () ((foo) (bar 2))))))
+	 (foo))
+     => -2
+
+     ;; an anonymous let transformer, used directly in a macro call.
+     ((syntax-rules ()
+	  ((_ ((var init) ...) . body)
+	   ((lambda (var ...) . body) init ...)))
+	((x 1) (y 2))
+	(+ x y))
+     => 3
+
+     ;; a keyword used to initialize a keyword
+     (let-syntax ((q quote)) (q x)) => x
+
+     ;; Binding a keyword to an expression (which could also be thought
+     ;; of as creating a macro that is called without arguments).
+     (let ((n 0))
+	 (let-syntax ((x (set! n (+ n 1))))
+	   (begin x x x n)))
+     => 3
+
+     (let-syntax ((x append)) ((x x))) => ()
+     #+END_SRC
+
+    Top-level macro blocks.
+
+    At top level, if a macro block (a let-syntax or letrec-syntax form)
+    has only one body element, that element need not be an expression
+    (as would be required in r5rs).  Instead, it may be anything
+    allowed at top level: an expression, a definition, a begin sequence
+    of top-level forms, or another macro block containing a top-level
+    form.
+
+    #+BEGIN_SRC scheme
+    (let-syntax ((- quote))
+	(define x (- 1)))
+    (list x (- 1)) => (1 -1)
+    #+END_SRC
+
+    Note that, unlike the similar extension in Chez scheme 6.0, this is
+    still r5rs-compatible, because we only treat definitions within the
+    last body element as top-level definitions (and r5rs does not allow
+    internal definitions within a body's last element, even if it is a
+    begin form):
+
+    #+BEGIN_SRC scheme
+    (begin
+	(define x 1)
+	(let-syntax ()
+	  (define x 2)
+	  'blah)
+	x)
+    => 1, in r5rs and alexpander, but 2 in Chez scheme
+
+    (begin
+	(define x 1)
+	(let-syntax ()
+	  (begin (define x 2)
+		 'blah))
+	x)
+    => 2, in alexpander and in Chez scheme, but an error in r5rs.
+    #+END_SRC
+
+*** Section 4.3.2
+
+    "Alexpander" fully supports [[http://srfi.schemrs.org/srfi-46][SRFI-46]], including tail-patterns and
+    user-selectable ellipses.
+
+*** Section 5.2.2
+
+    Internal definitions expand into =letrec*= forms, as in R7RS.
+
+    Expressions among internal definitions.
+
+    A definition of the form (define <expression>) causes the
+    expression to be evaluated at the conclusion of any enclosing set
+    of internal definitons.  That is, at top level, (define
+    <expression>) is equivalent to just plain <expression>.  As for
+    internal definitions, the following are equivalent:
+
+    #+BEGIN_SRC scheme
+    (let ()
+	(define v1 <init1>)
+	(define <expr1>)
+	(define <expr2>)
+	(define v2 <init2>)
+	(define <expr3>)
+	(begin
+	  <expr4>
+	  <expr5>))
+
+    (let ()
+	(define v1 <init1>)
+	(define v2 <init2>)
+	(begin
+	  <expr1>
+	  <expr2>
+	  <expr3>
+	  <expr4>
+	  <expr5>))
+    #+END_SRC
+
+*** Section 5.3
+
+    The /transformer spec/ of a =define-syntax= form may be any
+    expression.
+
+*** Syntax Extensions
+
+    The following non-standard syntax is available:
+
+    - =(cut EXP ...)= :: Notation for specializing parameters without
+	 currying - see [[http://srfi.schemers.org/srfi-26/][SRFI-26]] for more information.
+
+    - =(assert EXP [MSG ARGUMENT ...])= :: signals an error if =EXP=
+         evaluates to =#f=, passing =MSG= and =ARGUMENTS ...= to
+         =error= in that case.
+
+    - =(fluid-let ((VAR EXP) ...) BODY ...)= :: Syntax for dynamic scoping,
+	 see [[http://srfi.schemers.org/srfi-15/][SRFI-15]] for more information.
+
+    - =(let-optionals VAR1 ((VAR EXP) ... [RVAR]) BODY ...)= :: Destructures
+	 the list in =VAR1=, binding the optional arguments =VAR, ...=, with
+	 defaults taken from =EXP, ...=. Any remaining list elements can be
+	 bound in the optional final variable =RVAR=.
+
+    - =(begin0 EXP1 EXP ...)= :: evaluates the expressions and returns the
+	 result value(s) of the first expression.
+
+    - =(define-values (VAR ...) EXP)= :: Evaluates =EXP= and binds =VAR ...=
+	 to the values returned by it.
+
+    - =(define-syntax-rule (NAME ARGUMENTS ...) BODY)= :: A more concise
+        way of defining single-rule syntax.
+
+*** Additional procedures
+
+* Compiler Details
+
+** Compilation Strategy
+
+** Register Usage
+
+** Optimizations Performed
+
+** Performance
+
+** Hacking and Extending the Compiler
+
+* Data Representation
+
+* Garbage Collection
+
+* Interfacing to Native Code
+
+* Embedding
+
+* Bugs and Limitations
+
+  =log= is currently not implemented, as I haven't found out yet how to
+  define it using SSE2/x87 operations.
+
+  =asin= and =acos= are currently missing.
+
+  The heap has a fixed size and does not resize dynamically. You can
+  change the default size of the heap setting the =TOTAL_HEAP_SIZE=
+  configuration macro when assembling a compiled program.
+
+  =inexact->exact= uses the =FISTP= instruction, so a CPU with SSE3
+  support is required.
+
+  Complex numbers and other numeric types with the exception of small
+  integers and floating-point numbers are not supported.
+  
+* Porting Guide
+
+* Suggestions for Projects
+
+* Terms of Use
+
+  Some parts of BONES are not by the author, but have been taken from
+  other sources:
+
+    The pretty-printer (pp.scm) is
+
+    Copyright (c) 1991, Marc Feeley
+    Author: Marc Feeley (feeley@iro.umontreal.ca)
+    Distribution restrictions: none
+
+    The syntax-expander (alexpand.scm) is
+
+    Copyright 2002-2004 Al Petrofsky <alexpander@petrofsky.org>
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+     Redistributions of source code must retain the above copyright
+       notice, this list of conditions and the following disclaimer.
+
+     Redistributions in binary form must reproduce the above copyright
+       notice, this list of conditions and the following disclaimer in
+       the documentation and/or other materials provided with the
+       distribution.
+
+     Neither the name of the author nor the names of its contributors
+       may be used to endorse or promote products derived from this
+       software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+    HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+    INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+    BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+    OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+    AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+    LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
+    WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+    POSSIBILITY OF SUCH DAMAGE.
+
+  Everything else was written by Felix Winkelmann and is put into the
+  public domain.
+
+* Further Reading
+
+
+#+TITLE:     The BONES Manual
+#+DESCRIPTION: 
+#+KEYWORDS: 
+#+LANGUAGE:  en
+#+OPTIONS:   H:3 num:t toc:t \n:nil @:t ::t |:t ^:{} -:t f:t *:t <:t
+#+OPTIONS:   TeX:nil LaTeX:nil skip:nil d:nil todo:t pri:nil tags:not-in-toc
+#+INFOJS_OPT: view:nil toc:nil ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
+#+EXPORT_SELECT_TAGS: export
+#+EXPORT_EXCLUDE_TAGS: noexport
+#+LINK_UP:   http://www.call-with-current-continuation.org/bones/
+#+LINK_HOME: http://www.call-with-current-continuation.org
+#+STYLE: <link rel="stylesheet" type="text/css" href="stylesheet.css" />
