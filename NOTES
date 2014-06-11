@@ -12,8 +12,10 @@ BONES                                                                          -
   - document configuration features and available primitives for "bare" mode.
   - provide manual as text in dist tarball and html on web-site.
   - portability.
+  - further reading: Compiling with continuations, EOPL (cps-conversion),
+    nasm website.
+  - safe-for-space-complexity.
 * TODO write web-page
-* TODO test integer-only string<->number conversion
 * TODO try syscall-only variant
   - currently missing (but should be possible to implement): getpid,
     system, getenv, time/clock.
@@ -207,19 +209,7 @@ mainCRTStartup:
    asin acos
 ** TODO broken
    log
-** Unimplemented
-   numerator, denominator
-   make-rectangular, make-polar, real-part, imag-part, magnitude, angle
-   rationalize
-   complex?
-   load, eval
-   transcript-on, transcript-off
-   interaction-environment, scheme-report-environment, null-environment
-   char-ready?
 ** Non-standard extensions
-*** Alexpander extensions
-    - generalized syntax-rules
-    - splicing let[rec]-syntax
 *** Primitives
    emergency-exit
    current-process-id

@@ -557,8 +557,7 @@
   Everything else was written by Felix Winkelmann and is put into the
   public domain.
 
-
-* References
+* Further Reading
 
 
 #+TITLE:     The BONES Manual
