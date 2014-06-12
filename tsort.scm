@@ -16,7 +16,7 @@
   (define (visit dag node edges path state)
     (case (alist-ref node (car state) #f)
       ((grey)
-       (error "cycle detected in topological sort" node (reverse path)))
+       (error "cycle detected in topological sort" node (reverse path) dag))
       ((black)
        state)
       (else
