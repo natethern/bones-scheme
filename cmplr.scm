@@ -236,14 +236,15 @@
      (generate-slot-ref t t (cells 1))
      #t)
     (('$box-set! box val)
-     (match-let ((((_ . r1) (_ . r2)) (translate-inline-arguments (list box val))))
+     (match-let (((r1 r2) (translate-inline-arguments (list box val))))
        (generate-slot-store r1 (cells 1) r2)
        (generate-move t r2)
        #t))
     (('$inline (or ('quote opr) opr) args ...)
      (assert (<= (length args) (length temporary-registers)) 
 	     "too many arguments to `$inline'" args)
-     (translate-inline-arguments args)
+     (unless (null? args)
+       (translate-inline-arguments args))
      (for-each
       (cut emit " " <> "\n")
       (string-split opr ";"))
@@ -258,7 +259,7 @@
        (do ((regs regs (cdr regs))
 	    (off 1 (add1 off)))
 	   ((null? regs))
-	 (generate-slot-store alloc-register (cells off) (cdar regs)))
+	 (generate-slot-store alloc-register (cells off) (car regs)))
        (generate-immediate-ref
 	t
 	(bitwise-ior (arithmetic-shift type (* (sub1 word-size) 8)) size)
@@ -303,6 +304,7 @@
 ;   of dependant arguments, and spill these cases to stack.
 ; - finally, topologically sort arguments by dependencies and evaluate in reverse
 ;   order.
+; - returns list of argument registers associated with given arguments.
 
 (define (translate/registers args regs)
   (let* ((argc (length args))
@@ -312,6 +314,8 @@
 		     (append (take argc regs)
 			     (iota (- argc (length regs)))))))
     (define (circular? ra rargs)
+      ;;XXX special case: arg depends on own target register - could be
+      ;;    ignored, but will make tsort fail
       (match-let (((tr _ deps) ra))
 	(any (match-lambda
 	       ((tr2 _ deps2) 
@@ -321,25 +325,25 @@
     (define (translate-arguments spilled unspilled)
       (let* ((n (length spilled))
 	     (reserve (cells n)))
-	(pp `(SPILLED: ,spilled))	;XXX
-	(pp `(UNSPILLED: ,unspilled))	;XXX
+	;;(pp `(SPILLED: ,spilled))	;XXX
+	;;(pp `(UNSPILLED: ,unspilled))	;XXX
 	(unless (zero? n)
 	  (generate-reserve-on-stack reserve)
 	  (do ((rargs spilled (cdr rargs))
 	       (i 0 (add1 i)))
 	      ((null? rargs))
-	    (match-let ((((tr arg _) . _) rargs))
+	    (match-let ((((_ arg _) . _) rargs))
 	      (let ((reg (argument-register arg)))
 		(cond (reg (generate-slot-store stack-register (cells i) reg))
 		      (else
 		       (translate arg arg-register)
 		       (generate-slot-store stack-register (cells i) arg-register)))))))
-	(let ((sorted (reverse (topological-sort
-				(map (match-lambda
-				       ((tr _ deps) (cons tr deps)))
-				     unspilled)
-				eqv?))))
-	  (pp sorted)			;XXX
+	(let* ((dag (map (match-lambda
+			   ((tr _ deps) (cons tr deps)))
+			 unspilled))
+	       (sorted (topological-sort dag eqv?)))
+	  ;;(pp `(DAG: ,@dag))			;XXX
+	  ;;(pp `(SORTED: ,@sorted))			;XXX
 	  (for-each
 	   (lambda (sr)
 	     (cond ((assv sr unspilled) =>
@@ -361,11 +365,12 @@
 		     (generate-slot-ref arg-register stack-register (cells i))
 		     (generate-move-to-local (cells tr) arg-register)))))
 	  (generate-pop-stack reserve))))
-    (pp rargs)				;XXX
-    (let loop ((rargs rargs) (spilled '()) (unspilled '()))
-      (match rargs
+    ;;(pp `(RARGS: ,@rargs))				;XXX
+    (let loop ((ras rargs) (spilled '()) (unspilled '()))
+      (match ras
 	(()
-	 (translate-arguments spilled unspilled))
+	 (translate-arguments spilled unspilled)
+	 (map car rargs))
 	((ra . more)
 	 (if (circular? ra (append unspilled rargs))
 	     (loop more (cons ra spilled) unspilled)
@@ -387,22 +392,23 @@
 		 (available-registers available-registers))
        (let ((newenv environment))
 	 (append
-	  (append-map
-	   (lambda (var val)
-	     (cond ((eq? var '$unused)
-		    (if (simple-expression? val)
-			'()
-			(cons arg-register (used-registers val))))
-		   ((null? available-registers)
-		    (push! (cons var locals-counter) newenv)
-		    (inc! locals-counter)
-		    (cons arg-register (used-registers val)))
-		   (else
-		    (let ((reg (car available-registers)))
-		      (push! (cons var reg) newenv)
-		      (pop! available-registers)
-		      (cons* arg-register reg (used-registers val))))))
-	   vars vals)
+	  (concatenate
+	   (map
+	    (lambda (var val)
+	      (cond ((eq? var '$unused)
+		     (if (simple-expression? val)
+			 '()
+			 (cons arg-register (used-registers val))))
+		    ((null? available-registers)
+		     (push! (cons var locals-counter) newenv)
+		     (inc! locals-counter)
+		     (cons arg-register (used-registers val)))
+		    (else
+		     (let ((reg (car available-registers)))
+		       (push! (cons var reg) newenv)
+		       (pop! available-registers)
+		       (cons* arg-register reg (used-registers val))))))
+	    vars vals))
 	  (begin 
 	    (set! environment newenv)
 	    (used-registers body))))))
@@ -435,7 +441,7 @@
       (used-registers val)))
     (('$inline (or ('quote opr) opr) args ...)
      (append 
-      (take (length args) temporary-registers)
+      temporary-registers      ; inline code may clobber any temporary
       (append-map used-registers args)))
     (('$allocate (or ('quote type) type) (or ('quote size) size) args ...)
      (append
