@@ -170,11 +170,9 @@ mainCRTStartup:
   - use "cmovCC" if S1, S2 are simple-expressions.
 * TODO try "default rel" (RIP-relative addressing)
   - seems to work without problems.
+    - but produces obscure linker errors on mac os.
   - no noticable difference in speed, but slightly smaller.
-  - does this really cover all cases, especially jumptables?
-    - it doesn't, it seems. identify cases where we have to handle this.
-      - consrest.
-      - basically everywhere where "[ADDR + REG]" is used.
+  - see "rip-relative" branch, at least for code changes.
   - would be needed for embedding in DLL anyway.
 * TODO code for "asin"
   - http://forums.codeguru.com/showthread.php?262979-How-to-compute-asin
