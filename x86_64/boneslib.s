@@ -2141,7 +2141,7 @@ str2num:
   ;; check endptr being identical to startptr
   pop r11
   mov r15, buffer
-  cmp r11, buffer
+  cmp r11, r15
   if e
     mov rax, FALSE
     jmp .done
@@ -2219,15 +2219,22 @@ num2str:
 
 ;; get string representation of "errno": -> rax (string)
 %ifndef FEATURE_LINUX_BARE
-extern MANGLE_LIBCALL(__errno_location)
-extern MANGLE_LIBCALL(strerror)
+ %ifdef FEATURE_MACOSX 
+  %define GET_ERRNO_LOCATION  __error
+ %elifdef  FEATURE_WINDOWS
+  ;;XXX figure something out here...
+ %else
+  %define GET_ERRNO_LOCATION __errno_location
+ %endif
+extern MANGLE(GET_ERRNO_LOCATION)
+extern MANGLE(strerror)
 get_last_error:
   SAVE
   ALIGN_STACK
-  call MANGLE_LIBCALL(__errno_location)
+  call MANGLE(GET_ERRNO_LOCATION)
   mov eax, dword [rax]
   mov rdi, rax
-  call MANGLE_LIBCALL(strerror)
+  call MANGLE(strerror)
   RESTORE_STACK
   call alloc_zstring
   RESTORE
