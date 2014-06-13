@@ -219,6 +219,9 @@
 		 ((%< y 0) (%- (%ieee754-atan1 (%/ y x)) pi))
 		 (else (%+ (%ieee754-atan1 (%/ y x)) pi))))))))
 
+   (define-inline (asin x) (%ieee754-asin x))
+   (define-inline (atan x) (%ieee754-atan x))
+
    ;;XXX this seems to be broken
    #;(define-inline (log x)
      (let ((r ($allocate #x10 1)))

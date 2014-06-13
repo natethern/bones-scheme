@@ -494,13 +494,11 @@
   =log= is currently not implemented, as I haven't found out yet how to
   define it using SSE2/x87 operations.
 
-  =asin= and =acos= are currently missing.
-
   The heap has a fixed size and does not resize dynamically. You can
   change the default size of the heap setting the =TOTAL_HEAP_SIZE=
   configuration macro when assembling a compiled program.
 
-  =inexact->exact= uses the =FISTP= instruction, so a CPU with SSE3
+  =inexact->exact= uses the =FISTTP= instruction, so a CPU with SSE3
   support is required.
 
   Complex numbers and other numeric types with the exception of small

@@ -88,7 +88,8 @@
   (let ((r ($allocate #x10 1)))
     (if (%fixnum? x)
 	($inline "FIX2INT rax; mov [buffer], rax; fild qword [buffer]; fsin; fstp qword [r11 + CELLS(1)]" x r)
-	($inline "fld qword [rax + CELLS(1)]; fsin; fstp qword [r11 + CELLS(1)]" x r))))
+	($inline "fld qword [rax + CELLS(1)]; fsin; fstp qword [r11 + CELLS(1)]" x r))
+    r))
 
 (define-syntax-rule (%ieee754-cos x) 
   (let ((r ($allocate #x10 1)))
@@ -108,7 +109,22 @@
   (let ((r ($allocate #x10 1)))
     (if (%fixnum? x)
 	($inline "FIX2INT rax; mov [buffer], rax; fild qword [buffer]; fsqrt; fstp qword [r11 + CELLS(1)]" x r)
-	($inline "fld qword [rax + CELLS(1)]; fsqrt; fstp qword [r11 + CELLS(1)]" x r))))
+	($inline "fld qword [rax + CELLS(1)]; fsqrt; fstp qword [r11 + CELLS(1)]" x r))
+    r))
+
+(define-syntax-rule (%ieee754-asin x)
+  (let ((r ($allocate #x10 1)))
+    (if (%fixnum? x)
+	($inline "FIX2INT rax; mov [buffer], rax; fild qword [buffer]; fld st0; fmul st0, st0; fld1; fsubr; fsqrt; fpatan; fstp qword [r11 + CELLS(1)]" x r)
+	($inline "fld qword [rax + CELLS(1)]; fld st0; fmul st0, st0; fld1; fsubr; fsqrt; fpatan; fstp qword [r11 + CELLS(1)]" x r))
+    r))
+
+(define-syntax-rule (%ieee754-acos x)
+  (let ((r ($allocate #x10 1)))
+    (if (%fixnum? x)
+	($inline "FIX2INT rax; mov [buffer], rax; fild qword [buffer]; fld st0; fmul st0, st0; fld1; fsubr; fsqrt; fxch st1; fpatan; fstp qword [r11 + CELLS(1)]" x r)
+	($inline "fld qword [rax + CELLS(1)]; fld st0; fmul st0, st0; fld1; fsubr; fsqrt; fxch st1; fpatan; fstp qword [r11 + CELLS(1)]" x r))
+    r))
 
 (define-syntax-rule (%ieee754-pi) 
   (let ((n ($allocate #x10 1)))
