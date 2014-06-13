@@ -6,19 +6,18 @@
   (else (error "no architecture selected")))
 
 (cond-expand
-  ((not (or linux windows macosx linux-bare))
+  ((not (or linux windows linux-bare))
    ;; map default-configuration to actual, if no specific target is given
    (cond-expand
      (default-windows (provide windows))
-     (default-macosx (provide macosx))
      (default-linux (provide linux))))
   (else))
 
 (cond-expand
-  ((or linux linux-bare windows macosx)
+  ((or linux linux-bare windows)
    (provide file-ports file-system)
    (cond-expand
-     ((or linux windows macosx)
+     ((or linux windows)
       (provide time jiffy-clock file-system process-environment flonums ieee754))
      (else)))
   (else))

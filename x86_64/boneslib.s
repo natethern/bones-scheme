@@ -226,27 +226,27 @@
 
 ;; windows-specific name mangling
 %ifdef FEATURE_WINDOWS
- %define MANGLE_LIBCALL(name)  _ %+ name
+ %define MANGLE(name)  _ %+ name
 %else
- %define MANGLE_LIBCALL(name)  name
+ %define MANGLE(name)  name
 %endif
 
 
 ;; call C function with 0-3 arguments
 %macro LIBCALL0 1
-  extern MANGLE_LIBCALL(%1)
+  extern MANGLE(%1)
   SAVE
   ALIGN_STACK
 %ifdef FEATURE_WINDOWS
   sub rsp, 32
 %endif
-  call MANGLE_LIBCALL(%1)
+  call MANGLE(%1)
   RESTORE_STACK
   RESTORE
 %endmacro
 
 %macro LIBCALL1 2
-  extern MANGLE_LIBCALL(%1)
+  extern MANGLE(%1)
   SAVE
 %ifdef FEATURE_WINDOWS
   mov rcx, %2
@@ -257,13 +257,13 @@
 %ifdef FEATURE_WINDOWS
   sub rsp, 32
 %endif
-  call MANGLE_LIBCALL(%1)
+  call MANGLE(%1)
   RESTORE_STACK
   RESTORE
 %endmacro
 
 %macro LIBCALL2 3
-  extern MANGLE_LIBCALL(%1)
+  extern MANGLE(%1)
   SAVE
 %ifdef FEATURE_WINDOWS
   mov rcx, %2
@@ -276,13 +276,13 @@
 %ifdef FEATURE_WINDOWS
   sub rsp, 32
 %endif
-  call MANGLE_LIBCALL(%1)
+  call MANGLE(%1)
   RESTORE_STACK
   RESTORE
 %endmacro
 
 %macro LIBCALL3 4
-  extern MANGLE_LIBCALL(%1)
+  extern MANGLE(%1)
   SAVE
 %ifdef FEATURE_WINDOWS
   mov rcx, %2
@@ -294,7 +294,7 @@
   mov rdx, %4
 %endif
   ALIGN_STACK
-  call MANGLE_LIBCALL(%1)	
+  call MANGLE(%1)	
   RESTORE_STACK
   RESTORE
 %endmacro
@@ -370,8 +370,8 @@ _start:
 .exit:
   SYSCALL1 60, rax		; sys_exit
 %else
-global MANGLE_LIBCALL(main)
-MANGLE_LIBCALL(main):
+global MANGLE(main)
+MANGLE(main):
   SAVE
   push rbp
   mov [argc], rdi
@@ -1541,19 +1541,19 @@ fill_bytes:
 ;; format string using sprintf(3) and write to stderr: rax = raw format-string, r11, r15 = args
 format_string:
 %ifndef FEATURE_LINUX_BARE
-extern MANGLE_LIBCALL(sprintf)
-extern MANGLE_LIBCALL(write)
+extern MANGLE(sprintf)
+extern MANGLE(write)
   mov rdi, buffer
   mov rsi, rax
   mov rdx, r11
   mov rcx, r15
   ALIGN_STACK
   xor rax, rax
-  call MANGLE_LIBCALL(sprintf)
+  call MANGLE(sprintf)
   mov rdi, 2
   mov rsi, buffer
   mov rdx, rax
-  call MANGLE_LIBCALL(write)
+  call MANGLE(write)
   RESTORE_STACK
   RESTORE
 %endif
@@ -2125,8 +2125,8 @@ return_to_host:
 
 ;; convert string to number: rax = string, r11 = base -> rax (number)
 %ifndef FEATURE_LINUX_BARE
-extern MANGLE_LIBCALL(strtol)
-extern MANGLE_LIBCALL(strtod)
+extern MANGLE(strtol)
+extern MANGLE(strtod)
 str2num:
   SAVE
   call copy_to_buffer
@@ -2136,7 +2136,7 @@ str2num:
   FIX2INT r11
   mov rdx, r11
   ALIGN_STACK
-  call MANGLE_LIBCALL(strtol)
+  call MANGLE(strtol)
   RESTORE_STACK
   ;; check endptr being identical to startptr
   pop r11
@@ -2158,7 +2158,7 @@ str2num:
     push rax			; endptr
     mov rsi, rsp
     ALIGN_STACK
-    call MANGLE_LIBCALL(strtod)			; ignores base
+    call MANGLE(strtod)			; ignores base
     RESTORE_STACK
     pop r11
     mov bl, [r11]
@@ -2179,7 +2179,7 @@ str2num:
 
 
 ;; convert number to string: rax = number, r11 = base -> rax (string)
-extern MANGLE_LIBCALL(sprintf)
+extern MANGLE(sprintf)
 num2str:
   SAVE
   FIX2INT r11
@@ -2201,13 +2201,13 @@ num2str:
     FIX2INT rdx
     ALIGN_STACK
     xor rax, rax
-    call MANGLE_LIBCALL(sprintf)
+    call MANGLE(sprintf)
   else
     mov rsi, gcvt
     movsd xmm0, [rax + CELLS(1)]
     ALIGN_STACK
     mov rax, 1			; 1 float argument
-    call MANGLE_LIBCALL(sprintf)
+    call MANGLE(sprintf)
   endif
   RESTORE_STACK
   mov rax, stat_buffer

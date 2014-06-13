@@ -49,14 +49,6 @@
 	       (lambda ()
 		 (run (./bones bones.scm -o bones-x86_64-windows.s -feature windows)))))))
 
-(define (bones-x86_64-macosx.s)
-  (bones)
-  (make/proc
-   (list (list "bones-x86_64-macosx.s"
-	       (append compiler-sources compiler-sources-x86_64)
-	       (lambda ()
-		 (run (./bones bones.scm -o bones-x86_64-windows.s -feature macosx)))))))
-
 (define (bones-x86_64-linux.o)
   (bones-x86_64-linux.s)
   (make (("bones-x86_64-linux.o" ("bones-x86_64-linux.s" "x86_64/boneslib.s" 
@@ -104,7 +96,7 @@
      (print "---------linux-bare---------------------------------------------")
      (for-each
       (lambda (prg)
-	(unless (compile+run prg '() '(linux-bare))
+	(unless (compile+run prg "./bones" '() '(linux-bare))
 	  (set! ok #f)))
       '("fac" "tak" #;"dynamic" "forth"))
      (print "---------self-compile-------------------------------------------")     
@@ -121,8 +113,10 @@
 
 (define (check-embedded)
   (let ((r (and (zero? (run* (./bones embedded.scm -o tmp/embedded.s)))
-		(zero? (run* (nasm -f elf64 -g -F dwarf tmp/embedded.s -o tmp/embedded1.o -DEMBEDDED -DPREFIX=my)))
-		(zero? (run* (nasm -f elf64 -g -F dwarf tmp/embedded.s -o tmp/embedded2.o -DEMBEDDED -DPREFIX=my_other)))
+		(zero? (run* (nasm -f elf64 -g -F dwarf tmp/embedded.s 
+				   -o tmp/embedded1.o -DEMBEDDED -DPREFIX=my)))
+		(zero? (run* (nasm -f elf64 -g -F dwarf tmp/embedded.s
+				   -o tmp/embedded2.o -DEMBEDDED -DPREFIX=my_other)))
 		(zero? (run* (gcc -g -I. embedded.c tmp/embedded1.o tmp/embedded2.o -o tmp/embedded)))
 		(zero? (run* (tmp/embedded))))))
     (unless r
@@ -149,7 +143,6 @@
   '("MANUAL"
     "bones-x86_64-linux.s"
     "bones-x86_64-windows.s"
-    "bones-x86_64-macosx.s"
     "alexpand.scm"
     "all.scm"
     "base.scm"

@@ -22,7 +22,6 @@
 (define default-configuration
   (cond-expand 
     (windows 'default-windows)
-    (macosx 'default-macosx)
     (linux 'default-linux)))
 
 
