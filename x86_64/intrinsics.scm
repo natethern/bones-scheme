@@ -29,6 +29,9 @@
 (define-syntax-rule (%type-of x)
   ($inline "test rax, 1; if z; mov rax, [rax]; shr rax, HEADER_SHIFT; and rax, 0x7f; INT2FIX rax; else; mov rax, (TYPENUMBER(FIXNUM) << 1) | 1; endif" x))
 
+(define-syntax-rule (%bits-of x)
+  ($inline "mov rax, [rax]; shr rax, HEADER_SHIFT - 1; or rax, 1" x))
+
 (define-syntax-rule (%fixnum? x) ($inline "test rax, 1; SET_T rax; cmovz rax, FALSE" x))
 
 (define-syntax-rule (%eq? x y) ($inline "cmp rax, r11; SET_T rax; cmovne rax, FALSE" x y))
