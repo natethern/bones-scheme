@@ -33,13 +33,16 @@ BONES                                                                          -
   - have local FA pass ("lfa") that expands $typed-case-lambda according to inferred
     types and convert "let"-bound flonum vars using a custom binding form
     - e.g. "($let-float ...)" or something like this.
-* TODO Consider port to Windows
+* TODO consider port to Windows
   - currently fighting with MSVC command line stupidity.
   - either have to use "_start" or "mainCRTStartup" and specify
     entry-point, parsing command-line arguments by hand, or find the
     correct way to link a C program.
   - or use mingw64.
   - not sure if we need "default rel".
+  - use ".drectve" info section to pass /defaultlib:msdvcrt.lib to linker.
+    section .drectve info 
+    db      '/defaultlib:user32.lib /defaultlib:msvcrt.lib '
 * TODO try compiling grond
   + fails to compile bones-grond, either with OOM or, with 1GB heap, SIGILL.
 * TODO something is wrong with musl's "sprintf" (or varargs) implementation
