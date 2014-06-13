@@ -9,6 +9,8 @@
 	 ((_ args ___) rule))))))
 
 
+(define-syntax %cell-shift ($inline "mov rax, FIX(CELL_SHIFT)"))
+
 (define-syntax-rule (%eof) ($inline "mov rax, eof"))
 (define-syntax-rule (%undefined) ($inline "mov rax, undefined")) 
 
