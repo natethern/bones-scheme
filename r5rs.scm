@@ -788,8 +788,8 @@
 
 (define-syntax make-vector
   (case-lambda 
-   ((n) (%allocate-block 3 (arithmetic-shift n 3) #f n #f (%undefined)))
-   ((n x) (%allocate-block 3 (arithmetic-shift n 3) #f n #t x))))
+   ((n) (%allocate-block 3 (arithmetic-shift n %cell-shift) #f n #f (%undefined)))
+   ((n x) (%allocate-block 3 (arithmetic-shift n %cell-shift) #f n #t x))))
 
 (define (list->vector lst) ;XXX this can probably be done more efficiently
   (let* ((n (length lst))
