@@ -104,6 +104,9 @@
 
    The compiler accepts the following options in any order.
 
+   - =-case-insensitive= :: Compile source code in case-insensitive mode.
+	The default is to be case-sensitive.
+
    - =-comment= :: Emit source-code forms as comments in generated
                  assembler code.
 
@@ -203,6 +206,11 @@
     detected errors are errors related to port- and file-system
     operations, mutating literal constants or when the heap is
     exhausted.
+
+*** Section 2
+
+    BONES is by default case-sensitive, both at compile-time and at
+    run-time.
 
 *** Section 3.4
 
