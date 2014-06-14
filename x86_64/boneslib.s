@@ -18,7 +18,6 @@
 
 
   bits 64
-  default rel
 
 
 %include "x86_64/structured.s"
@@ -406,28 +405,27 @@ terminate:
 ;; consrest: registers/locals = arguments, r11 = argc, rax = non-rest args -> rax (ptr)
 consrest:
   push rcx			; save k
-  mov   rcx, null
+  mov rcx, null
   repeat
     cmp r11, rax
     je .done
     cmp r11, NUMBER_OF_ARGUMENT_REGISTERS
   while a
-    push  r11
-    sub   r11, NUMBER_OF_ARGUMENT_REGISTERS + 1
+    push r11
+    sub r11, NUMBER_OF_ARGUMENT_REGISTERS + 1
     mov [ALLOC + CELLS(2)], rcx
     mov rcx, PAIR | 2
     mov [ALLOC], rcx
     mov rcx, ALLOC
-    lea r15, [rel locals]
-    mov r15, [r15 + r11 * CELLS(1)]
+    mov r15, [locals + r11 * CELLS(1)]
     mov [ALLOC + CELLS(1)], r15
     add ALLOC, CELLS(3)
-    pop   r11
-    dec   r11
+    pop r11
+    dec r11
   again
   sub r11, 2
-  lea r15, [rel consrest_jmptable]
-  mov r15, [r15 + r11 * CELLS(1)]
+  ;;XXX this will probably not work - see below
+  mov r15, [consrest_jmptable + r11 * CELLS(1)]
   inc r11	      ;XXX get rid of this, probably by adjusting jmptable
   jmp r15
 %macro CONSREST1 1
@@ -456,6 +454,7 @@ consrest:
 
 section .data
 
+;;XXX needs "wrt ..imagebase" and add of additional offset (see nasm manual)
 consrest_jmptable:
   dq    consrest.a1
   dq    consrest.a2
@@ -1039,8 +1038,12 @@ PRIMITIVE apply
   cmp r11, NUMBER_OF_ARGUMENT_REGISTERS
   ja .l9
   sub r11, 4
-  lea r15, [rel apply_jmptable]
+%ifdef PIC
+  lea r15, [apply_jmptable]
   mov rax, [r15 + r11 * CELLS(1)]
+%else
+  mov rax, [apply_jmptable + r11 * CELLS(1)]
+%endif
   jmp rax
   ;; jmptable: move all register arguments into "tempregisters", starting from rsi
 .l9:
@@ -1056,8 +1059,7 @@ PRIMITIVE apply
 .l4:
   mov [tempregisters], rsi
   ;; now deconstruct last argument
-  lea r15, [rel tempregisters]
-  lea rdi, [r15 + r11 * CELLS(1)]
+  lea rdi, [tempregisters + r11 * CELLS(1)]
   mov rsi, [rdi]
   mov rdx, null
   pop r11
@@ -1857,8 +1859,12 @@ hash_string:
   repeat
     movzx r15, byte [r11]
     xor rax, r15
-    lea r15, [rel random_numbers]
+%ifdef PIC
+    lea r15, [random_numbers]
     movzx rax, byte [r15 + rax]
+%else
+    movzx rax, byte [random_numbers + rax]
+%endif
     inc r11
     dec rcx
   until z
@@ -2338,5 +2344,13 @@ saved_ALLOC: resq 1
 saved_LIMIT: resq 1
 rsp_save: resq 1
 stat_buffer: resb 1024
-	      
+
+
+%ifdef FEATURE_WINDOWS
+;; no idea whether this works...
+section .drectve info 
+  db      '/defaultlib:msvcrt.lib '
+%endif
+
+
 section .text
