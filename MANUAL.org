@@ -104,65 +104,65 @@
 
    The compiler accepts the following options in any order.
 
-   - -o FILENAME :: Write generated code to =FILENAME= instead of
-                    stdout.
+   - =-comment= :: Emit source-code forms as comments in generated
+                 assembler code.
 
-   - -L LIBRARYPATH :: Tells the compiler where to look for files to
-                       include directly or indirectly from program
-		       specifications.
-
-   - -feature FEATURE :: Define =FEATURE=, for use in
-        program-specifications or =cond-expand= clauses.
-
-   - -expand :: Dump source code to stdout after syntax-expansion and
-                stop.
-
-   - -dump-source :: Dump source code after before syntax expansion.
-
-   - -dump-cps :: Dump source code to stdout after CPS-transformation 
-		  and stop.
-
-   - -dump :: Dump code after /canonicalization/, which is a normalizing
+   - =-dump= :: Dump code after /canonicalization/, which is a normalizing
 	      step between CPS-transformation and closure-conversion.
 
-   - -dump-cc :: Dump code after closure conversion and stop.
+   - =-dump-cc= :: Dump code after closure conversion and stop.
 
-   - -dump-features :: Dump the set of enabled features after any
+   - =-dump-cps= :: Dump source code to stdout after CPS-transformation 
+		  and stop.
+
+   - =-dump-features= :: Dump the set of enabled features after any
                        program specification has been completely
                        parsed.
 
-   - -dump-nested :: Instead of dumping the source code as separate
+   - =-dump-nested= :: Instead of dumping the source code as separate
 		     =lambda= expressions, dump it in its real nested
 		     structure. Only useful in combination with =-dump=,
 		     =-dump-cps= or =-dump-cc=.
 
-   - -comment :: Emit source-code forms as comments in generated
-                 assembler code.
+   - =-dump-source= :: Dump source code after before syntax expansion.
 
-   - -nostdlib :: Do not wrap the source code into a default program
+   - =-expand= :: Dump source code to stdout after syntax-expansion and
+                stop.
+
+   - =-feature FEATURE= :: Define =FEATURE=, for use in
+        program-specifications or =cond-expand= clauses.
+
+   - =-L LIBRARYPATH= :: Tells the compiler where to look for files to
+                       include directly or indirectly from program
+		       specifications.
+
+   - =-nostdlib= :: Do not wrap the source code into a default program
                   specification as described above. This is mainly
                   useful when you have pre-expanded code that was
                   earlier produced by using =-expand=.
 
+   - =-o FILENAME= :: Write generated code to =FILENAME= instead of
+                    stdout.
+
 ** Configuration Macros for Generated Assembler Code
 
-  - TOTAL_HEAP_SIZE :: Total size of the heap. Half of this space can be
-       in use at any time. Defaults to 100MB.
-
-  - EMBEDDED :: Embed the generated code in another program. The compiled
-		Scheme code can be invoked by calling the =bones= function,
-		unless =PREFIX= is defined.
-
-  - PREFIX :: Defines a custom prefix, so passing =-DEMBEDDED
-              -DPREFIX=my= to =nasm=, the Scheme toplevel can be run
-              by calling =my_bones=.
-
-  - DISABLE_WRITE_BARRIER :: When mutating data-structures that are
+  - =DISABLE_WRITE_BARRIER= :: When mutating data-structures that are
        not stored in the heap, the program normally aborts with an
        error message. Define this macro to disable this check.
 
-  - ENABLE_GC_LOGGING :: Write some informational output to stderr
+  - =EMBEDDED= :: Embed the generated code in another program. The compiled
+		Scheme code can be invoked by calling the =bones= function,
+		unless =PREFIX= is defined.
+
+  - =ENABLE_GC_LOGGING= :: Write some informational output to stderr
        every time a garbage collection is triggered.
+
+  - =PREFIX= :: Defines a custom prefix, so passing =-DEMBEDDED
+              -DPREFIX=my= to =nasm=, the Scheme toplevel can be run
+              by calling =my_bones=.
+
+  - =TOTAL_HEAP_SIZE= :: Total size of the heap. Half of this space can be
+       in use at any time. Defaults to 100MB.
 
 * Language Description
 
@@ -175,14 +175,14 @@
 
     - =(cond-expand ...)= :: Can be used interchangebly with =feature-cond=.
 
-    - =(provide FEATURE ...)= :: Adds additional features to the set of
-         currently active features visible by =cond-expand= and
-         =feature-cond= clauses. =FEATURE= should be a symbol.
+    - =(error STRING)= :: Report error and abort compilation.
 
     - =(include FILENAME ...)= :: Includes more program-specification
          clauses from =FILENAME=.
 
-    - =(error STRING)= :: Report error and abort compilation.
+    - =(provide FEATURE ...)= :: Adds additional features to the set of
+         currently active features visible by =cond-expand= and
+         =feature-cond= clauses. =FEATURE= should be a symbol.
 
 *** Builtin Features
 
@@ -269,6 +269,10 @@
     =string->number= does not allow radix or exactness prefixes inside
     the given string argument, nor is the =#= character in inexact
     numeric strings supported.
+
+    =string->number= and =number->string= only support the bases 8, 10
+    and 16. Any other base is ignored and the conversion will be done
+    using base 10.
 
 *** Section 6.3.5
 
@@ -439,35 +443,188 @@
     The /transformer spec/ of a =define-syntax= form may be any
     expression.
 
+*** Section 6.6.1
+
+    =current-input-port= and =current-output-port= accept a single
+      argument, a /port/, which changes the current default input- and
+      output port.
+
 *** Syntax Extensions
 
     The following non-standard syntax is available:
-
-    - =(cut EXP ...)= :: Notation for specializing parameters without
-	 currying - see [[http://srfi.schemers.org/srfi-26/][SRFI-26]] for more information.
 
     - =(assert EXP [MSG ARGUMENT ...])= :: signals an error if =EXP=
          evaluates to =#f=, passing =MSG= and =ARGUMENTS ...= to
          =error= in that case.
 
-    - =(fluid-let ((VAR EXP) ...) BODY ...)= :: Syntax for dynamic scoping,
-	 see [[http://srfi.schemers.org/srfi-15/][SRFI-15]] for more information.
-
-    - =(let-optionals VAR1 ((VAR EXP) ... [RVAR]) BODY ...)= :: Destructures
-	 the list in =VAR1=, binding the optional arguments =VAR, ...=, with
-	 defaults taken from =EXP, ...=. Any remaining list elements can be
-	 bound in the optional final variable =RVAR=.
-
     - =(begin0 EXP1 EXP ...)= :: evaluates the expressions and returns the
 	 result value(s) of the first expression.
 
-    - =(define-values (VAR ...) EXP)= :: Evaluates =EXP= and binds =VAR ...=
-	 to the values returned by it.
+    - =(cond-expand CLAUSE ...)= :: The [[http://srfi.schemers.org/srfi-0/][SRFI-0]] expansion-time conditional.
+
+    - =(cut EXP ...)= :: Notation for specializing parameters without
+	 currying - see [[http://srfi.schemers.org/srfi-26/][SRFI-26]] for more information.
 
     - =(define-syntax-rule (NAME ARGUMENTS ...) BODY)= :: A more concise
         way of defining single-rule syntax.
 
+    - =(define-values (VAR ...) EXP)= :: Evaluates =EXP= and binds =VAR= ...
+	 to the values returned by it.
+
+    - =(fluid-let ((VAR EXP) ...) BODY ...)= :: Syntax for dynamic scoping,
+	 see [[http://srfi.schemers.org/srfi-15/][SRFI-15]] for more information.
+
+    - =(let-optionals VAR1 ((VAR EXP) ... [RVAR]) BODY ...)= :: Destructures
+	 the list in =VAR1=, binding the optional arguments =VAR= ... with
+	 defaults taken from =EXP= ... Any remaining list elements can be
+	 bound in the optional final variable =RVAR=.
+
+    - =(letrec* ((VAR VAL) ...) BODY ...)= :: Binds =VAR= ... to the results of
+	 evaluating =VAL= ... and evaluates =BODY=, with the variables being
+	 in scope during the evaluation of their values. Mostly equivalent
+	 to =letrec= but binds the variables sequentially.
+
+    - =(when EXP BODY ...)= :: Equivalent to =(if EXP (begin BODY ...))=.
+
+    - =(unless EXP BODY ...)= :: Equivalent to =(if (not EXP) (begin BODY ...))=.
+
 *** Additional procedures
+
+**** Fixnum Arithmetic
+
+    =(arithmetic-shift N M)= :: Shifts =N= =M= bits to the left, if
+      =M= is positive, or to the right, if negative.
+
+    =(bitwise-and N M)= :: Binary AND.
+
+    =(bitwise-ior N M)= :: Binary inclusive OR.
+
+    =(bitwise-xor N M)= :: Binary exclusive OR.
+
+    =(bitwise-not N)= :: Binary invertion.
+
+**** Input/Output
+
+    =(case-sensitive [BOOL])= :: If set to true, =read= will preserver case
+      when reading symbols (this is the default).
+ 
+    =(current-error-port [PORT])= :: Returns or sets the port where
+      error-messages are written to.
+
+    =(eof-object)= :: Returns the /end-of-file/ object.
+
+    =(get-output-string PORT)= :: Returns the currently accumulated output
+      from the string-port =PORT=. 
+
+    =(open-append-output-file STRING)= :: Opens the file =STRING= in
+     /append/ mode, and returns an output port.
+
+    =(open-input-string STRING)= :: Returns an input-port oin =STRING=
+      from which data can be read.
+
+    =(open-output-string)= :: Returns an output-port accumulating all
+      output written to into a string.
+
+    =(port? OBJECT)= :: Returns =#t= if =OBJECT= is an input- or output-port
+      or =#f= otherwise.
+
+    =(print OBJECT ...)= :: Writes the arguments to the current output port
+      (using =display=) followed by a newline.
+
+    =(read-string COUNT [PORT])= :: Reads =COUNT= characters from =PORT= and
+      returns a string. If no input is available from =PORT=, the /end-of-file/
+      object is returned. =PORT= defaults to the value of =(current-input-port)=.
+
+    =(write-string STRING [PORT])= :: Writes the characters in =STRING= to =PORT=,
+      which defaults to the current output port.
+
+**** Process Environment
+
+    =(command-line)= :: Returns the name of the running program and
+      all arguments given on the command-line as a list of
+      strings. When the program is running in /embedded/ mode, then
+      this procedure returns the empty list.
+
+    =(current-process-id)= :: Returns the /ID/ of the current process
+      as an exact integer.
+
+    =(get-environment-variable STRING)= :: Returns the value of the
+      /environment variable/ named by =STRING= as a string, or =#f= if
+      such an environment variable is not defined.
+
+    =(system STRING)= :: Passes =STRING= as a shell-command to be
+      executed and returns the exit-status of the invoked command as
+      an exact integer.
+
+**** File System
+
+    =(current-directory [STRING])= :: When called without arguments,
+      this procedure returns the name of the current working
+      directory.  When given an argument, the current working
+      directory is changed to =STRING=.
+
+    =(delete-file STRING)= :: Deletes the file designated by =STRING=.
+
+    =(file-exists? STRING)= :: Returns =STRING= if the file designated by
+      =STRING= exists or =#f= otherwise.
+
+**** Time
+
+    =(current-jiffy)= :: Returns the time since process startup, in
+      some internal unit. Use =jiffies-per-second= to obtain the number
+      of internal time units per second.
+
+    =(current-second)= :: Returns the current time, in seconds since
+      the start of the /epoch/.
+
+    =(jiffies-per-second)= :: Returns the number of internal time
+     units per second as an exact integer.
+
+**** Control Flow
+
+    =(call/cc PROC)= :: Identical to =call-with-current-continuation=.
+
+    =(error [LOCATION] MESSAGE ARGUMENTS ...)= :: Signals an error,
+      writing =MESSAGE= and =ARGUMENTS= to the port given by
+      =current-error-port= and performs an immediate exit (as with
+      =emergency-exit=). =LOCATION= can be used to mark where the 
+      error occurred and should be a symbol.
+
+    =(emergency-exit [CODE])= :: Terminates the current program immediately.
+      Still pending =dynamic-wind= thunks are not invoked. =CODE= is the 
+      exit code of the process and defaults to 0.
+
+    =(exit [CODE])= :: Terminates the process with the process status
+     =CODE= (or 0, if not given). Pending =dynamic-wind= after thunks
+     will be executed.
+
+    =(return-to-host RESULT)= :: In /embedded/ mode, this procedure
+      suspends the currently running program and returns =RESULT= to
+      the caller. When not running in embedded mode, calling this
+      procedure will immediately terminate the current process (as
+      with =emergency-exit=), with an exit status 0.
+
+**** Numeric Operations
+
+    =(finite? NUMBER)= :: Returns =#t= if =NUMBER= is not positive or
+     negative /infinity/.
+
+    =(nan? NUMBER)= :: Returns =#t= if =NUMBER= is the IEEE754 /nan/
+     object or =#f= otherwise.
+
+**** Miscellaneous
+
+    =(free)= :: Returns the currently available memory in heap as an
+      exact integer.
+
+    =(reclaim)= :: Reclaims unused memory in the heap and returns an
+      undefined value. Garbage collection is done automatically, but in
+      certain cases, for example if time-critical code is to be executed,
+      it may be useful to delay the next garbage collection as much as
+      possible.
+
+    =(void ARGUMENT ...)= :: Ignores its arguments and returns an undefined
+      result.
 
 * Compiler Details
 
