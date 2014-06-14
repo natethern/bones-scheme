@@ -79,6 +79,30 @@
        (define var #f) ...
        (define-values "1" (var ...) exp ())))))
 
+(define-syntax parameterize
+  (letrec-syntax ((bind-param 
+		   (syntax-rules ()
+		     ((_ () (param ...) (new ...) (old ...) body)
+		      (dynamic-wind
+			  (lambda () 
+			    (param new) ...)
+			  (lambda () body)
+			  (lambda ()
+			    (param old #t) ...)))
+		     ((_ ((name val) . more) (param ...) (new ...) (old ...) body)
+		      (let* ((newname name)
+			     (newval val)
+			     (oldval (newname)))
+			(bind-param
+			 more
+			 (param ... newname)
+			 (new ... newval)
+			 (old ... oldval)
+			 body))))))
+    (syntax-rules ()
+      ((_ bindings body ...)
+       (bind-param bindings () () () (begin body ...))))))
+
 
 (define open-input-string
   (let ((substring substring))
@@ -219,7 +243,7 @@
       (define-inline (file-exists? str)
 	(and
 	 ($inline "CALL copy_to_buffer; SYSCALL2 4, buffer, stat_buffer; test rax, rax; SET_T rax; cmovnz rax, FALSE" str) 
-      str)))
+	 str)))
 
      (else
       (define-inline (delete-file str) 
@@ -271,3 +295,13 @@
 (define-inline (free) (%free))
 
 (define return-to-host ($primitive "return_to_host"))
+
+(define (make-parameter val . guard)
+  (let ((guard (optional guard (lambda (x) x)))
+	(tag (%list #f)))
+    (lambda args
+      (let-optionals args ((new tag) (restore #f))
+	(cond ((eq? new tag) val)
+	      (else
+	       (set! val (if restore new (guard new)))
+	       val))))))

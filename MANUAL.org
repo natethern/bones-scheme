@@ -620,6 +620,24 @@
     =(nan? NUMBER)= :: Returns =#t= if =NUMBER= is the IEEE754 /nan/
      object or =#f= otherwise.
 
+**** Parameters
+
+    =(make-parameter VALUE [GUARD])= :: Returns a /parameter/
+      procedure that accepts a single optional argument. If that
+      procedure is called without arguments, it returns =VALUE=. If it
+      is called with an argument, the current value of the parameter
+      is changed to this argument and subsequent 0-argument
+      invocations if the procedure will return the new value. If
+      =GUARD= is given, then it should be a procedure of one argument
+      that checks or converts any values given to the parameter
+      procedure.
+
+    =(parameterize ((PARAM VALUE) ...) BODY ...)= :: Dynamically binds
+      parameters to the given values and executes =BODY= ... Note that
+      the =PARAM= arguments are evaluated. After =BODY= ... is
+      executed, the parameters are restored to their old values, with
+      any guard-procedures temporarily disabled.
+
 **** Miscellaneous
 
     =(free)= :: Returns the currently available memory in heap as an
