@@ -7,8 +7,11 @@
 	 (char=? #\- (string-ref str 0)))))
 
 (define (usage)
-  (display "usage: bones [-o OUTFILE] [-L LIBRARY_PATH] [-feature FEATURE] [-dump] [-expand]" (current-error-port))
-  (display " [-dump-source] [-dump-cc] [-dump-nested] [-dump-cps] [-dump-features] [-comment] [-nostdlib] FILENAME\n" (current-error-port))
+  (for-each
+   (cut display <> (current-error-port))
+   '("usage: bones [-o OUTFILE] [-L LIBRARY_PATH] [-feature FEATURE] [-dump] [-expand]"
+     " [-dump-source] [-dump-cc] [-dump-nested] [-dump-cps] [-dump-features] [-comment]"
+     " [-nostdlib] [-case-insensitive] FILENAME\n"))
   (exit 1))
 
 (define (main args)
@@ -25,6 +28,9 @@
 	 (loop more))
 	(("-L" path . more)
 	 (set! opts (append (append-map (cut list 'library-path: <>) (string-split path ":")) opts))
+	 (loop more))
+	(("-case-insensitive" . more)
+	 (case-sensitive #f)
 	 (loop more))
 	(("-feature" f . more)
 	 (set! opts (cons* 'feature: (string->symbol f) opts))
