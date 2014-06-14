@@ -18,6 +18,7 @@
 
 
   bits 64
+  default rel
 
 
 %include "x86_64/structured.s"
@@ -417,14 +418,16 @@ consrest:
     mov rcx, PAIR | 2
     mov [ALLOC], rcx
     mov rcx, ALLOC
-    mov r15, [locals + r11 * CELLS(1)]
+    lea r15, [rel locals]
+    mov r15, [r15 + r11 * CELLS(1)]
     mov [ALLOC + CELLS(1)], r15
     add ALLOC, CELLS(3)
     pop   r11
     dec   r11
   again
   sub r11, 2
-  mov r15, [consrest_jmptable + r11 * CELLS(1)]
+  lea r15, [rel consrest_jmptable]
+  mov r15, [r15 + r11 * CELLS(1)]
   inc r11	      ;XXX get rid of this, probably by adjusting jmptable
   jmp r15
 %macro CONSREST1 1
@@ -1036,7 +1039,8 @@ PRIMITIVE apply
   cmp r11, NUMBER_OF_ARGUMENT_REGISTERS
   ja .l9
   sub r11, 4
-  mov rax, [apply_jmptable + r11 * CELLS(1)]
+  lea r15, [rel apply_jmptable]
+  mov rax, [r15 + r11 * CELLS(1)]
   jmp rax
   ;; jmptable: move all register arguments into "tempregisters", starting from rsi
 .l9:
@@ -1052,7 +1056,8 @@ PRIMITIVE apply
 .l4:
   mov [tempregisters], rsi
   ;; now deconstruct last argument
-  lea rdi, [tempregisters + r11 * CELLS(1)]
+  lea r15, [rel tempregisters]
+  lea rdi, [r15 + r11 * CELLS(1)]
   mov rsi, [rdi]
   mov rdx, null
   pop r11
@@ -1852,7 +1857,8 @@ hash_string:
   repeat
     movzx r15, byte [r11]
     xor rax, r15
-    movzx rax, byte [random_numbers + rax]
+    lea r15, [rel random_numbers]
+    movzx rax, byte [r15 + rax]
     inc r11
     dec rcx
   until z
