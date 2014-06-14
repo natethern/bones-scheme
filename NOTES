@@ -14,7 +14,8 @@ BONES                                                                          -
   - portability.
   - further reading: Compiling with continuations, EOPL (cps-conversion),
     nasm website.
-  - safe-for-space-complexity.
+  - add note about safe-for-space-complexity.
+  - embedding: document "copy" (file:copy.scm)
 * TODO write web-page
 * TODO try syscall-only variant
   - currently missing (but should be possible to implement): getpid,
@@ -168,35 +169,6 @@ mainCRTStartup:
   #+END_SRC
 * TODO "(if X S1 S2)" can be computed more efficiently
   - use "cmovCC" if S1, S2 are simple-expressions.
-* TODO try "default rel" (RIP-relative addressing)
-  - seems to work without problems.
-    - but produces obscure linker errors on mac os.
-  - no noticable difference in speed, but slightly smaller.
-  - see "rip-relative" branch, at least for code changes.
-  - would be needed for embedding in DLL anyway.
-* TODO code for "asin"
-  - http://forums.codeguru.com/showthread.php?262979-How-to-compute-asin
-    fld   st(0)             ;copy sine value
-    fmul  st,st(0)          ;sin^2
-    fld1
-    fsubr                   ;1-sin^2 = cos^2
-    fsqrt                   ;->cos
-    fpatan                  ;i.e. arctan(sin/cos) = arcsin
-  - more
-    Function ArcSin(X As Double) As Double
-	ArcSin = Atn(X / Sqr(-X * X + 1))
-    End Function
-
-    Function ArcCos(X As Double) As Double
-	ArcCos = Atn(-X / Sqr(-X * X + 1)) + 2 * Atn(1)
-    End Function
-
-    Private Sub Command1_Click()
-	' replace the 0.5 below with the degree (in radians) that
-	' you want to calculate its ArcSin or ArcCos value
-	MsgBox "ArcSin(0.5) = " & ArcSin(0.5)
-	MsgBox "ArcCos(0.5) = " & ArcCos(0.5)
-    End Sub
 * TODO log: "fld1; fld XXX; fyl2x"
   - seems to be broken.
 * TODO remove unused globals
@@ -205,52 +177,6 @@ mainCRTStartup:
     (let-syntax ((PRIMITIVE PRIMITIVE))
       (define-inline (OTHER-PRIMITIVE ...) ...))
   - or redefinition of PRIMITIVE will change behaviour of OTHER-PRIMITIVE.
-* R5RS support
-** TODO missing
-   asin acos
-** TODO broken
-   log
-** Non-standard extensions
-*** Primitives
-   emergency-exit
-   current-process-id
-   current-error-port
-   current-directory
-   read-string
-   eof-object
-   void
-   nan?
-   port?
-   return-to-host
-   bitwise-and bitwise-ior bitwise-xor bitwise-not arithmetic-shift
-   finite?
-   system
-   exit
-   open-input-string open-output-string get-output-string
-   open-append-output-file
-   write-string
-   reclaim
-   current-second
-   get-environment-variable
-   file-exists?
-   delete-file
-   define-syntax-rule
-   define-values
-   free
-   cut
-   when unless
-   fluid-let
-   optional let-optionals
-   begin0
-   assert
-   cond-expand
-   call/cc
-   current-jiffy
-   jiffies-per-second
-   case-sensitive
-   command-line
-   error
-   print
 * TODO mark places in file:x86_64/boneslib.s for 32-bit alignment issues
   - flonum allocation
     - "ALLOCATE_FLONUM"
