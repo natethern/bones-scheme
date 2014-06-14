@@ -435,40 +435,6 @@
 	((char? x) (numberize (string x)))
 	(else (error "can not convert to number" x))))
 
-(define (make-parameter val . guard)
-  (let ((guard (optional guard id))
-	(tag (list #f)))
-    (lambda args
-      (let-optionals args ((new tag) (restore #f))
-	(cond ((eq? new tag) val)
-	      (else
-	       (set! val (if restore new (guard new)))
-	       val))))))
-
-(define-syntax parameterize
-  (letrec-syntax ((bind-param 
-		   (syntax-rules ()
-		     ((_ () (param ...) (new ...) (old ...) body)
-		      (dynamic-wind
-			  (lambda () 
-			    (param new) ...)
-			  (lambda () body)
-			  (lambda ()
-			    (param old #t) ...)))
-		     ((_ ((name val) . more) (param ...) (new ...) (old ...) body)
-		      (let* ((newname name)
-			     (newval val)
-			     (oldval (newname)))
-			(bind-param
-			 more
-			 (param ... newname)
-			 (new ... newval)
-			 (old ... oldval)
-			 body))))))
-    (syntax-rules ()
-      ((_ bindings body ...)
-       (bind-param bindings () () () (begin body ...))))))
-
 (define (string-split str . opts)
   (let-optionals opts ((delims " \n\t")
 		       (keep #f))
