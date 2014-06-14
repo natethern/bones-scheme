@@ -80,7 +80,9 @@
       (and (zero? (run* (,cmplr ,(string-append fname ".scm") -o ,sname
 				,@(append-map (cut list '-feature <>) features))))
 	   (zero? (run* (nasm -f elf64 -g -F dwarf ,sname -o ,oname)))
-	   (zero? (run* (bin/musl-gcc ,oname -o ,xname)))
+	   (zero? (if (memq features 'linux-bare)
+		      (run* (ld ,oname -o ,xname))
+		      (run* (bin/musl-gcc ,oname -o ,xname))))
 	   (zero? (run* (memtime ,xname ,@runargs)))))))
 
 (define (check)
