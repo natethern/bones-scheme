@@ -3,7 +3,11 @@
 
 (require 'syntax 'match 'stuff 'megalet 'logical)
 
-(features (cons 'linux (features)))
+(features
+ (cons (case (system-software)
+	 ((Linux) 'linux)
+	 (else (error "unknown host system")))
+       (features)))
 
 (load "alexpand.scm")
 (load "source.scm")
