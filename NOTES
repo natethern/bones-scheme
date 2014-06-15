@@ -17,13 +17,12 @@ BONES                                                                          -
   - add note about safe-for-space-complexity.
   - embedding: document "copy" (file:copy.scm)
 * TODO write web-page
-* TODO try syscall-only variant
-  - currently missing (but should be possible to implement): getpid,
+* TODO complete "linux-bare" configuration
+  - currently missing (but should be possible to implement):
     system, getenv, time/clock.
-* TODO find out which tests can be run in "bare" mode
-  - dynamic, compiler, tak, fac, forth.
-    - dynamic fails with bogus results (counters seem to be wrong -
-      bug in integer-only arithmetic?)
+* TODO file:dynamic.scm fails with "linux-bare" config
+  - bogus results (counters seem to be wrong - bug in integer-only
+    arithmetic?)
 * TODO unboxing
   - "($the TYPE EXP)" annotates with type.
   - "let" can check for "$the" and assign FP-register.
@@ -44,6 +43,8 @@ BONES                                                                          -
   - use ".drectve" info section to pass /defaultlib:msdvcrt.lib to linker.
     section .drectve info 
     db      '/defaultlib:user32.lib /defaultlib:msvcrt.lib '
+* Branch /rip-relative/ 
+  - just keep it up to date, in case we need this.
 * TODO try compiling grond
   + fails to compile bones-grond, either with OOM or, with 1GB heap, SIGILL.
 * TODO something is wrong with musl's "sprintf" (or varargs) implementation
@@ -169,6 +170,10 @@ mainCRTStartup:
   #+END_SRC
 * TODO "(if X S1 S2)" can be computed more efficiently
   - use "cmovCC" if S1, S2 are simple-expressions.
+* TODO implement "peephole" pass?
+  - match expressions for certain cases.
+  - perhaps add "($comment COMMENT EXP)" special form to detect particular
+    primitive expansions (like "not").
 * TODO log: "fld1; fld XXX; fyl2x"
   - seems to be broken.
 * TODO remove unused globals
