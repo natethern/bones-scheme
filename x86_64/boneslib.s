@@ -77,7 +77,7 @@
 ;; get type-number from value pointed to by %1
 %define TYPENUMBER_REF(x) [x + CELLS(1) - 1]
 
-%ifdef EMBEDDED
+%ifdef FEATURE_EMBEDDED
  %ifdef PREFIX
   %define ENTRYPOINT PREFIX %+ _bones
  %else
@@ -347,7 +347,7 @@
 
 section .text
 
-%ifdef EMBEDDED
+%ifdef FEATURE_EMBEDDED
 global ENTRYPOINT
 ENTRYPOINT:
   SAVE
@@ -2123,6 +2123,7 @@ member_cmp_equal:
 
 ;; return to host program: rcx = k, rdx = result
 ;; crashes if used and not embedded
+%ifdef FEATURE_EMBEDDED
 return_to_host:
   mov [saved_k], rcx
   mov [saved_ALLOC], ALLOC
@@ -2132,6 +2133,7 @@ return_to_host:
   pop rbp
   RESTORE
   ret
+%endif
 
 
 ;; convert string to number: rax = string, r11 = base -> rax (number)

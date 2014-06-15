@@ -303,8 +303,6 @@
 
 (define-inline (free) (%free))
 
-(define return-to-host ($primitive "return_to_host"))
-
 (define (make-parameter val . guard)
   (let ((guard (optional guard (lambda (x) x)))
 	(tag (%list #f)))

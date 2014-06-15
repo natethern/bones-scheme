@@ -606,11 +606,9 @@
      =CODE= (or 0, if not given). Pending =dynamic-wind= after thunks
      will be executed.
 
-    =(return-to-host RESULT)= :: In /embedded/ mode, this procedure
-      suspends the currently running program and returns =RESULT= to
-      the caller. When not running in embedded mode, calling this
-      procedure will immediately terminate the current process (as
-      with =emergency-exit=), with an exit status 0.
+    =(return-to-host RESULT)= :: suspends the currently running
+      program and returns =RESULT= to the caller. This procedure is
+      only available when the =embedded= feature is defined.
 
 **** Numeric Operations
 

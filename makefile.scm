@@ -116,11 +116,11 @@
 	 "\nsome checks failed."))))
 
 (define (check-embedded)
-  (let ((r (and (zero? (run* (./bones embedded.scm -o tmp/embedded.s)))
+  (let ((r (and (zero? (run* (./bones embedded.scm -o tmp/embedded.s -feature embedded)))
 		(zero? (run* (nasm -f elf64 -g -F dwarf tmp/embedded.s 
-				   -o tmp/embedded1.o -DEMBEDDED -DPREFIX=my)))
+				   -o tmp/embedded1.o -DPREFIX=my)))
 		(zero? (run* (nasm -f elf64 -g -F dwarf tmp/embedded.s
-				   -o tmp/embedded2.o -DEMBEDDED -DPREFIX=my_other)))
+				   -o tmp/embedded2.o -DPREFIX=my_other)))
 		(zero? (run* (gcc -g -I. embedded.c tmp/embedded1.o tmp/embedded2.o -o tmp/embedded)))
 		(zero? (run* (tmp/embedded))))))
     (unless r

@@ -1078,6 +1078,11 @@
 	       ((cdr dw))
 	       (loop)))))))
 
+(cond-expand
+  (embedded
+   (define return-to-host ($primitive "return_to_host")))
+  (else))
+
 (define %error
   (let ((write write)
 	(display display)
@@ -1086,24 +1091,27 @@
 	(string-append string-append))
     (lambda (msg . args)
       (cond ((and (symbol? msg) (pair? args) (string? (car args)))
-	     (display (string-append "\nError: (" (symbol->string msg) ") " (car args)) 
-		      %standard-error-port)
+	     (set! msg (string-append "(" (symbol->string msg) ") " (car args)))
 	     (set! args (cdr args)))
-	    ((string? msg)
-	     (display (string-append "\nError: " msg) %standard-error-port))
-	    (else
-	     (display "\nError")
+	    ((not (string? msg))
+	     (set! msg "")
 	     (set! args (cons msg args))))
-      (cond ((null? args) (newline %standard-error-port))
-	    (else
-	     (newline %standard-error-port)
-	     (for-each
-	      (lambda (arg)
-		(newline %standard-error-port)
-		(write arg)
-		(newline %standard-error-port))
-	      args)))
-      (emergency-exit 70))))		; EXIT_FAILURE
+      (cond-expand
+	(embedded
+	 (return-to-host
+	  (let ((err ($allocate 10 4 'error-object 1 msg)))
+	    (%slot-set! err 3 args)
+	    err)))
+	(else
+	 (display (string-append "\nError: " msg "\n") %standard-error-port)
+	 (unless (null? args)
+	   (for-each
+	    (lambda (arg)
+	      (newline %standard-error-port)
+	      (write arg)
+	      (newline %standard-error-port))
+	    args))
+	 (emergency-exit 70))))))      	; EXIT_FAILURE
 
 (define-syntax error %error)
 
