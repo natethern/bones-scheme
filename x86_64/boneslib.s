@@ -299,6 +299,15 @@
   RESTORE
 %endmacro
 
+%macro SYSCALL0 1
+  SAVE
+  ALIGN_STACK
+  mov rax, %1
+  syscall
+  RESTORE_STACK
+  RESTORE
+%endmacro
+
 %macro SYSCALL1 2
   SAVE
   mov rdi, %2

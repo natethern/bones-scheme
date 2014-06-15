@@ -262,7 +262,7 @@
 
 (cond-expand
   (linux-bare
-   (define-inline (current-process-id) ($inline "SYSCALL0 20; INT2FIX rax")))
+   (define-inline (current-process-id) ($inline "SYSCALL0 39; INT2FIX rax")))
   (process-environment
    (define-inline (current-process-id) ($inline "LIBCALL0 getpid; INT2FIX rax"))
    (define-inline (system str)
