@@ -1038,12 +1038,7 @@ PRIMITIVE apply
   cmp r11, NUMBER_OF_ARGUMENT_REGISTERS
   ja .l9
   sub r11, 4
-%ifdef PIC
-  lea r15, [apply_jmptable]
-  mov rax, [r15 + r11 * CELLS(1)]
-%else
   mov rax, [apply_jmptable + r11 * CELLS(1)]
-%endif
   jmp rax
   ;; jmptable: move all register arguments into "tempregisters", starting from rsi
 .l9:
@@ -1859,12 +1854,7 @@ hash_string:
   repeat
     movzx r15, byte [r11]
     xor rax, r15
-%ifdef PIC
-    lea r15, [random_numbers]
-    movzx rax, byte [r15 + rax]
-%else
     movzx rax, byte [random_numbers + rax]
-%endif
     inc r11
     dec rcx
   until z
