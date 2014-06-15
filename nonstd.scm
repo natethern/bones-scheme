@@ -261,6 +261,15 @@
 
 
 (cond-expand
+  (linux-bare
+   (define-inline (current-process-id) ($inline "SYSCALL0 20; INT2FIX rax")))
+  (process-environment
+   (define-inline (current-process-id) ($inline "LIBCALL0 getpid; INT2FIX rax"))
+   (define-inline (system str)
+     ($inline "CALL copy_to_buffer; LIBCALL1 system, buffer; INT2FIX rax" str)))
+  (else))
+
+(cond-expand
   (process-environment
    (define-inline (current-process-id) ($inline "LIBCALL0 getpid; INT2FIX rax"))
 
