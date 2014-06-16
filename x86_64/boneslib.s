@@ -379,8 +379,8 @@ _start:
 .exit:
   SYSCALL1 60, rax		; sys_exit
 %else
-global MANGLE(main)
-MANGLE(main):
+global main
+main:
   SAVE
   push rbp
   mov [argc], rdi
@@ -2235,7 +2235,7 @@ num2str:
  %ifdef FEATURE_MACOSX 
   %define GET_ERRNO_LOCATION  __error
  %elifdef  FEATURE_WINDOWS
-  ;;XXX figure something out here...
+  %define GET_ERRNO_LOCATION  _errno
  %else
   %define GET_ERRNO_LOCATION __errno_location
  %endif
@@ -2348,9 +2348,8 @@ stat_buffer: resb 1024
 
 
 %ifdef FEATURE_WINDOWS
-;; no idea whether this works...
 section .drectve info 
-  db      '/defaultlib:msvcrt.lib '
+  db      '/defaultlib:libcmt.lib '
 %endif
 
 
