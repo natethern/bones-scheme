@@ -1902,7 +1902,7 @@ compare_strings:
     mov rax, FIX(0)
   else
     mov al, [esi - 1]
-    cmp al, [edi -1]
+    cmp al, [edi - 1]
     mov rax, FIX(1)
     mov r15, FIX(-1)
     cmovl rax, r15
