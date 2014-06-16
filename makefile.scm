@@ -180,7 +180,8 @@
      (lambda (df)
        (run (cp ,df ,(string-append arch "/" df))))
      distfiles)
-    (run (tar cfz ,(string-append arch ".tar.gz") ,arch))
+    (run (tar cfz bones.tar.gz ,arch))
+    (run (zip -r bones.tar.gz ,arch))
     (run (rm -fr ,arch))))
 
 (define (-n)
