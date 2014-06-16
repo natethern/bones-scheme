@@ -4,14 +4,17 @@ BONES                                                                          -
 * TODO [#B] test "smart-spill" branch
   - file:tsort.scm is by MH, ask about licensing.
 * TODO Write manual
-  - caveats, nonstd primitives, embedding, register-usage, using
-    $inline/$primitive, code-generation strategy, optimizations
-    performed, GC, data-representation, interesting projects (in-core
-    compilation, emitting elf-modules directly, etc.), porting guide,
-    performance guide.
+  - caveats, nonstd primitives, embedding, using $inline/$primitive,
+    code-generation strategy, optimizations performed, GC,
+    data-representation, interesting projects (in-core compilation,
+    emitting elf-modules directly, etc.), porting guide, performance
+    guide.
+  - Links for MSVC.
   - document configuration features and available primitives for "bare" mode.
   - provide manual as text in dist tarball and html on web-site.
   - portability.
+  - usage: demonstrate linking.
+  - document "linux-bare" mode,
   - further reading: Compiling with continuations, EOPL (cps-conversion),
     nasm website.
   - add note about safe-for-space-complexity.
@@ -20,6 +23,10 @@ BONES                                                                          -
 * TODO complete "linux-bare" configuration
   - currently missing (but should be possible to implement):
     system, getenv, time/clock.
+* TODO complete library support for "bare" mode
+  - system :: fork + execve "sh -c" (needs =environ=), then wait and
+              check exit status
+  - getenv :: use =environ=?
 * TODO file:dynamic.scm fails with "linux-bare" config
   - bogus results (counters seem to be wrong - bug in integer-only
     arithmetic?)
@@ -33,18 +40,15 @@ BONES                                                                          -
   - have local FA pass ("lfa") that expands $typed-case-lambda according to inferred
     types and convert "let"-bound flonum vars using a custom binding form
     - e.g. "($let-float ...)" or something like this.
-* TODO consider port to Windows
-  - currently fighting with MSVC command line stupidity.
-  - either have to use "_start" or "mainCRTStartup" and specify
-    entry-point, parsing command-line arguments by hand, or find the
-    correct way to link a C program.
-  - or use mingw64.
-  - not sure if we need "default rel".
-  - use ".drectve" info section to pass /defaultlib:msdvcrt.lib to linker.
-    section .drectve info 
-    db      '/defaultlib:user32.lib /defaultlib:msvcrt.lib '
-* Branch /rip-relative/ 
-  - just keep it up to date, in case we need this.
+* TODO Windows port
+  - "bones" works somehow, but crashes when given arguments.
+  - needs /rip-relative/.
+  - try mingw64.
+* TODO Merge branch /rip-relative/
+  - control via feature "pic".
+    - =generate-closure-alloc= can generate both code variants, depending
+      in this feature.
+  - use =FEATURE_PIC= in file:x86_64/boneslib.s.
 * TODO try compiling grond
   + fails to compile bones-grond, either with OOM or, with 1GB heap, SIGILL.
 * TODO something is wrong with musl's "sprintf" (or varargs) implementation
