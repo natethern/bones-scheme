@@ -20,6 +20,20 @@
   bits 64
 
 
+;;; windows-specific libc aliases
+%ifdef FEATURE_WINDOWS
+%define strerror _strerror
+%define stat _stat
+%define unlink _unlink
+%define open _open
+%define chdir _chdir
+%define close _close
+%define read _read
+%define getcwd _getcwd
+%define write _write
+%endif
+	
+
 %include "x86_64/structured.s"
 
 
@@ -225,11 +239,7 @@
 
 
 ;; windows-specific name mangling
-%ifdef FEATURE_WINDOWS
- %define MANGLE(name)  _ %+ name
-%else
- %define MANGLE(name)  name
-%endif
+%define MANGLE(name)  name
 
 
 ;; call C function with 0-3 arguments
