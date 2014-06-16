@@ -394,8 +394,13 @@ global main
 main:
   SAVE
   push rbp
+%ifdef FEATURE_WINDOWS
+  mov [argc], rcx
+  mov [argv], rdx
+%else
   mov [argc], rdi
   mov [argv], rsi
+%endif
   jmp init
 %endif
 
