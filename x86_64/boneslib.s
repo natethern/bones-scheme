@@ -105,7 +105,8 @@
 
 ;; crash
 %macro CRASH 0
-  jmp 0
+  xor rax, rax
+  jmp rax
 %endmacro
 
 
