@@ -24,11 +24,11 @@
 
   Since BONES produces assembly-code, build-times are quite short. The
   produced code is CPU- and OS-specific and currently supports only
-  x86_64 on Linux. Porting the system to other architectures and
-  operating systems should be (relatively) straightforward, as the
-  platform-specific parts of the compiler are small and the
-  runtime-system is just a single file of about two thousand lines of
-  assembler code. 
+  x86_64 on Linux or Windows. Porting the system to other
+  architectures and operating systems should be (relatively)
+  straightforward, as the platform-specific parts of the compiler are
+  small and the runtime-system is just a single file of about two
+  thousand lines of assembler code.
 
   The compiler is self-compiling and uses just a few functions from
   the C-library. Removing this dependency and using system-calls
@@ -41,12 +41,26 @@
 
   To run programs compiled with BONES (and to run the compiler
   itself), an x86_64 system is required, with support for SSE2 and
-  SSE3 instructions. Currently the system only runs under Linux.
+  SSE3 instructions. Currently the system only runs under Linux and
+  Windows.
+
+* Requirements
+
+  The [[http://www.nasm.us][NASM]] assembler is required on all supported platforms. To link
+  the assembled code you will typically need a C development
+  environment. 
+
+  On Linux [[http://gcc.gnu.org][GCC]] is available and the recommended compiler, but you will
+  only need it for linking, and for providing the basic C runtime code
+  (CRT).
+
+  On Windows, Microsoft Visual C is supported, and the "Express"
+  version can be obtained from the Microsoft website for free.
 
 * Installation
 
   BONES is written in Scheme and translates Scheme to x86_64
-  assembler, specifically, in the syntax accepted by [[http://www.nasm.us][NASM]], which will
+  assembler, specifically, in the syntax accepted by =NASM=, which will
   have to be installed on your system. To link the assembled code you
   will need a linker and C runtime support files, including the C
   library, so a C compiler should be installed as well.
@@ -57,8 +71,14 @@
 
     http://www.call-with-current-continuation.org/bones/bones.tar.gz
 
+    or 
+
+    http://www.call-with-current-continuation.org/bones/bones.zip
+
   After downloading, unpack the file using the tar(1) command and 
-  assemble and link =bones-x86_64-linux.s=:
+  assemble and link the appropriate assembler file for the compiler:
+
+  - For Linux:
 
     #+BEGIN_SRC sh
     tar xfz bones.tar.gz
@@ -66,7 +86,19 @@
     nasm -f elf64 bones-x86_64-linux.s -o bones.o
     gcc bones.o -o bones
     #+END_SRC
- 
+
+  - For Windows:
+
+    Unzip the archive and enter the following commands in a command
+    shell window that has access to the command-line MSVC development
+    tools:
+
+    #+BEGIN_SRC sh
+    cd bones-<date>
+    nasm -f win64 bones-x86_64-windows.s -o bones.obj
+    link /subsystem:console bones.obj /out:bones.exe
+    #+END_SRC
+
   Now you have a compiler, which you can test by entering 
 
     #+BEGIN_SRC sh
@@ -500,127 +532,127 @@
 
 **** Fixnum Arithmetic
 
-    =(arithmetic-shift N M)= :: Shifts =N= =M= bits to the left, if
+    - =(arithmetic-shift N M)= :: Shifts =N= =M= bits to the left, if
       =M= is positive, or to the right, if negative.
 
-    =(bitwise-and N M)= :: Binary AND.
+    - =(bitwise-and N M)= :: Binary AND.
 
-    =(bitwise-ior N M)= :: Binary inclusive OR.
+    - =(bitwise-ior N M)= :: Binary inclusive OR.
 
-    =(bitwise-xor N M)= :: Binary exclusive OR.
+    - =(bitwise-xor N M)= :: Binary exclusive OR.
 
-    =(bitwise-not N)= :: Binary invertion.
+    - =(bitwise-not N)= :: Binary invertion.
 
 **** Input/Output
 
-    =(case-sensitive [BOOL])= :: If set to true, =read= will preserver case
+    - =(case-sensitive [BOOL])= :: If set to true, =read= will preserver case
       when reading symbols (this is the default).
  
-    =(current-error-port [PORT])= :: Returns or sets the port where
+    - =(current-error-port [PORT])= :: Returns or sets the port where
       error-messages are written to.
 
-    =(eof-object)= :: Returns the /end-of-file/ object.
+    - =(eof-object)= :: Returns the /end-of-file/ object.
 
-    =(get-output-string PORT)= :: Returns the currently accumulated output
+    - =(get-output-string PORT)= :: Returns the currently accumulated output
       from the string-port =PORT=. 
 
-    =(open-append-output-file STRING)= :: Opens the file =STRING= in
+    - =(open-append-output-file STRING)= :: Opens the file =STRING= in
      /append/ mode, and returns an output port.
 
-    =(open-input-string STRING)= :: Returns an input-port oin =STRING=
+    - =(open-input-string STRING)= :: Returns an input-port oin =STRING=
       from which data can be read.
 
-    =(open-output-string)= :: Returns an output-port accumulating all
+    - =(open-output-string)= :: Returns an output-port accumulating all
       output written to into a string.
 
-    =(port? OBJECT)= :: Returns =#t= if =OBJECT= is an input- or output-port
+    - =(port? OBJECT)= :: Returns =#t= if =OBJECT= is an input- or output-port
       or =#f= otherwise.
 
-    =(print OBJECT ...)= :: Writes the arguments to the current output port
+    - =(print OBJECT ...)= :: Writes the arguments to the current output port
       (using =display=) followed by a newline.
 
-    =(read-string COUNT [PORT])= :: Reads =COUNT= characters from =PORT= and
+    - =(read-string COUNT [PORT])= :: Reads =COUNT= characters from =PORT= and
       returns a string. If no input is available from =PORT=, the /end-of-file/
       object is returned. =PORT= defaults to the value of =(current-input-port)=.
 
-    =(write-string STRING [PORT])= :: Writes the characters in =STRING= to =PORT=,
+    - =(write-string STRING [PORT])= :: Writes the characters in =STRING= to =PORT=,
       which defaults to the current output port.
 
 **** Process Environment
 
-    =(command-line)= :: Returns the name of the running program and
+    - =(command-line)= :: Returns the name of the running program and
       all arguments given on the command-line as a list of
       strings. When the program is running in /embedded/ mode, then
       this procedure returns the empty list.
 
-    =(current-process-id)= :: Returns the /ID/ of the current process
+    - =(current-process-id)= :: Returns the /ID/ of the current process
       as an exact integer.
 
-    =(get-environment-variable STRING)= :: Returns the value of the
+    - =(get-environment-variable STRING)= :: Returns the value of the
       /environment variable/ named by =STRING= as a string, or =#f= if
       such an environment variable is not defined.
 
-    =(system STRING)= :: Passes =STRING= as a shell-command to be
+    - =(system STRING)= :: Passes =STRING= as a shell-command to be
       executed and returns the exit-status of the invoked command as
       an exact integer.
 
 **** File System
 
-    =(current-directory [STRING])= :: When called without arguments,
+    - =(current-directory [STRING])= :: When called without arguments,
       this procedure returns the name of the current working
       directory.  When given an argument, the current working
       directory is changed to =STRING=.
 
-    =(delete-file STRING)= :: Deletes the file designated by =STRING=.
+    - =(delete-file STRING)= :: Deletes the file designated by =STRING=.
 
-    =(file-exists? STRING)= :: Returns =STRING= if the file designated by
+    - =(file-exists? STRING)= :: Returns =STRING= if the file designated by
       =STRING= exists or =#f= otherwise.
 
 **** Time
 
-    =(current-jiffy)= :: Returns the time since process startup, in
+    - =(current-jiffy)= :: Returns the time since process startup, in
       some internal unit. Use =jiffies-per-second= to obtain the number
       of internal time units per second.
 
-    =(current-second)= :: Returns the current time, in seconds since
+    - =(current-second)= :: Returns the current time, in seconds since
       the start of the /epoch/.
 
-    =(jiffies-per-second)= :: Returns the number of internal time
+    - =(jiffies-per-second)= :: Returns the number of internal time
      units per second as an exact integer.
 
 **** Control Flow
 
-    =(call/cc PROC)= :: Identical to =call-with-current-continuation=.
+    - =(call/cc PROC)= :: Identical to =call-with-current-continuation=.
 
-    =(error [LOCATION] MESSAGE ARGUMENTS ...)= :: Signals an error,
+    - =(error [LOCATION] MESSAGE ARGUMENTS ...)= :: Signals an error,
       writing =MESSAGE= and =ARGUMENTS= to the port given by
       =current-error-port= and performs an immediate exit (as with
       =emergency-exit=). =LOCATION= can be used to mark where the 
       error occurred and should be a symbol.
 
-    =(emergency-exit [CODE])= :: Terminates the current program immediately.
+    - =(emergency-exit [CODE])= :: Terminates the current program immediately.
       Still pending =dynamic-wind= thunks are not invoked. =CODE= is the 
       exit code of the process and defaults to 0.
 
-    =(exit [CODE])= :: Terminates the process with the process status
-     =CODE= (or 0, if not given). Pending =dynamic-wind= after thunks
-     will be executed.
+    - =(exit [CODE])= :: Terminates the process with the process
+     status =CODE= (or 0, if not given). Pending =dynamic-wind= after
+     thunks will be executed.
 
-    =(return-to-host RESULT)= :: suspends the currently running
+    - =(return-to-host RESULT)= :: suspends the currently running
       program and returns =RESULT= to the caller. This procedure is
       only available when the =embedded= feature is defined.
 
 **** Numeric Operations
 
-    =(finite? NUMBER)= :: Returns =#t= if =NUMBER= is not positive or
+    - =(finite? NUMBER)= :: Returns =#t= if =NUMBER= is not positive or
      negative /infinity/.
 
-    =(nan? NUMBER)= :: Returns =#t= if =NUMBER= is the IEEE754 /nan/
+    - =(nan? NUMBER)= :: Returns =#t= if =NUMBER= is the IEEE754 /nan/
      object or =#f= otherwise.
 
 **** Parameters
 
-    =(make-parameter VALUE [GUARD])= :: Returns a /parameter/
+    - =(make-parameter VALUE [GUARD])= :: Returns a /parameter/
       procedure that accepts a single optional argument. If that
       procedure is called without arguments, it returns =VALUE=. If it
       is called with an argument, the current value of the parameter
@@ -630,7 +662,7 @@
       that checks or converts any values given to the parameter
       procedure.
 
-    =(parameterize ((PARAM VALUE) ...) BODY ...)= :: Dynamically binds
+    - =(parameterize ((PARAM VALUE) ...) BODY ...)= :: Dynamically binds
       parameters to the given values and executes =BODY= ... Note that
       the =PARAM= arguments are evaluated. After =BODY= ... is
       executed, the parameters are restored to their old values, with
@@ -638,23 +670,103 @@
 
 **** Miscellaneous
 
-    =(free)= :: Returns the currently available memory in heap as an
+    - =(free)= :: Returns the currently available memory in heap as an
       exact integer.
 
-    =(reclaim)= :: Reclaims unused memory in the heap and returns an
-      undefined value. Garbage collection is done automatically, but in
-      certain cases, for example if time-critical code is to be executed,
-      it may be useful to delay the next garbage collection as much as
-      possible.
+    - =(reclaim)= :: Reclaims unused memory in the heap and returns an
+      undefined value. Garbage collection is done automatically, but
+      in certain cases, for example if time-critical code is to be
+      executed, it may be useful to delay the next garbage collection
+      as much as possible.
 
-    =(void ARGUMENT ...)= :: Ignores its arguments and returns an undefined
-      result.
+    - =(void ARGUMENT ...)= :: Ignores its arguments and returns an
+      undefined result.
 
 * Compiler Details
 
 ** Compilation Strategy
 
+   The compiler is based on /Continuation Passing Style/ and does a
+   straightforward translation of the CPS-transformed source code into
+   x86_64 assembly language. The compiler is deliberately simple in
+   its design to be easy to understand and modify, so very few
+   optimizations are done.
+
+   Procedures never return: an implicitly passed /continuation/
+   argument holds a closure the is to be called with the result(s) of
+   the current procedure and every call is a tail-call, and can be
+   done via a direct jump.
+
+   The /closure conversion/ adds another implicit argument, the
+   current closure. This object contains a pointer to the actual code
+   of a procedure plus the values of any /free variables/, or, in the
+   case of free variables that are assigned, /cells/ holding the
+   value. These cells can be shared between different closures that
+   refer to the same free variable which ensures that assignments by
+   one closure are seen in the other.
+
+   Finally code is generated, currently in =NASM= assembler syntax.
+   The code includes one or more support libraries that provide core
+   runtime routines and the garbage collector.
+
+** Compiler Stages
+
+   The compiler performs the following passes over the source code:
+
+   1. The source program is read into memory and the =program= form
+      of the configuration language are expanded, if it exists.
+   
+   2. Macros are expanded resulting in the code to be free of any
+      derived syntactic forms.
+
+   3. The code is /canonicalized/, which means that some superficial
+      simplifications are performed. Additional certain special forms
+      are ocnverted into simpler internal forms. Variables are
+      consistently renamed (called /alpha conversion/), to that every
+      variable is uniquely named.
+
+   4. The program is CPS-transformed.
+
+   5. Next, unused local variables are identified and accordingly
+      marked. A later pass will remove these variables if they are
+      bound to expressions that are free of side-effects.
+
+   6. The program is /closure converted/, that is, closure-allocations
+      are made explicit.
+
+   7. Assembler code is generated from the results of the previous
+      passes.
+
 ** Register Usage
+
+   The machine registers are used in the following manner:
+
+   | Register name                   | Usage                                |
+   |---------------------------------+--------------------------------------|
+   | rax, r11, r15                   | Temporary registers                  |
+   | rcx, rdx, rsi, rdi, r8, r9, r10 | Argument registers                   |
+   | rbx                             | Holds currently executing closure    |
+   | rbp                             | Allocation-pointer                   |
+   | r13                             | Allocation-limit                     |
+   | r14                             | Contains the internal value for "#f" | 
+
+   Since CPS-transformed procedures never return, registers need not
+   be saved when a procedure call is made. In every procedure-call the
+   registers =rbx=, =rcx=, ..., =r10= hold the actual arguments,
+   including the implicit arguments introduced by the CPS- and
+   closure-conversion passes: the current continuation (=rcx=) and the
+   current closure (=rbx=), respectively.
+
+   =eax=, =r11= and =r15= are used throughout compiled code and the
+   runtime-system as temporaries.
+
+   =rbp= holds the /allocation pointer/, a pointer to the next
+   available space in the /heap/. =r13= holds the heap-limit and once
+   the allocation pointer is equal or higher than the limit, a garbage
+   collection will be triggered.
+
+   =r14= holds the value of the =#f= (false) constant, to speed up
+   boolean tests.
 
 ** Optimizations Performed
 
