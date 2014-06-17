@@ -97,6 +97,15 @@
 	  (unless (compile+run prg "./bones" '() copts)
 	    (set! ok #f))))
       '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth"))
+     (print "---------linux (PIC)--------------------------------------------")
+     (for-each
+      (lambda (prg)
+	(let ((copts (if (member prg '("r4rstest"))
+			 '("-case-insensitive" "-feature" "pic")
+			 '("-feature" "pic"))))
+	  (unless (compile+run prg "./bones" '() copts)
+	    (set! ok #f))))
+      '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth"))
      (print "---------linux-bare---------------------------------------------")
      (for-each
       (lambda (prg)
