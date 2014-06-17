@@ -111,8 +111,8 @@
 
 ** Compiling Scheme code
 
-   Compiling code is straightforward. "bones" will compile a single
-   Scheme source file given on the command-line and write the
+   Compiling code is straightforward. The =bones= program will compile
+   a single Scheme source file given on the command-line and write the
    generated assembler code to stdout. You will have to assemble and
    link the generated code by hand, subprocesses to do this are not
    invoked automatically. The compiler accepts a few command-line
@@ -132,7 +132,32 @@
      (code <...your code...>))
    #+END_SRC
 
-** TODO Linking Executables
+** Assembling and linking Executables
+
+   Once the compiler has produced an assembler file, it has to be
+   assembled and linked. Using =NASM=, this is done like this:
+
+   #+BEGIN_SRC sh
+   nasm -f <FORMAT> <FILENAME> -o <OBJECTFILENAME>
+   #+END_SRC
+
+   =<FORMAT>= specifies the output format suitable for the platform on
+   which the object file should be linked. For Linux this is =elf64=,
+   for Windows =win64=.
+
+   Linking is done by invoking the appropriate linker for the target
+   platform. On Linux this is done by the "gcc" compiler driver, which
+   also adds the necessary C runtime libraries needed:
+
+   #+BEGIN_SRC sh
+   gcc <OBJECTFILENAME> -o <PROGRAMFILENAME>
+   #+END_SRC
+
+   On Windows the =link= program from Microsoft Viusal Studio is used:
+
+   #+BEGIN_SRC sh
+   link /subsystem:console <OBJECTFILENAME> /out:<PROGRAMFILENAME>
+   #+END_SRC
 
 ** Command-line Options
 
