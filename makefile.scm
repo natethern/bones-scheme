@@ -32,6 +32,7 @@
 
 (define compiler-sources-x86_64
   '("x86_64/intrinsics.scm"
+    "x86_64/linux/syscalls.scm"
     "x86_64.scm"))
 
 (define (bones-x86_64-linux.s)
@@ -51,7 +52,8 @@
 
 (define (bones-x86_64-linux.o)
   (bones-x86_64-linux.s)
-  (make (("bones-x86_64-linux.o" ("bones-x86_64-linux.s" "x86_64/boneslib.s" 
+  (make (("bones-x86_64-linux.o" ("bones-x86_64-linux.s" 
+				  "x86_64/boneslib.s" 
 				  "x86_64/structured.s")
 	  (run (nasm -f elf64 -g -F dwarf bones-x86_64-linux.s -o bones-x86_64-linux.o))))))
 
@@ -80,7 +82,7 @@
       (and (zero? (run* (,cmplr ,(string-append fname ".scm") -o ,sname
 				,@(append-map (cut list '-feature <>) features))))
 	   (zero? (run* (nasm -f elf64 -g -F dwarf ,sname -o ,oname)))
-	   (zero? (if (memq 'linux-bare features)
+	   (zero? (if (memq 'nolibc features)
 		      (run* (ld ,oname -o ,xname))
 		      (run* (bin/musl-gcc ,oname -o ,xname))))
 	   (zero? (run* (memtime ,xname ,@runargs)))))))
@@ -106,12 +108,12 @@
 	  (unless (compile+run prg "./bones" '() copts)
 	    (set! ok #f))))
       '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth"))
-     (print "---------linux-bare---------------------------------------------")
+     (print "---------linux/nolibc-------------------------------------------")
      (for-each
       (lambda (prg)
-	(unless (compile+run prg "./bones" '() '(linux-bare))
+	(unless (compile+run prg "./bones" '() '(nolibc))
 	  (set! ok #f)))
-      '("fac" "tak" #;"dynamic" "forth"))
+      '("fac" "tak" "r4rstest" #;"dynamic" "forth"))
      (print "---------self-compile-------------------------------------------")     
      (unless (compile+run "bones" "./bones" '(bones.scm -o tmp/bones.s))
        (set! ok #f))
@@ -164,7 +166,6 @@
     "cmplr.scm"
     "x86_64.scm"
     "cps.scm"
-    "x86_64/intrinsics.scm"
     "mangle.scm"
     "main.scm"
     "match.scm"
@@ -174,8 +175,12 @@
     "r5rs.scm"
     "program.scm"
     "source.scm"
+    "x86_64/intrinsics.scm"
     "x86_64/structured.s"
     "x86_64/boneslib.s"
+    "x86_64/linux/syscalls.scm"
+    "x86_64/linux/syscalls-nolibc.scm"
+    "x86_64/windows/syscalls.scm"
     "support.scm"))
 
 (define (dist)

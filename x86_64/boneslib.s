@@ -24,20 +24,6 @@
 %endif
 
 
-;;; windows-specific libc aliases
-%ifdef FEATURE_WINDOWS
-%define strerror _strerror
-%define stat _stat
-%define unlink _unlink
-%define open _open
-%define chdir _chdir
-%define close _close
-%define read _read
-%define getcwd _getcwd
-%define write _write
-%endif
-	
-
 %include "x86_64/structured.s"
 
 
@@ -243,8 +229,15 @@
 %define RESTORE_STACK mov rsp, qword [rsp_save]
 
 
-;; windows-specific name mangling
-%define MANGLE(name)  name
+;; Library-specific name mangling
+%define UNDERSCORE(name)      _ %+ name
+%define MANGLE(name)          name
+
+%ifdef FEATURE_WINDOWS
+%define WINDOWS_MANGLE        UNDERSCORE
+%else
+%define WINDOWS_MANGLE        MANGLE
+%endif
 
 
 ;; call C function with 0-3 arguments
@@ -380,7 +373,7 @@ ENTRYPOINT:
   mov SELF, rax			; saved K
   mov rax, [SELF + CELLS(1)]
   jmp rax
-%elifdef FEATURE_LINUX_BARE
+%elifdef FEATURE_NOLIBC
 global _start
 _start:
   pop rdi			; argc
@@ -1335,7 +1328,8 @@ heap_full_trap:
 
 ;; write error message and exit: rax = raw string, r11 = length
 write_error_and_exit:
-%ifdef FEATURE_LINUX_BARE
+
+%ifdef FEATURE_NOLIBC
   SYSCALL3 1, 2, rax, r11
 %else
   LIBCALL3 write, 2, rax, r11	
@@ -1607,9 +1601,9 @@ fill_bytes:
 
 ;; format string using sprintf(3) and write to stderr: rax = raw format-string, r11, r15 = args
 format_string:
-%ifndef FEATURE_LINUX_BARE
+%ifndef FEATURE_NOLIBC
 extern MANGLE(sprintf)
-extern MANGLE(write)
+extern WINDOWS_MANGLE(write)
   mov rdi, buffer
   mov rsi, rax
   mov rdx, r11
@@ -1620,7 +1614,7 @@ extern MANGLE(write)
   mov rdi, 2
   mov rsi, buffer
   mov rdx, rax
-  call MANGLE(write)
+  call WINDOWS_MANGLE(write)
   RESTORE_STACK
   RESTORE
 %endif
@@ -2198,7 +2192,7 @@ return_to_host:
 
 
 ;; convert string to number: rax = string, r11 = base -> rax (number)
-%ifndef FEATURE_LINUX_BARE
+%ifndef FEATURE_NOLIBC
 extern MANGLE(strtol)
 extern MANGLE(strtod)
 str2num:
@@ -2292,16 +2286,14 @@ num2str:
 
 
 ;; get string representation of "errno": -> rax (string)
-%ifndef FEATURE_LINUX_BARE
- %ifdef FEATURE_MACOSX 
-  %define GET_ERRNO_LOCATION  __error
- %elifdef  FEATURE_WINDOWS
+%ifndef FEATURE_NOLIBC
+ %ifdef  FEATURE_WINDOWS
   %define GET_ERRNO_LOCATION  _errno
  %else
   %define GET_ERRNO_LOCATION __errno_location
  %endif
 extern MANGLE(GET_ERRNO_LOCATION)
-extern MANGLE(strerror)
+extern WINDOWS_MANGLE(strerror)
 get_last_error:
   SAVE
   ALIGN_STACK
