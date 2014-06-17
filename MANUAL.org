@@ -132,6 +132,8 @@
      (code <...your code...>))
    #+END_SRC
 
+** TODO Linking Executables
+
 ** Command-line Options
 
    The compiler accepts the following options in any order.
@@ -755,7 +757,9 @@
    registers =rbx=, =rcx=, ..., =r10= hold the actual arguments,
    including the implicit arguments introduced by the CPS- and
    closure-conversion passes: the current continuation (=rcx=) and the
-   current closure (=rbx=), respectively.
+   current closure (=rbx=), respectively. Local variables (as created
+   by =let= or =letrec=) are also put into the remaining argument
+   registers as long as registers are still available.
 
    =eax=, =r11= and =r15= are used throughout compiled code and the
    runtime-system as temporaries.
@@ -770,17 +774,48 @@
 
 ** Optimizations Performed
 
-** Performance
+   As already stated, not many optimizations are performed. Currently
+   these are:
 
-** Hacking and Extending the Compiler
+   During the canonicalization phase =lambda= or =case-lambda=
+   expressions in the operator-position of a procedure-call are expanded
+   in-line so that
 
-* Data Representation
+   #+BEGIN_SRC scheme
+   ((lambda (VAR ...) BODY ...) ARGUMENTS ...)
+   #+END_SRC
 
-* Garbage Collection
+   is transformed into
 
-* Interfacing to Native Code
+   #+BEGIN_SRC scheme
+   (let ((VAR ARGUMENT) ...) BODY ...)
+   #+END_SRC
 
-* Embedding
+   Unused =let=-bound variables are removed, if they are initialized
+   to expressions that have no side-effects. Unused variables will not
+   use up an argument register, regardless of whether the
+   initialization expression has effects or not.
+
+   Some effort is made to reduce redundant saves of intermediate
+   values when translating the arguments for a procedure-call, as
+   target registers for call-arguments may conflict with the use of
+   local variables during the set-up of the call. This is currently
+   not overly sophisticated.
+
+   Finally some very simple peephole-optimizations are done, like a
+   move from between identical registers.
+
+** TODO Performance
+
+** TODO Hacking and Extending the Compiler
+
+* TODO Data Representation
+
+* TODO Garbage Collection
+
+* TODO Interfacing to Native Code
+
+* TODO Embedding
 
 * Bugs and Limitations
 
@@ -797,9 +832,9 @@
   Complex numbers and other numeric types with the exception of small
   integers and floating-point numbers are not supported.
   
-* Porting Guide
+* TODO Porting Guide
 
-* Suggestions for Projects
+* TODO Suggestions for Projects
 
 * Terms of Use
 
@@ -848,7 +883,7 @@
   Everything else was written by Felix Winkelmann and is put into the
   public domain.
 
-* Further Reading
+* TODO Further Reading
 
 
 #+TITLE:     The BONES Manual
