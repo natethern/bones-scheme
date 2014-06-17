@@ -1,18 +1,38 @@
 BONES                                                                          -*- Org -*-
 
 
+* TODO file:bones.h accessors for error-obj slots
+* TODO Configuration changes
+  - 'linux-bare -> 'linux + 'nolibc
+  - enable flonums for 'linux in general
+    - =(string->number FLOAT)= -> #f
+    - =(number->string FLOAT)= -> "<float>"
+    - document this.
+* TODO add more tests
+  - linux + nolibc.
 * TODO [#B] test "smart-spill" branch
   - file:tsort.scm is by MH, ask about licensing.
 * TODO Write manual
-  - caveats, nonstd primitives, embedding, using $inline/$primitive,
-    code-generation strategy, optimizations performed, GC,
-    data-representation, interesting projects (in-core compilation,
-    emitting elf-modules directly, etc.), porting guide, performance
-    guide.
+  - embedding, using $inline/$primitive, GC, data-representation,
+    interesting projects (in-core compilation, emitting elf-modules
+    directly, etc.), porting guide, performance guide.
+  - further reading:
+    Scheme
+    EOPL
+    Compiling with Continuations
+    Simply FPU
+    Agner Fog's stuff
+    syscall list (64-bit)
+    file:/archive/64-ia-32-architectures-software-developer-manual-325462.pdf
+    file:/archive/x86-64-abi.pdf
   - Links for MSVC.
-  - document configuration features and available primitives for "bare" mode.
+  - document configuration features.
   - provide manual as text in dist tarball and html on web-site.
-  - portability.
+  - portability
+    - x86_64 + SSE.
+    - linux + windows.
+  - using musl.
+  - nolibc mode.
   - usage: demonstrate linking.
   - document "linux-bare" mode,
   - further reading: Compiling with continuations, EOPL (cps-conversion),
@@ -44,11 +64,12 @@ BONES                                                                          -
   - "bones" works somehow, but crashes when given arguments.
   - needs /rip-relative/.
   - try mingw64.
-* TODO Merge branch /rip-relative/
-  - control via feature "pic".
+* TODO [#A] Merge branch /rip-relative/
+  - run "make check".
+  - control via feature 'pic.
     - =generate-closure-alloc= can generate both code variants, depending
-      in this feature.
-  - use =FEATURE_PIC= in file:x86_64/boneslib.s.
+      on feature.
+  - use =FEATURE_PIC= in file:x86_64/boneslib.s for PIC/non-PIC cases.
 * TODO try compiling grond
   + fails to compile bones-grond, either with OOM or, with 1GB heap, SIGILL.
 * TODO something is wrong with musl's "sprintf" (or varargs) implementation
@@ -207,8 +228,7 @@ mainCRTStartup:
        check for marker word and skip.
 * Referencess
   - X86_64:
-    - FPU instructions: http://www.pmzone.org/appendixF.html
-    - FPU tutorial: http://www.website.masmforum.com/tutorials/fptute/fpuchap10.htm
+    - x87: http://www.website.masmforum.com/tutorials/fptute/index.html
     - x86 reference: http://www.fermimn.gov.it/linux/quarta/x86/index.htm
     - SSE: http://softpixel.com/~cwright/programming/simd/sse.php
     - General information: file:/archive/optimizing_assembly.pdf
