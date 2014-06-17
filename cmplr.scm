@@ -51,6 +51,7 @@
        (when (option 'dump-features: options)
 	 (for-each print implementation-features)
 	 (stop))
+       (set! enable-pic (memq 'pic implementation-features))
        (expand-syntax (generate-cond-expand implementation-features))
        (when (option 'dump-source: options)
 	 (pp prg)

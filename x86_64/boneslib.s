@@ -19,6 +19,10 @@
 
   bits 64
 
+%ifdef FEATURE_PIC
+  default rel
+%endif
+
 
 ;;; windows-specific libc aliases
 %ifdef FEATURE_WINDOWS
@@ -442,15 +446,28 @@ consrest:
     mov rcx, PAIR | 2
     mov [ALLOC], rcx
     mov rcx, ALLOC
+%ifdef FEATURE_PIC
+    lea r15, [locals]
+    mov r15, [r15 + r11 * CELLS(1)]
+%else
     mov r15, [locals + r11 * CELLS(1)]
+%endif
     mov [ALLOC + CELLS(1)], r15
     add ALLOC, CELLS(3)
     pop r11
     dec r11
   again
   sub r11, 2
-  ;;XXX this will probably not work - see below
+%ifdef FEATURE_PIC
+  lea r15, [rel consrest_jmptable]
+  mov r15, [r15 + r11 * CELLS(1)]
+  call .a0
+.a0:
+  add r15, [rsp]
+  add rsp, CELLS(1)
+%else
   mov r15, [consrest_jmptable + r11 * CELLS(1)]
+%endif
   inc r11	      ;XXX get rid of this, probably by adjusting jmptable
   jmp r15
 %macro CONSREST1 1
@@ -479,16 +496,20 @@ consrest:
 
 section .data
 
-;;XXX needs "wrt ..imagebase" and add of additional offset (see nasm manual)
+%ifdef FEATURE_PIC
+%define CONSREST_OFF(lbl)  consrest. %+ lbl - consrest.a0
+%else
+%define CONSREST_OFF(lbl)  consrest. %+ lbl
+%endif
 consrest_jmptable:
-  dq    consrest.a1
-  dq    consrest.a2
-  dq    consrest.a3
-  dq    consrest.a4
-  dq    consrest.a5
-  dq    consrest.a6
-  dq    consrest.a7
-  dq    consrest.a8
+  dq    CONSREST_OFF(a1)
+  dq    CONSREST_OFF(a2)
+  dq    CONSREST_OFF(a3)
+  dq    CONSREST_OFF(a4)
+  dq    CONSREST_OFF(a5)
+  dq    CONSREST_OFF(a6)
+  dq    CONSREST_OFF(a7)
+  dq    CONSREST_OFF(a8)
 
 section .text
 
@@ -1063,7 +1084,16 @@ PRIMITIVE apply
   cmp r11, NUMBER_OF_ARGUMENT_REGISTERS
   ja .l9
   sub r11, 4
+%ifdef FEATURE_PIC
+  lea r15, [apply_jmptable]
+  mov rax, [r15 + r11 * CELLS(1)]
+  call .l0
+.l0:
+  add rax, [rsp]
+  add rsp, CELLS(1)
+%else
   mov rax, [apply_jmptable + r11 * CELLS(1)]
+%endif
   jmp rax
   ;; jmptable: move all register arguments into "tempregisters", starting from rsi
 .l9:
@@ -1079,7 +1109,12 @@ PRIMITIVE apply
 .l4:
   mov [tempregisters], rsi
   ;; now deconstruct last argument
+%ifdef FEATURE_PIC
+  lea r15, [tempregisters]
+  lea rdi, [r15 + r11 * CELLS(1)]
+%else
   lea rdi, [tempregisters + r11 * CELLS(1)]
+%endif
   mov rsi, [rdi]
   mov rdx, null
   pop r11
@@ -1106,12 +1141,17 @@ PRIMITIVE apply
 
 section .data
 
+%ifdef FEATURE_PIC
+%define APPLY_OFF(lbl)  apply. %+ lbl - apply.l0
+%else
+%define APPLY_OFF(lbl)  apply. %+ lbl
+%endif
 apply_jmptable:
-  dq apply.l4
-  dq apply.l5
-  dq apply.l6
-  dq apply.l7
-  dq apply.l8
+  dq APPLY_OFF(l4)
+  dq APPLY_OFF(l5)
+  dq APPLY_OFF(l6)
+  dq APPLY_OFF(l7)
+  dq APPLY_OFF(l8)
 
 section .text
 
@@ -1879,7 +1919,12 @@ hash_string:
   repeat
     movzx r15, byte [r11]
     xor rax, r15
+%ifdef FEATURE_PIC
+    lea r15, [random_numbers]
+    movzx rax, byte [r15 + rax]
+%else
     movzx rax, byte [random_numbers + rax]
+%endif
     inc r11
     dec rcx
   until z

@@ -146,7 +146,13 @@
 	   x y))
 
 (define-syntax-rule (%symbol-literal i)
-  ($inline "FIX2INT rax; mov rax, [symbol_literals + rax * CELLS(1)]" i))
+  (cond-expand
+    (pic
+     ($inline
+      "FIX2INT rax; lea r11, [symbol_literals]; mov rax, [r11 + rax * CELLS(1)]" 
+      i))
+    (else
+     ($inline "FIX2INT rax; mov rax, [symbol_literals + rax * CELLS(1)]" i))))
 
 (define-syntax-rule (%terminate code)
   ($inline "mov [exit_code], rax; jmp terminate" code))

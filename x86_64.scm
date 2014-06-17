@@ -13,6 +13,7 @@
 (define false-register 'FALSE)
 (define count-register 'r11)
 (define stack-register 'rsp)
+(define enable-pic #f)
 
 
 (define (generate-header features)
@@ -61,8 +62,11 @@
   (emit "\n"))
 
 (define (generate-closure-alloc n id)
-  (emit " mov rax, CLOSURE | " (add1 n) "\n mov [ALLOC], rax\n"
-	" mov qword [ALLOC + " (cells 1) "], f_" id "\n"))
+  (emit " mov rax, CLOSURE | " (add1 n) "\n mov [ALLOC], rax\n")
+  (if enable-pic
+      (emit " lea rax, [f_" id "]\n"
+	    " mov qword [ALLOC + " (cells 1) "], rax\n")
+      (emit " mov qword [ALLOC + " (cells 1) "], f_" id "\n")))
 
 (define (generate-move dest src)
   (unless (eq? dest src)
