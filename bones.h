@@ -59,6 +59,9 @@ typedef struct BONES_block {
 #define BONES_string(x)         ((char *)(((BONES_block *)(x))->slots))
 #define BONES_float(x)          (*((double *)(((BONES_block *)(x))->slots)))
 
+#define BONES_error_object_message(eo)    BONES_slot_ref(eo, 2)
+#define BONES_error_object_irritants(eo)  BONES_slot_ref(eo, 3)
+
 extern BONES_X bones(BONES_X);
 
 
