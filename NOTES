@@ -1,15 +1,14 @@
-BONES                                                                          -*- Org -*-
+BONES                                                                     -*- Org -*-
 
 
-* TODO file:bones.h accessors for error-obj slots
 * TODO Configuration changes
   - 'linux-bare -> 'linux + 'nolibc
   - enable flonums for 'linux in general
     - =(string->number FLOAT)= -> #f
     - =(number->string FLOAT)= -> "<float>"
     - document this.
-* TODO add more tests
-  - linux + nolibc.
+  - move all syscalls/libcalls as syntax-defs into file:x86_64/OS/syscalls.scm
+  - get rid of libc-aliases in file:x86_64/boneslib.s
 * TODO [#B] test "smart-spill" branch
   - file:tsort.scm is by MH, ask about licensing.
 * TODO Write manual
@@ -33,20 +32,18 @@ BONES                                                                          -
     - linux + windows.
   - using musl.
   - nolibc mode.
-  - usage: demonstrate linking.
-  - document "linux-bare" mode,
+  - document "linux-bare" mode: configuration, linking, usage, unavailable
+    primitives.
   - further reading: Compiling with continuations, EOPL (cps-conversion),
     nasm website.
   - add note about safe-for-space-complexity.
   - embedding: document "copy" (file:copy.scm)
 * TODO write web-page
-* TODO complete "linux-bare" configuration
-  - currently missing (but should be possible to implement):
-    system, getenv, time/clock.
 * TODO complete library support for "bare" mode
   - system :: fork + execve "sh -c" (needs =environ=), then wait and
               check exit status
   - getenv :: use =environ=?
+  - time/clock.
 * TODO file:dynamic.scm fails with "linux-bare" config
   - bogus results (counters seem to be wrong - bug in integer-only
     arithmetic?)
