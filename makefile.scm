@@ -32,13 +32,13 @@
 
 (define compiler-sources-x86_64
   '("x86_64/intrinsics.scm"
-    "x86_64/linux/syscalls.scm"
     "x86_64.scm"))
 
 (define (bones-x86_64-linux.s)
   (make/proc
    (list (list "bones-x86_64-linux.s"
-	       (append compiler-sources compiler-sources-x86_64)
+	       (append compiler-sources compiler-sources-x86_64
+		       '("x86_64/linux/syscalls.scm"))
 	       (lambda ()
 		 (run (./bones1 bones.scm -o bones-x86_64-linux.s -feature linux)))))))
 
@@ -46,7 +46,8 @@
   (bones)
   (make/proc
    (list (list "bones-x86_64-windows.s"
-	       (append compiler-sources compiler-sources-x86_64)
+	       (append compiler-sources compiler-sources-x86_64
+		       '("x86_64/windows/syscalls.scm"))
 	       (lambda ()
 		 (run (./bones bones.scm -o bones-x86_64-windows.s -feature windows)))))))
 
