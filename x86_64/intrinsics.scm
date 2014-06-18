@@ -82,7 +82,7 @@
 
 (define-syntax-rule (%ieee754-round x)
   (let ((tmp ($allocate #x10 1)))
-    ($inline "fld qword [r11 + CELLS(1)]; frndint; fstp qword [rax + CELLS(1)]" tmp n)))
+    ($inline "fld qword [r11 + CELLS(1)]; frndint; fstp qword [rax + CELLS(1)]" tmp x)))
 
 (define-syntax-rule (%fixnum->ieee754 x)
   (let ((tmp ($allocate #x10 1)))
