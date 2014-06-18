@@ -2240,19 +2240,15 @@ return_to_host:
 
 ;; convert string to number: rax = string, r11 = base -> rax (number)
 %ifndef FEATURE_NOLIBC
-extern MANGLE(strtol)
-extern MANGLE(strtod)
 str2num:
-  SAVE
   call copy_to_buffer
+  push rdx
+  push rbx
   push rax			; endptr
-  mov rdi, buffer
-  mov rsi, rsp
+  mov rdx, buffer
+  mov r15, rsp
   FIX2INT r11
-  mov rdx, r11
-  ALIGN_STACK
-  call MANGLE(strtol)
-  RESTORE_STACK
+  LIBCALL3 strtol, rdx, r15, r11
   ;; check endptr being identical to startptr
   pop r11
   mov r15, buffer
@@ -2269,12 +2265,10 @@ str2num:
     INT2FIX rax
   else
     ;; now try if it is a float
-    mov rdi, buffer
+    mov rax, buffer
     push rax			; endptr
-    mov rsi, rsp
-    ALIGN_STACK
-    call MANGLE(strtod)			; ignores base
-    RESTORE_STACK
+    mov r15, rsp
+    LIBCALL2 strtod, buffer, r15
     pop r11
     mov bl, [r11]
     test bl, bl
@@ -2289,45 +2283,36 @@ str2num:
     endif
   endif
 .done:
-  RESTORE
+  pop rbx
+  pop rdx
   ret
 
 
 ;; convert number to string: rax = number, r11 = base -> rax (string)
-extern MANGLE(sprintf)
 num2str:
-  SAVE
+  push rdx
   FIX2INT r11
-  mov rdi, stat_buffer
   test rax, 1
   if nz
     cmp r11, 8
     if e
-      mov rsi, ocvt
+      mov r15, ocvt
     else
       cmp r11, 16
       if e
-        mov rsi, xcvt
+        mov r15, xcvt
       else
-        mov rsi, dcvt
+        mov r15, dcvt
       endif
     endif
-    mov rdx, rax
-    FIX2INT rdx
-    ALIGN_STACK
-    xor rax, rax
-    call MANGLE(sprintf)
+    FIX2INT rax
+    LIBCALL3 sprintf, buffer, r15, rax
   else
-    mov rsi, gcvt
-    movsd xmm0, [rax + CELLS(1)]
-    ALIGN_STACK
-    mov rax, 1			; 1 float argument
-    call MANGLE(sprintf)
+    LIBCALL3_1 sprintf, buffer, gcvt, [rax + CELLS(1)]
   endif
-  RESTORE_STACK
-  mov rax, stat_buffer
+  mov rax, buffer
   call alloc_zstring
-  RESTORE
+  pop rdx
   ret    
 %endif
 
