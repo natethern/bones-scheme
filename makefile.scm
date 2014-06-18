@@ -49,7 +49,7 @@
 	       (append compiler-sources compiler-sources-x86_64
 		       '("x86_64/windows/syscalls.scm"))
 	       (lambda ()
-		 (run (./bones bones.scm -o bones-x86_64-windows.s -feature windows)))))))
+		 (run (./bones bones.scm -o bones-x86_64-windows.s -feature windows -feature pic)))))))
 
 (define (bones-x86_64-linux.o)
   (bones-x86_64-linux.s)
