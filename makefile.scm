@@ -72,7 +72,7 @@
 (define (tags)
   (make-tags "."))
 
-(define (compile+run fname . opts)
+(define (compile+run title fname . opts)
   (let-optionals opts ((cmplr "./bones")
 		       (runargs '())
 		       (features '()))
@@ -80,6 +80,7 @@
 	   (sname (string-append "tmp/" name ".s"))
 	   (oname (string-append "tmp/" name ".o"))
 	   (xname (string-append "tmp/" name)))
+      (print (padl (string-append " " title) 60 #\=) ": " fname)
       (and (zero? (run* (,cmplr ,(string-append fname ".scm") -o ,sname
 				,@(append-map (cut list '-feature <>) features))))
 	   (zero? (run* (nasm -f elf64 -g -F dwarf ,sname -o ,oname)))
@@ -93,37 +94,34 @@
   (run (mkdir -p tmp))
   (print
    (let ((ok #t))
-     (print "---------linux--------------------------------------------------")
      (for-each
       (lambda (prg)
 	(let ((copts (if (member prg '("r4rstest")) '("-case-insensitive") '())))
-	  (unless (compile+run prg "./bones" '() copts)
+	  (unless (compile+run "linux" prg "./bones" '() copts)
 	    (set! ok #f))))
       '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth"))
-     (print "---------linux (PIC)--------------------------------------------")
      (for-each
       (lambda (prg)
 	(let ((copts (if (member prg '("r4rstest")) '("-case-insensitive") '())))
-	  (unless (compile+run prg "./bones" '() copts '(pic))
+	  (unless (compile+run "linux/PIC" prg "./bones" '() copts '(pic))
 	    (set! ok #f))))
       '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth"))
-     (print "---------linux/nolibc-------------------------------------------")
      (for-each
       (lambda (prg)
-	(unless (compile+run prg "./bones" '() '(nolibc))
+	(unless (compile+run "linux/nolibc" prg "./bones" '() '(nolibc))
 	  (set! ok #f)))
       '("fac" "tak" #;"r4rstest" #;"dynamic" "forth"))
-     (print "---------self-compile-------------------------------------------")     
-     (unless (compile+run "bones" "./bones" '(bones.scm -o tmp/bones.s))
+     (unless (compile+run "self-compile" "bones" "./bones"
+			  '(bones.scm -o tmp/bones.s -feature linux)
+			  '(linux))
        (set! ok #f))
      (unless (zero? (run* (cmp bones-x86_64-linux.s tmp/bones.s)))
        (set! ok #f))
-     (print "---------embedded-----------------------------------------------")     
+     (print (padl 60 " embedded" #\=))
      (unless (check-embedded) (set! ok #f))
-     (print "----------------------------------------------------------------")     
      (if ok
-	 "\nall checks succeeded."
-	 "\nsome checks failed."))))
+	 "\n\nall checks succeeded."
+	 "\n\nSOME CHECKS FAILED."))))
 
 (define (check-embedded)
   (let ((r (and (zero? (run* (./bones embedded.scm -o tmp/embedded.s -feature embedded)))
