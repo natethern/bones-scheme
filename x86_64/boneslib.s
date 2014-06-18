@@ -241,6 +241,8 @@
   ALIGN_STACK
 %ifdef FEATURE_WINDOWS
   sub rsp, 32
+%else
+  xor rax, rax
 %endif
   call MANGLE(%1)
   RESTORE_STACK
@@ -258,6 +260,8 @@
   ALIGN_STACK
 %ifdef FEATURE_WINDOWS
   sub rsp, 32
+%else
+  xor rax, rax
 %endif
   call MANGLE(%1)
   RESTORE_STACK
@@ -277,6 +281,8 @@
   ALIGN_STACK
 %ifdef FEATURE_WINDOWS
   sub rsp, 32
+%else
+  xor rax, rax
 %endif
   call MANGLE(%1)
   RESTORE_STACK
@@ -298,6 +304,31 @@
   ALIGN_STACK
 %ifdef FEATURE_WINDOWS
   sub rsp, 32
+%else
+  xor rax, rax
+%endif
+  call MANGLE(%1)	
+  RESTORE_STACK
+  RESTORE
+%endmacro
+
+%macro LIBCALL3_1 4
+  extern MANGLE(%1)
+  SAVE
+%ifdef FEATURE_WINDOWS
+  mov rcx, %2
+  mov rdx, %3
+  movsd xmm2, %4
+%else
+  mov rdi, %2
+  mov rsi, %3
+  movsd xmm0, %4
+%endif
+  ALIGN_STACK
+%ifdef FEATURE_WINDOWS
+  sub rsp, 32
+%else
+  mov rax, 1
 %endif
   call MANGLE(%1)	
   RESTORE_STACK
