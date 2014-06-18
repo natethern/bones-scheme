@@ -27,7 +27,8 @@
 	(else (files "x86_64/linux/syscalls.scm"))))
      (else (error "unsupported architecture for linux"))))
   (windows
-   (provide file-ports file-system time jiffy-clock file-system process-environment)
+   (provide file-ports file-system time jiffy-clock file-system
+	    process-environment pic)
    (files "x86_64/windows/syscalls.scm"))
   (else (error "no operating system selected")))
 
