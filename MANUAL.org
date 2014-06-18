@@ -856,6 +856,12 @@
 
   Complex numbers and other numeric types with the exception of small
   integers and floating-point numbers are not supported.
+
+  Library support for on Linux for "nolibc" mode is incomplete:
+
+  - =number->string= and =string->number= do not support inexact numbers
+  - The non-standard primitives =system= and =getenv= are currently not
+    implemented.
   
 * TODO Porting Guide
 
