@@ -1331,12 +1331,14 @@ heap_full_trap:
 
 ;; write error message and exit: rax = raw string, r11 = length
 write_error_and_exit:
-
 %ifdef FEATURE_NOLIBC
   SYSCALL3 1, 2, rax, r11
 %else
-  extern WINDOWS_MANGLE(write)
-  LIBCALL3 WINDOWS_MANGLE(write), 2, rax, r11	
+ %ifdef FEATURE_WINDOWS
+  LIBCALL3 _write, 2, rax, r11	
+ %else
+  LIBCALL3 write, 2, rax, r11	
+ %endif
 %endif
   mov rax, FIX(70)			; EXIT_FAILURE
   mov [exit_code], rax
@@ -2295,18 +2297,15 @@ num2str:
  %else
   %define GET_ERRNO_LOCATION __errno_location
  %endif
-extern MANGLE(GET_ERRNO_LOCATION)
-extern WINDOWS_MANGLE(strerror)
 get_last_error:
-  SAVE
-  ALIGN_STACK
-  call MANGLE(GET_ERRNO_LOCATION)
+  LIBCALL0 GET_ERRNO_LOCATION
   mov eax, dword [rax]
-  mov rdi, rax
-  call WINDOWS_MANGLE(strerror)
-  RESTORE_STACK
+%ifdef FEATURE_WINDOWS
+  LIBCALL1 _strerror, rax
+%else
+  LIBCALL1 strerror, rax
+%endif
   call alloc_zstring
-  RESTORE
   ret  
 %endif
 
