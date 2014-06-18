@@ -685,7 +685,7 @@
    (let-syntax ((buflen 100))
      (let ((buffer (make-string buflen)))
        (lambda (num . base)
-	 (cond ((inexact? num) "<float>") ;XXX
+	 (cond ((inexact? num) (%error "sorry, float->string conversion is not implemented, yet"))
 	       ((eq? num 0) "0")
 	       (else
 		(let ((neg (negative? num))
