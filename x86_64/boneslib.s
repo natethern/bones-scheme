@@ -1608,20 +1608,12 @@ fill_bytes:
 ;; format string using sprintf(3) and write to stderr: rax = raw format-string, r11, r15 = args
 format_string:
 %ifndef FEATURE_NOLIBC
-extern MANGLE(sprintf)
-  mov rdi, buffer
-  mov rsi, rax
-  mov rdx, r11
-  mov rcx, r15
-  ALIGN_STACK
-  xor rax, rax
-  call MANGLE(sprintf)
-  mov rdi, 2
-  mov rsi, buffer
-  mov rdx, rax
-  call WINDOWS_MANGLE(write)
-  RESTORE_STACK
-  RESTORE
+  LIBCALL4 sprintf, buffer, rax, r11, r15
+ %ifdef FEATURE_WINDOWS
+  LIBCALL3 _write, 2, buffer, rax
+ %else
+  LIBCALL3 write, 2, buffer, rax
+ %endif
 %endif
   ret
 
