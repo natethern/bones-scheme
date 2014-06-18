@@ -310,6 +310,31 @@
   RESTORE
 %endmacro
 
+%macro LIBCALL4 5
+  extern MANGLE(%1)
+  SAVE
+%ifdef FEATURE_WINDOWS
+  mov rcx, %2
+  mov rdx, %3
+  mov r8, %4
+  mov r9, %5
+%else
+  mov rdi, %2
+  mov rsi, %3
+  mov rdx, %4
+  mov rcx, %5
+%endif
+  ALIGN_STACK
+%ifdef FEATURE_WINDOWS
+  sub rsp, 32
+%else
+  xor rax, rax
+%endif
+  call MANGLE(%1)	
+  RESTORE_STACK
+  RESTORE
+%endmacro
+
 %macro SYSCALL0 1
   SAVE
   ALIGN_STACK
