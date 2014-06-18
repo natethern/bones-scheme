@@ -31,7 +31,7 @@
 (define-syntax-rule (%system cmd)
   (%error '%system "not implemented"))
 
-(define-syntax-rule (%errno) "system call failed")
+(define-syntax-rule (%errno-string) "system call failed")
 
 (define-syntax-rule (%getenv cmd)
   (%error '%getenv "not implemented"))
