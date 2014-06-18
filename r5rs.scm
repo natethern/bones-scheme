@@ -683,28 +683,29 @@
 					      (if (char>=? c #\a) 87 48))))))))))))
 
    (let-syntax ((buflen 100))
-     (let ((buffer (make-string buflen)))
-       (lambda (num . base)
-	 (cond ((inexact? num) (%error "sorry, float->string conversion is not implemented, yet"))
-	       ((eq? num 0) "0")
-	       (else
-		(let ((neg (negative? num))
-		      (base (optional base 10)))
-		  (let loop ((p buflen) (n (if neg (%fx- 0 num) num)))
-		    (cond ((eq? n 0)
-			   (when neg
-			     (set! p (%fx- p 1))
-			     (string-set! buffer p #\-))
-			   (substring buffer p))
-			  (else
-			   (%fx-divmod 
-			    n base
-			    (lambda (q r)
-			      (let ((p (%fx- p 1)))
-				(string-set! 
-				 buffer p
-				 (integer->char (%fx+ (if (%fx>=? r 10) 87 48) r)))
-				(loop p q))))))))))))))
+     (define number->string
+       (let ((buffer (make-string buflen)))
+	 (lambda (num . base)
+	   (cond ((inexact? num) (%error "sorry, float->string conversion is not implemented, yet"))
+		 ((eq? num 0) "0")
+		 (else
+		  (let ((neg (negative? num))
+			(base (optional base 10)))
+		    (let loop ((p buflen) (n (if neg (%fx- 0 num) num)))
+		      (cond ((eq? n 0)
+			     (when neg
+			       (set! p (%fx- p 1))
+			       (string-set! buffer p #\-))
+			     (substring buffer p))
+			    (else
+			     (%fx-divmod 
+			      n base
+			      (lambda (q r)
+				(let ((p (%fx- p 1)))
+				  (string-set! 
+				   buffer p
+				   (integer->char (%fx+ (if (%fx>=? r 10) 87 48) r)))
+				  (loop p q)))))))))))))))
 
   (else
    
