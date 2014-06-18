@@ -1332,7 +1332,8 @@ write_error_and_exit:
 %ifdef FEATURE_NOLIBC
   SYSCALL3 1, 2, rax, r11
 %else
-  LIBCALL3 write, 2, rax, r11	
+  extern WINDOWS_MANGLE(write)
+  LIBCALL3 WINDOWS_MANGLE(write), 2, rax, r11	
 %endif
   mov rax, FIX(70)			; EXIT_FAILURE
   mov [exit_code], rax
@@ -1603,7 +1604,6 @@ fill_bytes:
 format_string:
 %ifndef FEATURE_NOLIBC
 extern MANGLE(sprintf)
-extern WINDOWS_MANGLE(write)
   mov rdi, buffer
   mov rsi, rax
   mov rdx, r11
