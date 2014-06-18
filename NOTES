@@ -1,20 +1,13 @@
 BONES                                                                     -*- Org -*-
 
 
-* TODO Configuration changes
-  - 'linux-bare -> 'linux + 'nolibc
-  - enable flonums for 'linux in general
-    - =(string->number FLOAT)= -> #f
-    - =(number->string FLOAT)= -> "<float>"
-    - document this.
-  - move all syscalls/libcalls as syntax-defs into file:x86_64/OS/syscalls.scm
-  - get rid of libc-aliases in file:x86_64/boneslib.s
 * TODO [#B] test "smart-spill" branch
   - file:tsort.scm is by MH, ask about licensing.
-* TODO Write manual
+* TODO write manual
   - embedding, using $inline/$primitive, GC, data-representation,
     interesting projects (in-core compilation, emitting elf-modules
     directly, etc.), porting guide, performance guide.
+  - document that =string->number= does not parse "nan.0"/"inf.0".
   - further reading:
     Scheme
     EOPL
@@ -22,6 +15,8 @@ BONES                                                                     -*- Or
     Simply FPU
     Agner Fog's stuff
     syscall list (64-bit)
+    nasm
+    musl
     file:/archive/64-ia-32-architectures-software-developer-manual-325462.pdf
     file:/archive/x86-64-abi.pdf
   - Links for MSVC.
@@ -31,20 +26,17 @@ BONES                                                                     -*- Or
     - x86_64 + SSE.
     - linux + windows.
   - using musl.
-  - nolibc mode.
-  - document "linux-bare" mode: configuration, linking, usage, unavailable
+  - document nolibc mode: configuration, linking, usage, unavailable
     primitives.
-  - further reading: Compiling with continuations, EOPL (cps-conversion),
-    nasm website.
   - add note about safe-for-space-complexity.
   - embedding: document "copy" (file:copy.scm)
 * TODO write web-page
-* TODO complete library support for "bare" mode
-  - system :: fork + execve "sh -c" (needs =environ=), then wait and
+* TODO complete library support for 'nolibc mode
+  - %system :: fork + execve "sh -c" (needs =environ=), then wait and
               check exit status
-  - getenv :: use =environ=?
+  - %getenv :: can we get at the env in =_start=?
   - time/clock.
-* TODO file:dynamic.scm fails with "linux-bare" config
+* TODO file:dynamic.scm fails with 'nolibc config
   - bogus results (counters seem to be wrong - bug in integer-only
     arithmetic?)
 * TODO unboxing
@@ -57,21 +49,23 @@ BONES                                                                     -*- Or
   - have local FA pass ("lfa") that expands $typed-case-lambda according to inferred
     types and convert "let"-bound flonum vars using a custom binding form
     - e.g. "($let-float ...)" or something like this.
-* TODO Windows port
+* TODO windows port
   - "bones" works somehow, but crashes when given arguments.
-  - needs /rip-relative/.
   - try mingw64.
-* TODO [#A] Merge branch /rip-relative/
-  - run "make check".
-  - control via feature 'pic.
-    - =generate-closure-alloc= can generate both code variants, depending
-      on feature.
-  - use =FEATURE_PIC= in file:x86_64/boneslib.s for PIC/non-PIC cases.
+    - try gdb.
 * TODO try compiling grond
   + fails to compile bones-grond, either with OOM or, with 1GB heap, SIGILL.
+* we could coalesce allocations inside a lambda
+  - but will probably gain very little.
 * TODO something is wrong with musl's "sprintf" (or varargs) implementation
   - "(number->string (expt 2.1 3))" returns "nan".
   - ok with glibc.
+* TODO provide some debugging support
+  - could keep call-trace in ring-buffer.
+  - 'debug feature could enable call to trace routine on every CPS call.
+  - install SIGILL/SIGSEGV/SIGBUS/SIGFPE handlers that dump trace and
+    abort.
+* TODO is "case-sensitive" really working?
 * TODO implement basic known procedure optimizations
   - beta-contraction (needs knowledge about FVs).
   - direct-calls (implies loops).
@@ -198,6 +192,7 @@ mainCRTStartup:
     primitive expansions (like "not").
 * TODO log: "fld1; fld XXX; fyl2x"
   - seems to be broken.
+* TODO =string->number= does not parse "+/-nan.0"/"+/-inf.0"
 * TODO remove unused globals
 * TODO secure inline-primitives against redefinition of internally used primitives
   - like this:
