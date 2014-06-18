@@ -3,6 +3,7 @@ BONES                                                                     -*- Or
 
 * TODO [#B] test "smart-spill" branch
   - file:tsort.scm is by MH, ask about licensing.
+* TODO "make check" fails on self-compile compare
 * TODO write manual
   - embedding, using $inline/$primitive, GC, data-representation,
     interesting projects (in-core compilation, emitting elf-modules
