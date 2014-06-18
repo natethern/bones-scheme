@@ -233,12 +233,6 @@
 %define UNDERSCORE(name)      _ %+ name
 %define MANGLE(name)          name
 
-%ifdef FEATURE_WINDOWS
-%define WINDOWS_MANGLE        UNDERSCORE
-%else
-%define WINDOWS_MANGLE        MANGLE
-%endif
-
 
 ;; call C function with 0-3 arguments
 %macro LIBCALL0 1
