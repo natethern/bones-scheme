@@ -302,6 +302,9 @@
   mov rdx, %4
 %endif
   ALIGN_STACK
+%ifdef FEATURE_WINDOWS
+  sub rsp, 32
+%endif
   call MANGLE(%1)	
   RESTORE_STACK
   RESTORE
