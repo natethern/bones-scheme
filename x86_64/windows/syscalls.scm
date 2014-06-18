@@ -40,7 +40,7 @@
   ($inline "LIBCALL0 getpid; INT2FIX rax"))
 
 (define-syntax-rule (%system cmd)
-  ($inline "CALL copy_to_buffer; LIBCALL1 system, buffer; INT2FIX rax" cm))
+  ($inline "CALL copy_to_buffer; LIBCALL1 system, buffer; INT2FIX rax" cmd))
 
 (define-syntax-rule (%errno-string)
   ($inline "CALL get_last_error"))
