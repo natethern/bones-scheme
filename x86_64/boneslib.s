@@ -2300,7 +2300,7 @@ get_last_error:
   call MANGLE(GET_ERRNO_LOCATION)
   mov eax, dword [rax]
   mov rdi, rax
-  call MANGLE(strerror)
+  call WINDOWS_MANGLE(strerror)
   RESTORE_STACK
   call alloc_zstring
   RESTORE
