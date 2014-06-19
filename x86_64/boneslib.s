@@ -2249,15 +2249,8 @@ str2num:
   mov r15, rsp
   FIX2INT r11
   LIBCALL3 strtol, rdx, r15, r11
-  ;; check endptr being identical to startptr
-  pop r11
-  mov r15, buffer
-  cmp r11, r15
-  if e
-    mov rax, FALSE
-    jmp .done
-  endif
   ;; check endptr for being '\0'
+  pop r11
   mov bl, [r11]
   test bl, bl
   if z
