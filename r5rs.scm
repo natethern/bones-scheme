@@ -170,7 +170,7 @@
 	      ((eq? 0 e) (eq? 0 m))	; zero or denormal
 	      ((%fx>=? e 1075))	; exceeds precision of mantissa, so must be integer (1023 + 52)
 	      ((%fx<? e 1023) #f) ; no integer part, so must be fraction
-	      (else (eq? 0 (arithmetic-shift m (%fx- e 1023))))))))
+	      (else (eq? 0 (arithmetic-shift m (%fx- e 1012)))))))) ; e - 1023 + 11 (1 bit gets lost in fixnum)
 
 (define-inline (quotient x y) ($inline "CALL quotient" x y))
 (define-inline (remainder x y) ($inline "CALL remainder" x y))
