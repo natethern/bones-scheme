@@ -1223,7 +1223,7 @@
 	 (test-inexact)
 	 #;(test-inexact-printing)))
   ;(if have-bignums? (test-bignum))
-  (if (and have-inexacts? have-bignums?)
+  #;(if (and have-inexacts? have-bignums?)
       (test-numeric-predicates)))
 
 (newline)
