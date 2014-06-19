@@ -834,9 +834,95 @@
 
 ** TODO Hacking and Extending the Compiler
 
-* TODO Data Representation
+* Data Representation
 
-* TODO Garbage Collection
+  Values used in the system are of two kinds: 64-bit immediate exact
+  numbers (/fixnums/) and 64-bit pointers to data. A fixnum is marked
+  by having the lowest bit set to 1. Pointers are always aligned on an
+  8-byte boundary and so automatically have their lowest 3 bits set
+  to 0. This allows to distinguish between immediate and non-immediate
+  data by just testing the lowest bit. This is necessary to implement
+  type-predicates and to allows the garbage collector (described
+  below) to handle them specifically.
+
+  Non-immediate data (/blocks/) are preceded by a 64-bit /header/,
+  containing the size and the type of the block, in addition to some
+  bits used for house-keeping during garbage collections. The size is
+  encoded in the lowest 56 bits, the type in the upper 8 bits.
+
+  Non-immediate data is again classified into normal blocks,
+  containing other values (fixnums or pointers to blocks) and
+  /byteblocks/, where the actual data-area after the header contains
+  raw bytes. Among these are strings and floating-point numbers.
+
+  The last class of blocks are /special/ blocks, which are like normal
+  blocks, but with the first /slot/ holds a native pointer value. This
+  is used for procedures - the pointer in that case points to the
+  actual machine code of the procedure. The remaining slots hold free
+  variables, in case the procedure is a closure, i.e.  needs to retain
+  references to variables defined in a scope lexically outside of the
+  procedure.
+
+  BONES uses IEEE-754 floating-point numbers on all supported
+  platforms.
+
+  Here is a rough overview of the different objects used in the
+  system:
+
+  | Type        | Typecode | Immediate | Byteblock | Special | Slots                              | Remarks             |
+  |-------------+----------+-----------+-----------+---------+------------------------------------+---------------------|
+  | Fixnum      | -        | X         |           | -       |                                    |                     |
+  | Null        | #x00     |           |           |         | None                               | The empty list      |
+  | Symbol      | #x01     |           |           |         | String                             |                     |
+  | Pair        | #x02     |           |           |         | Car, Cdr                           |                     |
+  | Vector      | #x03     |           |           |         | Element1, ...                      |                     |
+  | Char        | #x04     |           |           |         | Code (fixnum)                      |                     |
+  | End-of-file | #x05     |           |           |         | None                               |                     |
+  | Void        | #x06     |           |           |         | None                               | The undefined value |
+  | Boolean     | #x07     |           |           |         | 1 or 0 (fixnum)                    |                     |
+  | Port        | #x08     |           |           |         | fd (fixnum), input-flag (boolean), |                     |
+  |             |          |           |           |         | close-proc, r/w-proc, peek-buf     |                     |
+  |             |          |           |           |         | (char or #f), port-data            |                     |
+  | Promise     | #x09     |           |           |         | Thunk (procedure)                  |                     |
+  | Record      | #x0a     |           |           |         | Tag (symbol), id (fixnum), field1, |                     |
+  |             |          |           |           |         | ...                                |                     |
+  | Flonum      | #x10     |           | X         |         |                                    |                     |
+  | String      | #x11     |           | X         |         |                                    |                     |
+  | Procedure   | #x20     |           |           | X       |                                    |                     | 
+
+  =#t=, =#f= and the undefined (void) value are unique and never
+  allocated.
+
+  For information about the use of the slots in port and record
+  objects, you should study the source code, in particular =r5rs.scm=.
+
+* Garbage Collection
+
+  BONES uses a Cheney-style copying garbage collector. This sacrifices
+  one half of the available heap space to gain faster allocation and
+  collection and to make the time needed to collect garbage
+  independent on the amount of available memory. Fixnums are ignored
+  during GC, blocks are traversed in breadth-first manner to copy all
+  live data in every collection into the second half of the
+  heap-space.  Once all live data has been copied, the halves of the
+  heap-space are /flipped/ and program execution continues. The time
+  needed to a GC depends on the amount of live data. The fewer data is
+  allocated, the lower is the impact of the GC on the total run-time
+  of a program.
+
+  Pointers that do not point into the garbage collected heap are
+  ignored by GC, so it is allowed to store pointers to user-allocated
+  blocks (in fact to any kind of data) into Scheme data-structures.
+
+  Note that storing pointers to heap-allocated data in non-heap data
+  is disallowed and checked at runtime. Otherwise the garbage
+  collector will not be able to detect that the stored value is still
+  live, if no other pointer to that object exists. Since the GC moves
+  data in the heap on every collection (because it is copied from the
+  old heap-space to the new one), the old pointer will be invalid
+  after the collection finishes. This check can be disabled by passing
+  =-DDISABLE_WRITE_BARRIER= to =nasm=, which gives better performance,
+  but may lead to very hard to find bugs.
 
 * TODO Interfacing to Native Code
 
@@ -856,6 +942,10 @@
 
   Complex numbers and other numeric types with the exception of small
   integers and floating-point numbers are not supported.
+
+  =string->number= does not detect overflow when converting integers
+  and return -1 if the result does not fit into a fixnum. Also, "+/-nan.0"
+  and "+/-inf.0" is not correctly detected (but "+/-nan
 
   Library support for on Linux for "nolibc" mode is incomplete:
 
