@@ -4,8 +4,7 @@
   This is BONES, a compiler for R5RS Scheme that generates x86_64
   assembler code. BONES is designed to be simple and easy to
   understand, both to reduce the effort to learn and extend the system
-  and to keep the complexity of the compiler at a minimum, thus
-  striving for reliability and robustness.
+  and to keep the complexity of the compiler at a minimum.
 
   BONES is a batch-compiler, it takes a Scheme source file and
   produces an assembler file to be subsequently assembled into object
@@ -20,7 +19,8 @@
   to reduce code-size, increase performance and simplify the compiler
   and runtime system. Type-checks are generally omitted, for example.
   Very little error checking is done and arithmetic overflow of small
-  integers ("fixnums") is not detected.
+  integers ("fixnums") is not detected. Some R7RS procedures are
+  available in addition to the primitives required for R5RS.
 
   Since BONES produces assembly-code, build-times are quite short. The
   produced code is CPU- and OS-specific and currently supports only
@@ -50,9 +50,11 @@
   the assembled code you will typically need a C development
   environment. 
 
-  On Linux [[http://gcc.gnu.org][GCC]] is available and the recommended compiler, but you will
-  only need it for linking, and for providing the basic C runtime code
-  (CRT).
+  On Linux [[http://gcc.gnu.org][GCC]] is the recommended compiler, but you will only need it
+  for linking, and for providing the basic C runtime code (CRT).  A
+  subset of the functionality provided by this system can be compiled
+  to native code that does not need C runtime support - in this case
+  all you need is =ld=, the GNU linker.
 
   On Windows, Microsoft Visual C is supported, and the "Express"
   version can be obtained from the Microsoft website for free.
@@ -658,15 +660,10 @@
 
     - =(call/cc PROC)= :: Identical to =call-with-current-continuation=.
 
-    - =(error [LOCATION] MESSAGE ARGUMENTS ...)= :: Signals an error,
-      writing =MESSAGE= and =ARGUMENTS= to the port given by
-      =current-error-port= and performs an immediate exit (as with
-      =emergency-exit=). =LOCATION= can be used to mark where the 
-      error occurred and should be a symbol.
-
-    - =(emergency-exit [CODE])= :: Terminates the current program immediately.
-      Still pending =dynamic-wind= thunks are not invoked. =CODE= is the 
-      exit code of the process and defaults to 0.
+    - =(emergency-exit [CODE])= :: Terminates the current program
+      immediately.  Still pending =dynamic-wind= thunks are not
+      invoked. =CODE= is the exit code of the process and defaults to
+      0.
 
     - =(exit [CODE])= :: Terminates the process with the process
      status =CODE= (or 0, if not given). Pending =dynamic-wind= after
@@ -675,6 +672,48 @@
     - =(return-to-host RESULT)= :: suspends the currently running
       program and returns =RESULT= to the caller. This procedure is
       only available when the =embedded= feature is defined.
+
+**** Error-handling and Exceptions
+
+    - =(current-exception-handler [PROCEDURE])= :: Sets the current
+         /exception handler/, a procedure to be called when an error
+         is signalled. The procedure will be called with an object
+         that was used as an argument to =raise= or with an
+         /error-object/. The default exception handler writes the
+         exception object to the port that is the current value of
+         =current-error-port= and performs an immediate exit (as with
+         =emergency-exit=). In embedded mode, the default exception
+         handler invokes =return-to-host= with the exception object as
+         argument.  =current-exception-handler= is a parameter.
+
+    - =(error [LOCATION] [MESSAGE] ARGUMENTS ...)= :: Creates an
+      error-object from =LOCATION=, =MESSAGE= and =ARGUMENTS= and
+      invokes the current exception handler. =LOCATION= can be used to
+      mark where the error occurred and should be a symbol.
+
+    - =(error-object? X)= :: Returns true if =X= is an error-object or
+	 false otherwise.
+
+    - =(error-object-irritants ERROROBJECT)= :: Returns the
+         error-arguments stored in =ERROROBJECT=.
+
+    - =(error-object-location ERROROBJECT)= :: Returns the
+	 location stored in an error object or =#f= if no location
+	 is available.
+
+    - =(error-object-message ERROROBJECT)= :: Returns the
+         error-message stored in =ERROROBJECT=.
+
+    - =(file-error? OBJECT)= :: Returns true if =OBJECT= is an error
+         object raised by an invalid file-operation or false
+         otherwise.
+
+    - =(raise OBJECT)= :: Raises an exception by calling the current
+	 exception handler with =OBJECT=.
+
+    - =(read-error? OBJECT)= :: Returns true if =OBJECT= is an error
+         object raised invalid syntax in an invocation of =read= or
+         false otherwise.
 
 **** Numeric Operations
 
