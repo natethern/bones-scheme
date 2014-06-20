@@ -2396,7 +2396,7 @@ random_numbers:
 dcvt: db "%ld", 0
 ocvt: db "%lo", 0
 xcvt: db "%lx", 0
-gcvt: db "%.15g", 0
+gcvt: db "%.16g", 0
 
 rsp_alignment_mask: dq ~(CELLS(2) - 1)
 size_mask: dq SIZE_MASK
