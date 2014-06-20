@@ -1041,6 +1041,7 @@
    (define return-to-host ($primitive "return_to_host")))
   (else))
 
+
 (define-inline (error-object? x) 
   (and (record? x) (eq? (%slot-ref x 1) 1)))
 
@@ -1096,6 +1097,13 @@
   (case-lambda
     (() %current-exception-handler)
     ((xh . more) (set! %current-exception-handler xh)))) ; fake parameter
+
+(define-inline (file-error? x)
+  (and (error-object? x) (eq? 'file (%slot-ref x 5))))
+
+(define-inline (read-error? x)
+  (and (error-object? x) (eq? 'read (%slot-ref x 5))))
+
 
 (define case-sensitive
   (let ((cs #t))
