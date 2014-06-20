@@ -32,7 +32,7 @@
    (files "x86_64/windows/syscalls.scm"))
   (else (error "no operating system selected")))
 
-(provide srfi-6)
+(provide srfi-6 srfi-16)
 
 (files "r5rs.scm"
        "nonstd.scm")
