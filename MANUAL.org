@@ -107,6 +107,11 @@
 
   which should give you some usage information.
 
+  The =bones= executable can be moved anywhere you desire, but assumes
+  that some supporting files are in the directory where it is invoked.
+  You can use the =-L= command-line option (described below) to set
+  the the directory where the supporting files are located.
+
 * Usage
 
 ** Compiling Scheme code
@@ -195,8 +200,10 @@
         program-specifications or =cond-expand= clauses.
 
    - =-L LIBRARYPATH= :: Tells the compiler where to look for files to
-                       include directly or indirectly from program
-		       specifications.
+        include directly or indirectly from program
+        specifications. This option may be given multiple times where
+        every occurence of a library-path is prepended to the search
+        path.
 
    - =-nostdlib= :: Do not wrap the source code into a default program
                   specification as described above. This is mainly
@@ -768,18 +775,18 @@
 
    The machine registers are used in the following manner:
 
-   | Register name                   | Usage                                |
-   |---------------------------------+--------------------------------------|
-   | rax, r11, r15                   | Temporary registers                  |
-   | rcx, rdx, rsi, rdi, r8, r9, r10 | Argument registers                   |
-   | rbx                             | Holds currently executing closure    |
-   | rbp                             | Allocation-pointer                   |
-   | r13                             | Allocation-limit                     |
-   | r14                             | Contains the internal value for "#f" | 
+   | Register name                        | Usage                                |
+   |--------------------------------------+--------------------------------------|
+   | rax, r11, r15                        | Temporary registers                  |
+   | rcx, rdx, rsi, rdi, r8, r9, r10, r12 | Argument registers                   |
+   | rbx                                  | Holds currently executing closure    |
+   | rbp                                  | Allocation-pointer                   |
+   | r13                                  | Allocation-limit                     |
+   | r14                                  | Contains the internal value for "#f" |
 
    Since CPS-transformed procedures never return, registers need not
    be saved when a procedure call is made. In every procedure-call the
-   registers =rbx=, =rcx=, ..., =r10= hold the actual arguments,
+   registers =rbx=, =rcx=, ..., =r12= hold the actual arguments,
    including the implicit arguments introduced by the CPS- and
    closure-conversion passes: the current continuation (=rcx=) and the
    current closure (=rbx=), respectively. Local variables (as created
@@ -844,6 +851,9 @@
   data by just testing the lowest bit. This is necessary to implement
   type-predicates and to allows the garbage collector (described
   below) to handle them specifically.
+
+  Fixnums represent an integer value shifted one bit to the left, 
+  with the lowest bit set.
 
   Non-immediate data (/blocks/) are preceded by a 64-bit /header/,
   containing the size and the type of the block, in addition to some
@@ -924,7 +934,67 @@
   =-DDISABLE_WRITE_BARRIER= to =nasm=, which gives better performance,
   but may lead to very hard to find bugs.
 
-* TODO Interfacing to Native Code
+* Interfacing to Foreign Code
+
+  There are basically four ways to invoke non-Scheme code from compiled
+  programs:
+
+  1. Use =system= to run shell commands. This is the easiest and most
+     portable method, unless you need to have access the BONES
+     runtime- system or want to modify or inspect Scheme data.
+
+  2. Embed a compiled program inside other code that can interface to
+     C. For more information on this see below. This is also quite
+     straightforward and very flexible, without the need to use
+     assembler.
+
+  3. Use the =$inline= special form to mix assembler instructions
+     directly with Scheme code, where =$inline= is defined as
+
+     - =($inline STRING ARGUMENT ...)= :: Executes the assembler
+          instructions in =STRING=, given the results of evaluating
+          the arguments in =ARGUMENTS=, specifically in the =rax=,
+          =r11= and =r15= registers. At most three arguments may be
+          passed. Multiple instructions inside =STRING= can be given,
+          when separated by =;= (semicolon). Note that changing other
+          registers than the ones used for passing arguments may
+          change local variables and thus should be avoided, unless
+          you really know what you are doing.
+
+  4. Use the =$primitive= special form to refer to a primitive
+     procedure written in assembler:
+
+     - =($primitive STRING)= :: Returns a procedure refering to the
+	  primitive procedure named by the label =STRING=. 
+
+     The procedure must be written in assembler and takes its
+     arguments in the argument registers described in the chapter
+     describing the register usage. =rbx= holds the current procedure,
+     =rcx= the current continuation (a procedure block), and =rdx= to
+     =r12= contain the first seven arguments passed to the current
+     procedure. Additional arguments are passed in a static array and
+     are not accessible from separately compiled code, so your
+     primitive may not accept more than seven arguments.
+
+     To return, invoke the continuation procedure with a single result
+     in =rcx=, like this (nasm syntax, assuming the result is in =rax=):
+
+     #+BEGIN_SRC asm
+     mov rbx, rcx            ; make continuation the current procedure
+     mov rcx, rax            ; put result into the correct register
+     mov rax, [rbx + 8]      ; get code-pointer to continuation
+     jmp rax                 ; and jump to it
+     #+END_SRC
+
+     During execution of your primitive you are free to modify all
+     registers as you please, with the exception of =rbp=, =r13= and
+     =r14=, as long as you follow the steps given to invoke the
+     continuation. =rsp= may be modified, but must be restored when
+     the primitive returns.
+
+     No implicit argument-count checks are done. Returning multiple
+     values from user-defined primitives is not supported. The stack
+     is not used for procedure call arguments or return-addresses.
 
 * TODO Embedding
 
