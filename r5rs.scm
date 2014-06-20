@@ -323,10 +323,21 @@
     p))
 
 
+(define-inline (raise exn)
+  (%current-exception-handler exn))
+
+(define-syntax-rule (%make-error-object kind loc msg args)
+  (let ((exn ($allocate 10 6 'error-object 1 msg)))
+    (%slot-set! exn 3 args)
+    (%slot-set! exn 4 loc)
+    (%slot-set! exn 5 kind)
+    exn))
+
+
 (cond-expand
   ((or file-ports file-system)
    (define (%file-error loc . args)
-     (%apply %error loc (%errno-string) args)))
+     (raise (%make-error-object 'file loc (%errno-string) args))))
   (else))
 
 
@@ -1030,37 +1041,61 @@
    (define return-to-host ($primitive "return_to_host")))
   (else))
 
-(define %error
+(define-inline (error-object? x) 
+  (and (record? x) (eq? (%slot-ref x 1) 1)))
+
+(define-inline (error-object-message exn) (%slot-ref exn 2))
+(define-inline (error-object-irritants exn) (%slot-ref exn 3))
+(define-inline (error-object-location exn) (%slot-ref exn 4))
+
+(define %current-exception-handler
   (let ((write write)
 	(display display)
 	(newline newline)
-	(emergency-exit emergency-exit)
-	(string-append string-append))
-    (lambda (msg . args)
-      (cond ((and (symbol? msg) (pair? args) (string? (car args)))
-	     (set! msg (string-append "(" (symbol->string msg) ") " (car args)))
-	     (set! args (cdr args)))
-	    ((not (string? msg))
-	     (set! msg "")
-	     (set! args (cons msg args))))
+	(emergency-exit emergency-exit))
+    (lambda (exn)
       (cond-expand
-	(embedded
-	 (return-to-host
-	  (let ((err ($allocate 10 4 'error-object 1 msg)))
-	    (%slot-set! err 3 args)
-	    err)))
+	(embedded (return-to-host exn))
 	(else
-	 (display (string-append "\nError: " msg "\n") %standard-error-port)
-	 (unless (null? args)
-	   (for-each
-	    (lambda (arg)
-	      (newline %standard-error-port)
-	      (write arg)
-	      (newline %standard-error-port))
-	    args))
-	 (emergency-exit 70))))))      	; EXIT_FAILURE
+	 (let* ((exn? (error-object? exn))
+		(msg (if exn? (error-object-message exn) "unhandled exception"))
+		(loc (and exn? (error-object-location exn)))
+		(args (if exn? (error-object-irritants exn) (list exn))))
+	   (display "\nError: " %standard-error-port)
+	   (when loc
+	     (display (string-append "(" (%slot-ref loc 0) ") ") %standard-error-port))
+	   (display (string-append msg "\n") %standard-error-port)
+	   (unless (null? args)
+	     (for-each
+	      (lambda (arg)
+		(newline %standard-error-port)
+		(write arg)
+		(newline %standard-error-port))
+	      args))
+	   (emergency-exit 70)))))))      	; EXIT_FAILURE
+
+(define %error
+  (let ((string-append string-append))
+    (lambda (msg . args)
+      (let ((loc #f))
+	(cond ((and (symbol? msg) (pair? args) (string? (car args)))
+	       (set! loc msg)
+	       (set! msg (car args))
+	       (set! args (cdr args)))
+	      ((and (not (string? msg)) (pair? args))
+	       (set! msg "unknown error")
+	       (set! args (cons msg args))))
+	(raise
+	 (if (string? msg)
+	     (%make-error-object #f loc msg args)
+	     msg))))))
 
 (define-syntax error %error)
+
+(define-syntax current-exception-handler
+  (case-lambda
+    (() %current-exception-handler)
+    ((xh . more) (set! %current-exception-handler xh)))) ; fake parameter
 
 (define case-sensitive
   (let ((cs #t))
@@ -1083,7 +1118,7 @@
 	(case-sensitive case-sensitive)
 	(string->symbol string->symbol))
     (define (read-error msg . args)
-      (%apply %error 'read msg args))
+      (%make-error-object 'read 'read msg args))
     (lambda p
       (let ((port (optional p %standard-input-port))
 	    (cs (case-sensitive))
