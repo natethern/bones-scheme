@@ -1,11 +1,14 @@
-;; default base
+;; default base configurations
 
+
+;; intrinsics - needed for standard and non-standard procedures
 (cond-expand
   (x86_64
    (provide ieee754)
    (files "x86_64/intrinsics.scm"))
   (else (error "no architecture selected")))
 
+;; select default target, if none is given on the command line
 (cond-expand
   ((not (or linux windows))
    ;; map default-configuration to actual, if no specific target is given
@@ -14,6 +17,7 @@
      (default-linux (provide linux))))
   (else))
 
+;; include OS-specific definitions and features
 (cond-expand
   (linux
    (provide file-ports file-system process-environment time jiffy-clock)
@@ -29,7 +33,16 @@
    (files "x86_64/windows/syscalls.scm"))
   (else (error "no operating system selected")))
 
+;; some SRFI-features that are always available
 (provide srfi-6 srfi-16)
 
+;; add primitives
 (files "r5rs.scm"
        "nonstd.scm")
+
+;; optionally add SRFI-9 records
+(cond-expand
+  (records
+   (provide srfi-9)
+   (files "records.scm"))
+  (else))
