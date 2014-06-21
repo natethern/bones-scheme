@@ -56,8 +56,7 @@
   to native code that does not need C runtime support - in this case
   all you need is =ld=, the GNU linker.
 
-  On Windows, Microsoft Visual C is supported, and the "Express"
-  version can be obtained from the Microsoft website for free.
+  On Windows, [[http://www.visualstudio.com/en-us/downloads/download-visual-studio-vs.aspx][Microsoft Visual C]] and [[http://www.mingw.org][MINGW]] are supported.
 
 * Installation
 
@@ -101,6 +100,13 @@
     link /subsystem:console bones.obj /out:bones.exe
     #+END_SRC
 
+    If you are using MINGW, linking is done with the following
+    command:
+
+    #+BEGIN_SRC sh
+    gcc bones.obj -o bones.exe
+    #+END_SRC
+
   Now you have a compiler, which you can test by entering 
 
     #+BEGIN_SRC sh
@@ -139,6 +145,9 @@
      (code <...your code...>))
    #+END_SRC
 
+   See below for a description of the configuration language and the
+   default configuration.
+
 ** Assembling and linking Executables
 
    Once the compiler has produced an assembler file, it has to be
@@ -160,10 +169,17 @@
    gcc <OBJECTFILENAME> -o <PROGRAMFILENAME>
    #+END_SRC
 
-   On Windows the =link= program from Microsoft Viusal Studio is used:
+   On Windows the =link= program from Microsoft Viusal Studio can be
+   used:
 
    #+BEGIN_SRC sh
    link /subsystem:console <OBJECTFILENAME> /out:<PROGRAMFILENAME>
+   #+END_SRC
+
+   Alternatively, use the MINGW compiler driver:
+
+   #+BEGIN_SRC sh
+   gcc <OBJECTFILENAME> -o <PROGRAMFILENAME>
    #+END_SRC
 
 ** Command-line Options
@@ -176,24 +192,9 @@
    - =-comment= :: Emit source-code forms as comments in generated
                  assembler code.
 
-   - =-dump= :: Dump code after /canonicalization/, which is a normalizing
-	      step between CPS-transformation and closure-conversion.
-
-   - =-dump-cc= :: Dump code after closure conversion and stop.
-
-   - =-dump-cps= :: Dump source code to stdout after CPS-transformation 
-		  and stop.
-
    - =-dump-features= :: Dump the set of enabled features after any
                        program specification has been completely
                        parsed.
-
-   - =-dump-nested= :: Instead of dumping the source code as separate
-		     =lambda= expressions, dump it in its real nested
-		     structure. Only useful in combination with =-dump=,
-		     =-dump-cps= or =-dump-cc=.
-
-   - =-dump-source= :: Dump source code after before syntax expansion.
 
    - =-expand= :: Dump source code to stdout after syntax-expansion and
                 stop.
@@ -221,16 +222,12 @@
        not stored in the heap, the program normally aborts with an
        error message. Define this macro to disable this check.
 
-  - =EMBEDDED= :: Embed the generated code in another program. The compiled
-		Scheme code can be invoked by calling the =bones= function,
-		unless =PREFIX= is defined.
-
   - =ENABLE_GC_LOGGING= :: Write some informational output to stderr
        every time a garbage collection is triggered.
 
-  - =PREFIX= :: Defines a custom prefix, so passing =-DEMBEDDED
-              -DPREFIX=my= to =nasm=, the Scheme toplevel can be run
-              by calling =my_bones=.
+  - =PREFIX= :: Defines a custom entry-point prefix for embedding. By
+     passing -DPREFIX=my= to =nasm=, the Scheme toplevel can be run by
+     calling =my_bones=.
 
   - =TOTAL_HEAP_SIZE= :: Total size of the heap. Half of this space can be
        in use at any time. Defaults to 100MB.
@@ -541,6 +538,13 @@
     - =(cut EXP ...)= :: Notation for specializing parameters without
 	 currying - see [[http://srfi.schemers.org/srfi-26/][SRFI-26]] for more information.
 
+    - =(define-inline (NAME ARGUMENTS ...) BODY ...)= :: Defines a
+         procedure that should be in-lined at the call-site. This is
+         implemented by defining an /identifier-macro/ for =NAME=,
+         which the syntax-expander will replace with a =lambda= form
+         containing the procedure body , when used in the
+         operator-position of a procedure-call.
+
     - =(define-syntax-rule (NAME ARGUMENTS ...) BODY)= :: A more concise
         way of defining single-rule syntax.
 
@@ -746,6 +750,13 @@
     - =(free)= :: Returns the currently available memory in heap as an
       exact integer.
 
+    - =(make-disjoint-type [NAME])= :: Creates a new record type T and
+         returns three values: a constructor procedure that takes a
+         data object and returns a new record of type T, a predicate
+         that returns true if given a record of type T and an accessor
+         procedure receiving a record and returning the associated
+         data object.
+
     - =(reclaim)= :: Reclaims unused memory in the heap and returns an
       undefined value. Garbage collection is done automatically, but
       in certain cases, for example if time-critical code is to be
@@ -876,7 +887,54 @@
    Finally some very simple peephole-optimizations are done, like a
    move from between identical registers.
 
-** TODO Performance
+** Performance
+
+   BONES should deliver reasonably performant execution times. Only
+   very little error checking is done and machine-registers are
+   utilized as much as possibly, due to the CPS-nature of the compiled
+   code. Also due to CPS, continuation-closures are heap-allocated
+   which means that even during normal execution garbage will be
+   accumulated. The garbage collector is very efficient and allocation
+   is as well, as it can be done in-line. Still, GC must occur sooner
+   or later which results in small pauses during which all live data
+   must be traversed and compacted.
+
+   Numerically intensive code may be suboptimal - floating-point
+   operations are "boxed", and thus require frequent allocating of
+   inexact number objects.
+
+   The generated code is relatively compact, and contains no
+   dependencies besides the C runtime library, and even that can be
+   removed, if not all functionality is required. Startup times should
+   be excellent, as no complex initialization is needed for the
+   runtime system and no memory is allocated dynamically.
+
+   Finally, continuations are very efficient and induce very little
+   performance penalty, regardless how heavily they are used, because
+   CPS makes continuations "explicit" and an inherent part of normal
+   execution.
+
+   Still BONES is very simple and will be no match for programs coded
+   in C or high-performance Scheme systems. That is the price payed
+   for a simple system.
+
+   Some tips for obtaining fast code:
+
+   - Use =define-inline= or syntax-definitions for small procedures
+     where the call-overhead might be higher than the cost of
+     executing the procedure.
+
+   - Dispatching among the cases of a =case-lambda= is very efficient
+     and is preferrable to using rest-argument lists and destructuring
+     them manually.
+
+   - There are a number of low-level "intrinsic" procedures, mostly
+     intended for internal use and often implemented as macros or
+     inline-procedures. Check out the sources of the runtime library
+     for more information.
+
+   - Try to reduce the amount of live-data to speed up garbage
+     collection.
 
 ** TODO Hacking and Extending the Compiler
 
@@ -918,32 +976,33 @@
   Here is a rough overview of the different objects used in the
   system:
 
-  | Type        | Typecode | Immediate | Byteblock | Special | Slots                              | Remarks             |
-  |-------------+----------+-----------+-----------+---------+------------------------------------+---------------------|
-  | Fixnum      | -        | X         |           | -       |                                    |                     |
-  | Null        | #x00     |           |           |         | None                               | The empty list      |
-  | Symbol      | #x01     |           |           |         | String                             |                     |
-  | Pair        | #x02     |           |           |         | Car, Cdr                           |                     |
-  | Vector      | #x03     |           |           |         | Element1, ...                      |                     |
-  | Char        | #x04     |           |           |         | Code (fixnum)                      |                     |
-  | End-of-file | #x05     |           |           |         | None                               |                     |
-  | Void        | #x06     |           |           |         | None                               | The undefined value |
-  | Boolean     | #x07     |           |           |         | 1 or 0 (fixnum)                    |                     |
-  | Port        | #x08     |           |           |         | fd (fixnum), input-flag (boolean), |                     |
-  |             |          |           |           |         | close-proc, r/w-proc, peek-buf     |                     |
-  |             |          |           |           |         | (char or #f), port-data            |                     |
-  | Promise     | #x09     |           |           |         | Thunk (procedure)                  |                     |
-  | Record      | #x0a     |           |           |         | Tag (symbol), id (fixnum), field1, |                     |
-  |             |          |           |           |         | ...                                |                     |
-  | Flonum      | #x10     |           | X         |         |                                    |                     |
-  | String      | #x11     |           | X         |         |                                    |                     |
-  | Procedure   | #x20     |           |           | X       |                                    |                     | 
+  | Type        | Typecode | Immediate | Byteblock | Special | Remarks             |
+  |-------------+----------+-----------+-----------+---------+---------------------|
+  | Fixnum      | -        | X         |           | -       |                     |
+  | Null        | #x00     |           |           |         | The empty list      |
+  | Symbol      | #x01     |           |           |         |                     |
+  | Pair        | #x02     |           |           |         |                     |
+  | Vector      | #x03     |           |           |         |                     |
+  | Char        | #x04     |           |           |         |                     |
+  | End-of-file | #x05     |           |           |         |                     |
+  | Void        | #x06     |           |           |         | The undefined value |
+  | Boolean     | #x07     |           |           |         |                     |
+  | Port        | #x08     |           |           |         |                     |
+  | Promise     | #x09     |           |           |         |                     |
+  | Record      | #x0a     |           |           |         |                     |
+  | Flonum      | #x10     |           | X         |         |                     |
+  | String      | #x11     |           | X         |         |                     |
+  | Procedure   | #x20     |           |           | X       |                     |
 
   =#t=, =#f= and the undefined (void) value are unique and never
   allocated.
 
   For information about the use of the slots in port and record
   objects, you should study the source code, in particular =r5rs.scm=.
+
+  Records are vector-like blocks where the two first slots contain
+  a record-tag (symbol) and a fixnum id, designating the exact type
+  of the record. Id 1 is used for error-objects.
 
 * Garbage Collection
 
@@ -1035,12 +1094,62 @@
      values from user-defined primitives is not supported. The stack
      is not used for procedure call arguments or return-addresses.
 
-* TODO Embedding
+* Embedding
+
+  Compiled programs can be linked to code written in other languages,
+  provided they are able to interface to C. Normally an object file
+  compiled with BONES exports the entry-point =main= (or =_start= when
+  the C-libray is disabled). By compiling the Scheme program with the
+  option =-feature embedded=, the entry-point is renamed to "bones",
+  having this signature:
+
+  #+BEGIN_SRC c
+  BONES_X bones(BONES_X argument);
+  #+END_SRC
+
+  where =BONES_X= is a generic type designating a Scheme value.  
+
+  The function is not reentrant, and so can not be used by multiple
+  threads, because it refers to static data buffers and variables.  It
+  is possible to combine multiple programs by using the
+  =-DPREFIX=<prefix>= option when assembling a compiled program. In
+  this case the entry-point will be named =<prefix>_bones=. Every
+  entry-point refers to a self-contained Scheme environment and thus
+  can be run in a separate thread, if desired.
+
+  The file =bones.h= contains a number of macros and type-definitions
+  (including the =BONES_X= type) that provides some basic operations
+  to extract types and values from Scheme data objects. Refer to this
+  file for more information.
+
+  On the first invocation of the entry-point, the argument is ignored.
+  Once the Scheme procedure =return-to-host= is invoked, the
+  entry-point function returns the argument given to that
+  primitive. This value will be located in the Scheme heap (unless it
+  is a fixnum) and should not be retained across later invocations of
+  the entry-point, because subsequent garbage collections will move
+  the object and thus invalidate the retained pointer.
+
+  The argument can be a fixnum, or a pointer to Scheme-data allocated
+  in non-heap memory. In that case it will be ignored by the garbage
+  collector, but may not be modified to hold pointer to heap-data
+  (this will be detected and result in an error-message and
+  termination of the process, unless the program was assembled with
+  the =-DDISABLE_WRITE_BARRIER= argument.
+  
+  If you want to copy the argument given to the entry-point into the
+  Scheme heap, take a look at the file =copy.scm= in the BONES
+  distribution. This file provides a procedure to create a heap-copy
+  of an arbitrary complex Scheme object.
+
+  Note that =return-to-host= suspends the executing Scheme code and
+  returns the argument given to the following invocation of the
+  entry-point.
 
 * Bugs and Limitations
 
-  =log= is currently not implemented, as I haven't found out yet how to
-  define it using SSE2/x87 operations.
+  =log= is currently not implemented, as I haven't found out yet how
+  to define it using SSE2/x87 operations.
 
   The heap has a fixed size and does not resize dynamically. You can
   change the default size of the heap setting the =TOTAL_HEAP_SIZE=
@@ -1053,16 +1162,20 @@
   integers and floating-point numbers are not supported.
 
   =string->number= does not detect overflow when converting integers
-  and return -1 if the result does not fit into a fixnum. Also, "+/-nan.0"
-  and "+/-inf.0" is not correctly detected (but "+/-nan
+  and return -1 if the result does not fit into a fixnum. Also,
+  "+/-nan.0" and "+/-inf.0" is not correctly detected (but "+/-nan
 
   Library support for on Linux for "nolibc" mode is incomplete:
 
-  - =number->string= and =string->number= do not support inexact numbers
-  - The non-standard primitives =system= and =getenv= are currently not
-    implemented.
+  - =number->string= and =string->number= do not support inexact
+    numbers
+  
+  - The non-standard primitives =system= and =getenv= are currently
+    not implemented
   
 * TODO Porting Guide
+
+  
 
 * TODO Suggestions for Projects
 
@@ -1113,7 +1226,37 @@
   Everything else was written by Felix Winkelmann and is put into the
   public domain.
 
-* TODO Further Reading
+* Further Reading
+
+  [[https://en.wikipedia.org/wiki/Cheney%27s_algorithm][Cheney's Algorithm]] describes the garbage collection method used in
+  BONES.
+
+  [[http://www.amazon.com/Compiling-Continuations-Andrew-W-Appel/dp/052103311X][Compiling with Continuations]] by Andrew Appel Covers CPS-based
+  compilation of high-level languages in great detail.
+
+  [[http://www.amazon.com/Essentials-Programming-Languages-Daniel-Friedman/dp/0262062798/ref=sr_1_1?s=books&ie=UTF8&qid=1403309494&sr=1-1&keywords=essentials+of+programming+languages][Essentials of Programming Languages]] describes the CPS-conversion
+  algorithm used in BONES and contains a lot of interesting
+  information about implementing interpreters.
+
+  [[http://agner.org/optimize/][Agner Fog's website]] contains a wealth of information about x86 CPUs
+  and optimization tips.
+
+  A list of of Linux/x86_64 system calls can be found [[http://blog.rchapman.org/post/36801038863/linux-system-call-table-for-x86-64][here]].
+
+  [[http://www.ray.masmcode.com/tutorial/index.html][Simply FPU]] contains a lot of information on the x86 FPU.
+
+  Check out [[http://www.schemers.org][schemers.org]] for basic information about Scheme and the
+  different standards.
+
+  The [[http://www.intel.com/content/www/us/en/processors/architectures-software-developer-manuals.html][Intel manuals]] exhaustively describe the x86 architecture.
+
+  Also check out the  [[http://www.x86-64.org/documentation_folder/abi-0.99.pdf][Linux ABI]] for x86_64 architectures.
+
+* Contact
+
+  If you have questions, bug-reports or suggestions for improvemnts,
+  please contact me at felix <at> call-with-current-continuation <dot>
+  org.
 
 
 #+TITLE:     The BONES Manual
