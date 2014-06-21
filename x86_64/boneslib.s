@@ -17,6 +17,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+%ifndef BONESLIB_S
+%define BONESLIB_S
+
+
   bits 64
 
 %ifdef FEATURE_PIC
@@ -34,7 +38,7 @@
  %define TOTAL_HEAP_SIZE 100_000_000
 %endif
 
-%define FROMSPACE_RESERVE 1_000_000
+%define FROMSPACE_RESERVE (TOTAL_HEAP_SIZE / 10)
 %define MARK_BIT	0x8000000000000000
 %define SIZE_MASK       0x00ffffffffffffff
 %define BYTEBLOCK_BIT   0x1000000000000000
@@ -2460,3 +2464,6 @@ section .drectve info
 
 
 section .text
+
+
+%endif
