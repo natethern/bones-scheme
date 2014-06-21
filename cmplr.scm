@@ -295,7 +295,8 @@
      #f)
     (_ (error "bad expression" x))))
 
-;;XXX replace this with a decent ra
+
+;;XXX replace this with a decent RA
 ;
 ; - at least we could check whether later expressions don't use a particular register anymore
 ;   and assign directly.

@@ -168,6 +168,7 @@
 
 ;; allocate flonum: %1 = flonum -> rax
 %macro ALLOC_FLONUM 1
+  ;; ALIGNMENT: on 32-bit systems, align so that actual float is on an 8-byte boundary
   movsd [ALLOC + CELLS(1)], %1
   mov rax, FLONUM | CELLS(1)
   mov [ALLOC], rax
@@ -1554,6 +1555,7 @@ reclaim:
   repeat
     cmp rsi, rdi
   while b
+    ;; ALIGNMENT: on 32-bit systems, skip alignment-hole marker
     mov rax, [rsi]		; get header
     mov rcx, rax		; rcx = block size
     and rcx, [size_mask]
@@ -1649,6 +1651,7 @@ mark:
     shr rcx, CELL_SHIFT			; bytes -> words
   endif
   ;; create forwarding ptr and copy object to tospace
+  ;; ALIGNMENT: on 32-bit systems, insert alignment-hole marker, if value is a flonum
   mov [rdi], rbx		; write header to tospace
   mov rdx, MARK_BIT		; mark header and install forwarding ptr
   or rdx, rdi
