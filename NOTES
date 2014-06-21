@@ -3,26 +3,13 @@ BONES                                                                     -*- Or
 
 * DONE [#B] test "smart-spill" branch
   - simple tests seem to work, but needs more testing.
-* TODO work around nasm-limitation in =__float64__= literals
+* work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
-    data, like this:
-    #+BEGIN_SRC scheme
-    (emit "0x" (number->string (bitwise-ior #xffffffff (arithmetic-shift N -32)) 16) 
-          (number->string (bitwise-ior #xffffffff N) 16))
-    #+END_SRC
+    data by extracting the values has two words.
 * TODO disable ".directve" section when using mingw
 * TODO write manual
-  - interesting projects (in-core compilation, emitting elf-modules,
-    directly, etc.), porting guide, hacking guide.
   - document that =string->number= does not parse "nan.0"/"inf.0".
-  - document availability of file:records.scm
-  - document configuration features.
-    - document nolibc mode: configuration, linking, usage, unavailable
-      primitives.
   - provide manual as text in dist tarball and html on web-site.
-  - using musl.
-  - add note about safe-for-space-complexity.
-* TODO test file:records.scm
 * TODO test file:copy.scm
 * TODO write web-page
 * DONE complete library support for 'nolibc mode
@@ -30,7 +17,7 @@ BONES                                                                     -*- Or
 * TODO file:dynamic.scm fails with 'nolibc config
   - bogus results (counters seem to be wrong - bug in integer-only
     arithmetic?)
-* TODO unboxing
+* unboxing
   - "($the TYPE EXP)" annotates with type.
   - "let" can check for "$the" and assign FP-register.
   - accessing variables in FP-registers needs to move them to normal registers.
@@ -40,12 +27,12 @@ BONES                                                                     -*- Or
   - have local FA pass ("lfa") that expands $typed-case-lambda according to inferred
     types and convert "let"-bound flonum vars using a custom binding form
     - e.g. "($let-float ...)" or something like this.
-* TODO add bytevectors
+* add bytevectors
   - interchangable with strings.
   - make-bytevector, bytevector?, bytevector, bytevector-u8-ref, bytevector-u8-set!,
     bytevector-length, bytevector-copy, bytevector-copy!
   - "u8(...)" read-syntax + printing.
-* TODO go through r7rs and look for possibly useful primitives
+* go through r7rs and look for possibly useful primitives
 * TODO default library paths?
   - env-variable "BONES_LIBRARY_PATH".
   - "/usr/share/bones", "/usr/local/share/bones", "." ?
@@ -58,16 +45,11 @@ BONES                                                                     -*- Or
 * TODO something is wrong with musl's "sprintf" (or varargs) implementation
   - "(number->string (expt 2.1 3))" returns "nan".
   - ok with glibc.
-* TODO provide some debugging support
-  - could keep call-trace in ring-buffer.
-  - 'debug feature could enable call to trace routine on every CPS call.
-  - install SIGILL/SIGSEGV/SIGBUS/SIGFPE handlers that dump trace and
-    abort.
-* TODO implement basic known procedure optimizations
+* implement basic known procedure optimizations
   - beta-contraction (needs knowledge about FVs).
   - direct-calls (implies loops).
   - perhaps a bit of constant-propagation.
-* TODO try using libgc as 2nd heap generation
+* try using libgc as 2nd heap generation
   - needs write-barrier to record assignments of heap-data into non-heap objects.
     - then evict recursively.
   - also, keep GC-count in block header.
@@ -187,15 +169,15 @@ mainCRTStartup:
   #+END_SRC
 * TODO "(if X S1 S2)" can be computed more efficiently
   - use "cmovCC" if S1, S2 are simple-expressions.
-* TODO implement "peephole" pass?
+* implement "peephole" pass?
   - match expressions for certain cases.
   - perhaps add "($comment COMMENT EXP)" special form to detect particular
     primitive expansions (like "not").
 * TODO log: "fld1; fld XXX; fyl2x"
   - seems to be broken.
 * TODO =string->number= does not parse "+/-nan.0"/"+/-inf.0"
-* TODO remove unused globals
-* TODO secure inline-primitives against redefinition of internally used primitives
+* remove unused globals
+* secure inline-primitives against redefinition of internally used primitives
   - like this:
     (let-syntax ((PRIMITIVE PRIMITIVE))
       (define-inline (OTHER-PRIMITIVE ...) ...))

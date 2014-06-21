@@ -232,6 +232,53 @@
   - =TOTAL_HEAP_SIZE= :: Total size of the heap. Half of this space can be
        in use at any time. Defaults to 100MB.
 
+** Configurations
+
+   /Configurations/ are used for the composition of programs,
+   depending on source files and /features/ that are used to perform
+   more fine-grained control over the characteristics of the generated
+   code.
+
+   The compiler will compile normal Scheme code with a default
+   configuration, mentioned above, that includes further configuration
+   options from the file =base.scm=, selecting the default target and
+   the primitives available, namely, most R5RS standard procedures and
+   some non-standard extensions. To exercise more control, one can use
+   the =program= form to specify source-files and enable or disable
+   code to be included in the program that will be generated.
+
+   If you use your own =program= form, make sure to add a clause
+   including the base components in =base.scm=, as it provides some
+   intrinsic forms that are necessary for correct execution of the
+   standard procedures. Study =base.scm= for more information about
+   this.
+
+   Default features defined by =base.scm=:
+
+   | Feature             | Meaning                                                          |
+   |---------------------+------------------------------------------------------------------|
+   | x86_64              | Architecture identifier                                          |
+   | ieee745             | Floating point format used                                       |
+   | linux               | Operating system                                                 |
+   | windows             | Operating system                                                 |
+   | file-ports          | Primitives operating on file-ports are available                 |
+   | file-system         | Primitives operating on file-system entitities are available     |
+   | process-environment | Access to the process-environment and subprocesses are available |
+   | time                | Access to the system time is available                           |
+   | jiffy-clock         | Access to the internal real-time clock is available              |
+   | srfi-NNN            | Specifies availability of SRFI functionality                     |
+
+   The compiler option =-dump-features= can be used to show the
+   features that are by default available for a given configuration.
+
+   The following features are by default available to enable language
+   extensions or target-specific compilation modes:
+
+   | Feature | Meaning                                                                          |
+   |---------+----------------------------------------------------------------------------------|
+   | pic     | Generate position-independent code, always enabled on Windows, optional on Linux |
+   | nolibc  | Generate code that does not require linking with the C runtime library           |
+
 * Language Description
 
 ** Program Specifications
@@ -766,6 +813,11 @@
     - =(void ARGUMENT ...)= :: Ignores its arguments and returns an
       undefined result.
 
+**** SRFI-9 record definitions
+
+     A record-definition-facility compatible to [[http://srfi.schemers.org/srfi-9/][SRFI-9]] is also available,
+     as an option, when =-feature records= is passed to the compiler.
+
 * Compiler Details
 
 ** Compilation Strategy
@@ -792,6 +844,12 @@
    Finally code is generated, currently in =NASM= assembler syntax.
    The code includes one or more support libraries that provide core
    runtime routines and the garbage collector.
+
+   The compiler uses /flat/ closures. Combined with the CPS conversion
+   done, the generated code is /safe for space complexity/: unused
+   data (garbage) is retained for a minimal duration of time, usually
+   until the next CPS-procedure call is done. This means that data can
+   be released very early, reducing memory pressure.
 
 ** Compiler Stages
 
@@ -936,7 +994,85 @@
    - Try to reduce the amount of live-data to speed up garbage
      collection.
 
-** TODO Hacking and Extending the Compiler
+** Hacking and Extending the Compiler
+
+   The compiler has a very simple structure and basically consists of
+   the following files:
+
+   - =main.scm= :: The /driver/, parsing command-line arguments and
+                 invoking the translation process.
+
+   - =cmplr.scm= :: The core compiler, that runs the different stages
+		  and control the translation of the simplified program
+		  into assembler code.
+
+   - =program.scm= :: Parses program specifications, returning a
+                      single toplevel-expression.
+
+   - =alexpand.scm= :: The syntax-expander. It takes a single unexpanded
+                     toplevel expression and expands all macros in a
+                     single pass.
+
+   - =cps.scm= :: The CPS-transformation pass.
+
+   - =cc.scm= :: The closure-conversion pass.
+
+   - =mangle.scm= :: Does name-mangling of string-constants and
+                   variable-names.
+
+   - =source.scm= :: Some operations on source expressions.
+
+   - =support.scm= :: Miscellaneous non-standard helper procedures for
+                    all sorts of things.
+
+   - =pp.scm= :: The pretty-printer, used for dumping source code,
+	       for example as the result of the =-expand= option.
+
+   - =megalet.scm=, =match.scm= :: Convenience macros with more concise binding forms
+	for multiple values and for pattern matching.
+
+   - =x86_64.scm= :: The /backend/ for generating X86_64 code. This
+                   file is the only part of the compiler that is
+                   architecture specific.
+
+   The compiler does not use an abstract syntax tree as an internal
+   code representation - s-expressions representing code are used
+   throughout all stages of the compilation process, with added
+   internal special forms to reflect information that can not be
+   expression with standard Scheme forms. Additional forms may be
+   defined, but care must be taken to extend all passes that may see
+   these new forms with appropriate code to handle these extensions.
+
+   Internal special forms are named with a =$= (dollar) prefix. Note
+   that the syntax-expander doesn't know about these, so if you add
+   special forms that may appear in source-programs, then parts of the
+   form that are to be unevaluated need to be quoted or wrapped inside
+   a =lambda= forms. For an example to this, check out the
+   implementation of =case-lambda= in =r5rs.scm=.
+
+   The compiler passes done are program-expansions, macro-expansion,
+   canonicalization, unused-variable detection, CPS-conversion,
+   closure-conversion and translation to assembly code. The
+   canonicalization phase also performs alpha-conversion, so all local
+   variables are uniquely named.
+
+   Since the compiler is used to compile itself, the usual
+   bootstrap-issues arise: it must always be possible to compile the
+   compiler with the previous version of it. This is kind of obvious,
+   but I have fallen into this trap more than once, so be warned.
+
+   The compiler assumes a closed-world model of the source program -
+   once compiled, no external code is assumed to exist, which allows
+   fairly sophisticated optimizations to be made. Still, simplicity in
+   a language implementations makes it easier for the user to reason
+   about the behaviour of the program, so it is advisable to think
+   twice before adding more complexity to the compiler.
+
+   Also because the program, and specifically, the global environment
+   will not change at run-time, global variables are implemented as
+   simple static variables. Literal constants are directly stored in
+   the =.data= section and are not subject to garbage collection (and
+   immutable).
 
 * Data Representation
 
@@ -1031,6 +1167,13 @@
   after the collection finishes. This check can be disabled by passing
   =-DDISABLE_WRITE_BARRIER= to =nasm=, which gives better performance,
   but may lead to very hard to find bugs.
+
+  The heap can not be resized dynamically and has a fixed size.  use
+  the =TOTAL_HEAP_SIZE= macro to specify a heap-size different from
+  the default size. 1% of the heap is used as a /red zone/ - once the
+  allocation-pointer enters this zone, a garbage collection will be
+  triggered. This allows to defer the limit-check when small blocks of
+  data are allocated.
 
 * Interfacing to Foreign Code
 
@@ -1173,11 +1316,109 @@
   - The non-standard primitives =system= and =getenv= are currently
     not implemented
   
-* TODO Porting Guide
+* Porting Guide
 
-  
+  The system should be relatively easy to port. The only
+  target-specific code is contained in the =x86_64.scm= backend, in
+  the runtime library in =<ARCH>/boneslib.s= and in the files defining
+  intrinsics and system-calls. The compiler makes very little
+  assumptions about the used assembler-syntax and should be suitable
+  for most assemblers, unless you want to generate code for a very
+  unusual target.
 
-* TODO Suggestions for Projects
+  The code-generation scheme assumes that a certain number of
+  registers is available, and the more registers are available for
+  arguments and local variables, the better. In fact, this is the
+  reason why BONES has not been ported to i386: the number of
+  available registers is too low. On modern architectures this is not
+  much of an issue anymore, though.
+
+  The default configuration file =base.scm= selects the appropriate
+  files to be included for defining intrinsics and system-specific
+  code, so extending this will be required. If no target feature is
+  given on the command-line (currently =linux= and =windows=), then a
+  /default-target/ is selected, which is the target, the compiler is
+  currently running on, or more specifically: the target for which the
+  currently executing compiler was configured. This feature will be
+  named =default-linux= or =default-windows=, depending on the OS.
+  Don't forget to add a case for the =default-configuration= variable
+  in =cmplr.scm=.
+
+  If you intend to provide a =nolibc= mode, that is, a compilation
+  mode that generates code for use without the C library, then this
+  should also be reflected in =base.scm=.
+
+  The code currently makes no assumptions about endianness.
+
+  On 32-bit systems, care must be taken with alignment of
+  floating-point numbers: the actual float value must be located on an
+  8-byte boundary, as most architectures require this, and even if
+  not, aligned memory-accesses are likely to be more
+  efficient. Allocation of floating-point numbers and the code in the
+  garbage collector copying data from one heap-space to the other need
+  to take this into account.
+
+  On x86_64 systems, thr FPU provides machine-instructions for many
+  transcendental functions. Other architectures will probably not have
+  support for these, so the associated intrinsic operations in
+  =<ARCH>/intrinsics.scm= need to be adapted to call C library
+  functions.
+
+  The actual implementation of library- and system-calls are located
+  in =<ARCH>/<OS>/syscalls.scm= and =<ARCH>/<OS>/syscalls-nolibc.scm=,
+  respectively, depending on the compilation mode. 
+
+  All compile-time features, defined using the =-feature= option or
+  the =provide= program-specification clause are also defined in
+  compiled programs in the form of assembler macros (or symbols),
+  prefixed with =FEATURE_=, converted to uppercase and with hyphens
+  replaced by underscore characters. The generated code also should
+  perform an =include= of the =<ARCH>/boneslib.s= file appropriate for
+  the target platform.
+
+  To reduce code size it may also be worthwhile to use a replacement
+  for the standard C library. =glibc= is relatively large and there
+  exist alternatives in the form of [[http://www.musl.org][MUSL]] or [[http://www.fefe.de/dietlibc/][dietlibc]], which are much
+  smaller, simpler and more than sufficient in most cases. By linking
+  these statically, the program is self-contained and has fast startup
+  times. Using MUSL, for example is straightforward: instead of linking
+  with =gcc=, use =musl-gcc= instead, like this:
+
+  #+BEGIN_SRC sh
+  bones myprogram.scm -o myprogram.s
+  nasm -f elf64 myprogram.s -o myprogram.o
+  musl-gcc myprogram.o -o myprogram
+  #+END_SRC
+
+* Suggestions for Projects
+
+  If you are interested in extending the compiler or runtime system,
+  or if you'd like to experiment, here are a few suggestions:
+
+  - Generating machine code and creating elf64/win64 object files
+    directly. This would remove the need for an assembler and speed up
+    the compilation process.
+
+  - Compiling into memory directly, or, in other words a
+    "just-in-time" compiler. This is complicated by the fact that
+    memory-pages needs to be made executable, but still must be
+    reclaimable by the garbage collector.
+
+  - Extending the language, for example by adding support for [[http://www.scheme-reports.prg][R7RS]].
+    Implementing the R7RS module system will be quite a challenge,
+    though, as the syntax-expander used ("alexpander") does not
+    support this in the moment.
+
+  - Porting the system to other architectures and operating systems,
+    of course.
+
+  - Generate code for the GNU assembler (=as=). Since the GNU binutils
+    are needed anyway on Linux, and because =as= is quite fast, this
+    would remove the need to =NASM=. On the other hand, =NASM= is more
+    featureful and supports an arguably nicer assembler syntax.
+
+  - Generate code for [[http://asm-js.org][asm.js]]. This is quite a project, and the use of
+    labels and arbitrary jumps may be an interesting challenge.
 
 * Terms of Use
 
@@ -1189,6 +1430,9 @@
     Copyright (c) 1991, Marc Feeley
     Author: Marc Feeley (feeley@iro.umontreal.ca)
     Distribution restrictions: none
+
+    The pattern-matching package was written by Alex Shinn and
+    is in the public domain.
 
     The syntax-expander (alexpand.scm) is
 
