@@ -1,4 +1,6 @@
 ;;;; copy values into heap-memory
+;
+; - Note: x86_64 specific
 
 
 (define (copy x)
@@ -19,9 +21,7 @@
 	       (cond ((eq? bytes size)	; vector-like?
 		      (unless (eq? 0 (bitwise-and bits #x20)) ; SPECIAL_BIT
 			;; copy 1st slot
-			($inline 
-			 "mov rax, [rax + CELLS(1)]; mov [r11 + CELLS(1)], rax" 
-			 x new)
+			($inline "mov rax, [rax + CELLS(1)]; mov [r11 + CELLS(1)], rax" x new)
 			(set! start 1))
 		      (do ((i start (%fx+ i 1)))
 			  ((%fx>=? i size))
