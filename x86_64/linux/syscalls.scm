@@ -45,3 +45,4 @@
 (define-syntax-rule (%errno-string)
   ($inline "CALL get_last_error"))
 
+(define-syntax %clocks-per-sec 1000000)

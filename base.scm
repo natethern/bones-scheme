@@ -16,10 +16,7 @@
 
 (cond-expand
   (linux
-   (provide file-ports file-system process-environment)
-   (cond-expand
-     (nolibc)
-     (else (provide time jiffy-clock file-system)))
+   (provide file-ports file-system process-environment time jiffy-clock)
    (cond-expand
      (x86_64
       (cond-expand

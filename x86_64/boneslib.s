@@ -402,6 +402,33 @@
   RESTORE
 %endmacro
 
+%macro SYSCALL4 5
+  SAVE
+  mov rdi, %2
+  mov rsi, %3
+  mov rdx, %4
+  mov rcx, %5
+  ALIGN_STACK
+  mov rax, %1
+  syscall
+  RESTORE_STACK
+  RESTORE
+%endmacro
+
+%macro SYSCALL5 6
+  SAVE
+  mov rdi, %2
+  mov rsi, %3
+  mov rdx, %4
+  mov r10, %5
+  mov r8, %6
+  ALIGN_STACK
+  mov rax, %1
+  syscall
+  RESTORE_STACK
+  RESTORE
+%endmacro
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -432,6 +459,9 @@ _start:
   pop rdi			; argc
   mov [argc], rdi
   mov [argv], rsp		; point to argument array
+  add rdi, 2
+  lea rax, [rsp + rdi * CELLS(1)]
+  mov [envp], rax
   mov rax, .exit
   push rax
   SAVE
@@ -2409,13 +2439,14 @@ section .bss
 
 toplevel_rsp: resq 1
 gc_count: resq 1
-buffer: resb 1024
+buffer: resb 2048
 gcsave: resq 2			; holds 2 additional registers to those in "tempregisters"
 tempregisters: resq 7		; must follow "gcsave"
 locals:	resq 1024		; must be right after "tempregisters"!
 area1: resb TOTAL_HEAP_SIZE / 2
 area2: resb TOTAL_HEAP_SIZE / 2
 argv: resq 1
+envp: resq 1
 saved_ALLOC: resq 1
 saved_LIMIT: resq 1
 rsp_save: resq 1

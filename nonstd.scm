@@ -168,25 +168,26 @@
 
 (cond-expand
   (process-environment
-   (define-inline (get-environment-variable str) (%getenv str)))
-  (else))
+   (define-inline (get-environment-variable str) (%getenv str))
 
-(cond-expand
-  (process-environment
    (define command-line
      (let* ((argc (%argc))
 	    (lst (let loop ((i 0))
 		   (if (%fx>=? i argc)
 		       '()
 		       (cons (%argv-ref i) (loop (%fx+ i 1)))))))
-       (lambda () lst))))
+       (lambda () lst)))
+
+   (define-inline (current-process-id) (%getpid))
+   (define-inline (system str) (%system str)))
+
   (else))
 
 
 (cond-expand
   (jiffy-clock
    (define-inline (current-jiffy) (%clock))
-   (define-inline (jiffies-per-second) 1000000))
+   (define-inline (jiffies-per-second) %clocks-per-sec))
   (else))
 
 
@@ -231,13 +232,6 @@
 
 
 (define reclaim ($primitive "reclaim_garbage"))
-
-
-(cond-expand
-  (process-environment
-   (define-inline (current-process-id) (%getpid))
-   (define-inline (system str) (%system str)))
-  (else))
 
 
 (cond-expand
