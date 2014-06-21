@@ -1,42 +1,32 @@
 BONES                                                                     -*- Org -*-
 
 
-* TODO [#B] test "smart-spill" branch
-  - file:tsort.scm is by MH, ask about licensing.
-* TODO "make check" fails on self-compile compare
+* DONE [#B] test "smart-spill" branch
+  - simple tests seem to work, but needs more testing.
+* TODO work around nasm-limitation in =__float64__= literals
+  - nasm doesn't accept an integer, but we could output the raw ieee
+    data, like this:
+    #+BEGIN_SRC scheme
+    (emit "0x" (number->string (bitwise-ior #xffffffff (arithmetic-shift N -32)) 16) 
+          (number->string (bitwise-ior #xffffffff N) 16))
+    #+END_SRC
+* TODO disable ".directve" section when using mingw
 * TODO write manual
-  - embedding, using $inline/$primitive, GC, data-representation,
-    interesting projects (in-core compilation, emitting elf-modules
-    directly, etc.), porting guide, performance guide.
+  - interesting projects (in-core compilation, emitting elf-modules,
+    directly, etc.), porting guide, hacking guide.
   - document that =string->number= does not parse "nan.0"/"inf.0".
-  - further reading:
-    Scheme
-    EOPL
-    Compiling with Continuations
-    Simply FPU
-    Agner Fog's stuff
-    syscall list (64-bit)
-    nasm
-    musl
-    file:/archive/64-ia-32-architectures-software-developer-manual-325462.pdf
-    file:/archive/x86-64-abi.pdf
-  - Links for MSVC.
+  - document availability of file:records.scm
   - document configuration features.
+    - document nolibc mode: configuration, linking, usage, unavailable
+      primitives.
   - provide manual as text in dist tarball and html on web-site.
-  - portability
-    - x86_64 + SSE.
-    - linux + windows.
   - using musl.
-  - document nolibc mode: configuration, linking, usage, unavailable
-    primitives.
   - add note about safe-for-space-complexity.
-  - embedding: document "copy" (file:copy.scm)
+* TODO test file:records.scm
+* TODO test file:copy.scm
 * TODO write web-page
-* TODO complete library support for 'nolibc mode
-  - %system :: fork + execve "sh -c" (needs =environ=), then wait and
-              check exit status
-  - %getenv :: can we get at the env in =_start=?
-  - time/clock.
+* DONE complete library support for 'nolibc mode
+  - not sure if the handling of the clock_getres results is right.
 * TODO file:dynamic.scm fails with 'nolibc config
   - bogus results (counters seem to be wrong - bug in integer-only
     arithmetic?)
@@ -50,10 +40,17 @@ BONES                                                                     -*- Or
   - have local FA pass ("lfa") that expands $typed-case-lambda according to inferred
     types and convert "let"-bound flonum vars using a custom binding form
     - e.g. "($let-float ...)" or something like this.
-* TODO windows port
-  - "bones" works somehow, but crashes when given arguments.
-  - try mingw64.
-    - try gdb.
+* TODO add bytevectors
+  - interchangable with strings.
+  - make-bytevector, bytevector?, bytevector, bytevector-u8-ref, bytevector-u8-set!,
+    bytevector-length, bytevector-copy, bytevector-copy!
+  - "u8(...)" read-syntax + printing.
+* TODO go through r7rs and look for possibly useful primitives
+* TODO default library paths?
+  - env-variable "BONES_LIBRARY_PATH".
+  - "/usr/share/bones", "/usr/local/share/bones", "." ?
+* DONE windows port
+  - try latest changes, should work better now.
 * TODO try compiling grond
   + fails to compile bones-grond, either with OOM or, with 1GB heap, SIGILL.
 * we could coalesce allocations inside a lambda
@@ -66,7 +63,6 @@ BONES                                                                     -*- Or
   - 'debug feature could enable call to trace routine on every CPS call.
   - install SIGILL/SIGSEGV/SIGBUS/SIGFPE handlers that dump trace and
     abort.
-* TODO is "case-sensitive" really working?
 * TODO implement basic known procedure optimizations
   - beta-contraction (needs knowledge about FVs).
   - direct-calls (implies loops).
@@ -75,6 +71,10 @@ BONES                                                                     -*- Or
   - needs write-barrier to record assignments of heap-data into non-heap objects.
     - then evict recursively.
   - also, keep GC-count in block header.
+* TODO implement eval/repl
+  - could start with a simplification from grass.
+  - keep it simply, without environments.
+  - install signal-handlers for SIGSEGV/SIGBUS/SIGILL/SIGFPE.
 * TODO pre-allocated chars in the range 0-255
   - means: all chars are preallocated, unless we allow chars with arbitrary code.
 * TODO we need FP num/str conversion
@@ -219,6 +219,7 @@ mainCRTStartup:
      - when allocating flonums, align ALLOC first.
      - GC: when copying, insert marker word before flonum; during scan,
        check for marker word and skip.
+** there is no way to access =locals= from other modules or host programs
 * Referencess
   - X86_64:
     - x87: http://www.website.masmforum.com/tutorials/fptute/index.html
@@ -226,14 +227,7 @@ mainCRTStartup:
     - SSE: http://softpixel.com/~cwright/programming/simd/sse.php
     - General information: file:/archive/optimizing_assembly.pdf
     - x86-64 ABI: file:/archive/x86-64-abi.pdf
-  - MIPS
-    - http://en.wikipedia.org/wiki/MIPS_instruction_set
-    - Instructions, SPIM-desc. is better, though: http://www.mrc.uidaho.edu/mrc/people/jff/digital/MIPSir.html
-    - Datasheet, somewhat compressed: file:/archive/4KcProgMan.pdf
-    - ABI: file:/archive/mipsabi32.pdf
-    - SPIM MIPS description: http://www.doc.ic.ac.uk/lab/secondyear/spim/node9.html
-  - RA:
-    http://pages.cs.wisc.edu/~cs701-1/NOTES/5.REGISTER-ALLOCATION.html
+    - Syscalls: http://blog.rchapman.org/post/36801038863/linux-system-call-table-for-x86-64
 * Notes
 ** the write barrier can be disabled by defining DISABLE_WRITE_BARRIER
 ** enable GC logging with -DENABLE_GC_LOGGING
