@@ -16,9 +16,10 @@
 ; value.  EVAL is also redefined to use the new value of VECTOR?.
 
 
-; Definitions of the record procedures.
+; needs %record-type-id-counter from nonstd.scm
 
-(define %record-type-id-counter 2)	; 1 is used for error-objects
+
+; Definitions of the record procedures.
 
 (define-inline (make-record size name)
   (let ((r (%allocate-block #x0a (arithmetic-shift size 8) #f size #t #f)))

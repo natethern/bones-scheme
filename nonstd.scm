@@ -261,3 +261,14 @@
 	      (else
 	       (set! val (if restore new (guard new)))
 	       val))))))
+
+(define %record-type-id-counter 2)	; 1 is used for error-objects
+
+(define (make-disjoint-type . name)
+  (let ((id %record-type-id-counter)
+	(name (optional name 'record)))
+    (set! %record-type-id-counter (%fx+ %record-type-id-counter 1))
+    (values
+     (lambda (data) ($allocate 10 3 name id data))
+     (lambda (x) (and (record? x) (eq? id (%slot-ref x 1))))
+     (lambda (rec) (%slot-ref rec 2)))))

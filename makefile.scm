@@ -171,6 +171,8 @@
     "r5rs.scm"
     "program.scm"
     "source.scm"
+    "records.scm"
+    "copy.scm"
     "x86_64/intrinsics.scm"
     "x86_64/structured.s"
     "x86_64/boneslib.s"
