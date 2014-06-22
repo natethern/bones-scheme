@@ -22,7 +22,6 @@
 (define default-configuration
   (cond-expand 
     (windows 'default-windows)
-    (macosx 'default-macosx)
     (linux 'default-linux)))
 
 
@@ -38,7 +37,11 @@
 	    (list default-configuration)
 	    basic-implementation-features))
   (set! file-search-path
-    (append (collect-options 'library-path: options) '(".")))
+    (append (collect-options 'library-path: options)
+	    '(".")
+	    (let ((lp (get-environment-variable "BONES_LIBRARY_PATH")))
+	      (if lp (string-split lp (cond-expand (windows ";") (else ":"))) '()))
+	    '("/usr/share/bones" "/usr/local/share/bones")))
   (let ((prg (match code
 	       (('begin ('program . _))
 		(expand-program (cadr code)))
@@ -52,6 +55,7 @@
        (when (option 'dump-features: options)
 	 (for-each print implementation-features)
 	 (stop))
+       (set! enable-pic (memq 'pic implementation-features))
        (expand-syntax (generate-cond-expand implementation-features))
        (when (option 'dump-source: options)
 	 (pp prg)
@@ -256,6 +260,7 @@
      (let ((regs (translate-inline-arguments args))
 	   (bytevec (not (zero? (bitwise-and type #x10)))))
        (set! allocating #t)
+       ;;XXX ALIGNMENT: on 32-bit platforms, we must align the block if it is a flonum
        (do ((regs regs (cdr regs))
 	    (off 1 (add1 off)))
 	   ((null? regs))

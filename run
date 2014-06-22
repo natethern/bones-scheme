@@ -29,7 +29,7 @@
 	   (set! fname fname2)))
        (when (string=? "o" (suffix fname))
 	 (let ((fname2 (strip-suffix fname)))
-	   (if (member "linux-bare" features) ; hack
+	   (if (member "nolibc" features) ; hack
 	       (run (ld ,fname -o ,fname2))
 	       (run (bin/musl-gcc ,fname -o ,fname2)))
 	   (set! fname fname2)))

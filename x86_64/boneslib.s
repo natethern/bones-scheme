@@ -17,7 +17,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+%ifndef BONESLIB_S
+%define BONESLIB_S
+
+
   bits 64
+
+%ifdef FEATURE_PIC
+  default rel
+%endif
 
 
 %include "x86_64/structured.s"
@@ -30,7 +38,7 @@
  %define TOTAL_HEAP_SIZE 100_000_000
 %endif
 
-%define FROMSPACE_RESERVE 1_000_000
+%define FROMSPACE_RESERVE (TOTAL_HEAP_SIZE / 10)
 %define MARK_BIT	0x8000000000000000
 %define SIZE_MASK       0x00ffffffffffffff
 %define BYTEBLOCK_BIT   0x1000000000000000
@@ -77,7 +85,7 @@
 ;; get type-number from value pointed to by %1
 %define TYPENUMBER_REF(x) [x + CELLS(1) - 1]
 
-%ifdef EMBEDDED
+%ifdef FEATURE_EMBEDDED
  %ifdef PREFIX
   %define ENTRYPOINT PREFIX %+ _bones
  %else
@@ -91,7 +99,8 @@
 
 ;; crash
 %macro CRASH 0
-  jmp 0
+  xor rax, rax
+  jmp rax
 %endmacro
 
 
@@ -159,6 +168,7 @@
 
 ;; allocate flonum: %1 = flonum -> rax
 %macro ALLOC_FLONUM 1
+  ;; ALIGNMENT: on 32-bit systems, align so that actual float is on an 8-byte boundary
   movsd [ALLOC + CELLS(1)], %1
   mov rax, FLONUM | CELLS(1)
   mov [ALLOC], rax
@@ -224,29 +234,28 @@
 %define RESTORE_STACK mov rsp, qword [rsp_save]
 
 
-;; windows-specific name mangling
-%ifdef FEATURE_WINDOWS
- %define MANGLE_LIBCALL(name)  _ %+ name
-%else
- %define MANGLE_LIBCALL(name)  name
-%endif
+;; Library-specific name mangling
+%define UNDERSCORE(name)      _ %+ name
+%define MANGLE(name)          name
 
 
 ;; call C function with 0-3 arguments
 %macro LIBCALL0 1
-  extern MANGLE_LIBCALL(%1)
+  extern MANGLE(%1)
   SAVE
   ALIGN_STACK
 %ifdef FEATURE_WINDOWS
   sub rsp, 32
+%else
+  xor rax, rax
 %endif
-  call MANGLE_LIBCALL(%1)
+  call MANGLE(%1)
   RESTORE_STACK
   RESTORE
 %endmacro
 
 %macro LIBCALL1 2
-  extern MANGLE_LIBCALL(%1)
+  extern MANGLE(%1)
   SAVE
 %ifdef FEATURE_WINDOWS
   mov rcx, %2
@@ -256,14 +265,16 @@
   ALIGN_STACK
 %ifdef FEATURE_WINDOWS
   sub rsp, 32
+%else
+  xor rax, rax
 %endif
-  call MANGLE_LIBCALL(%1)
+  call MANGLE(%1)
   RESTORE_STACK
   RESTORE
 %endmacro
 
 %macro LIBCALL2 3
-  extern MANGLE_LIBCALL(%1)
+  extern MANGLE(%1)
   SAVE
 %ifdef FEATURE_WINDOWS
   mov rcx, %2
@@ -275,14 +286,16 @@
   ALIGN_STACK
 %ifdef FEATURE_WINDOWS
   sub rsp, 32
+%else
+  xor rax, rax
 %endif
-  call MANGLE_LIBCALL(%1)
+  call MANGLE(%1)
   RESTORE_STACK
   RESTORE
 %endmacro
 
 %macro LIBCALL3 4
-  extern MANGLE_LIBCALL(%1)
+  extern MANGLE(%1)
   SAVE
 %ifdef FEATURE_WINDOWS
   mov rcx, %2
@@ -294,7 +307,70 @@
   mov rdx, %4
 %endif
   ALIGN_STACK
-  call MANGLE_LIBCALL(%1)	
+%ifdef FEATURE_WINDOWS
+  sub rsp, 32
+%else
+  xor rax, rax
+%endif
+  call MANGLE(%1)	
+  RESTORE_STACK
+  RESTORE
+%endmacro
+
+%macro LIBCALL3_1 4
+  extern MANGLE(%1)
+  SAVE
+%ifdef FEATURE_WINDOWS
+  mov rcx, %2
+  mov rdx, %3
+  mov r8, %4
+  movq xmm2, r8		; this is so silly...
+%else
+  mov rdi, %2
+  mov rsi, %3
+  movsd xmm0, %4
+%endif
+  ALIGN_STACK
+%ifdef FEATURE_WINDOWS
+  sub rsp, 32
+%else
+  mov rax, 1
+%endif
+  call MANGLE(%1)	
+  RESTORE_STACK
+  RESTORE
+%endmacro
+
+%macro LIBCALL4 5
+  extern MANGLE(%1)
+  SAVE
+%ifdef FEATURE_WINDOWS
+  mov rcx, %2
+  mov rdx, %3
+  mov r8, %4
+  mov r9, %5
+%else
+  mov rdi, %2
+  mov rsi, %3
+  mov rdx, %4
+  mov rcx, %5
+%endif
+  ALIGN_STACK
+%ifdef FEATURE_WINDOWS
+  sub rsp, 32
+%else
+  xor rax, rax
+%endif
+  call MANGLE(%1)	
+  RESTORE_STACK
+  RESTORE
+%endmacro
+
+%macro SYSCALL0 1
+  SAVE
+  ALIGN_STACK
+  mov rax, %1
+  syscall
   RESTORE_STACK
   RESTORE
 %endmacro
@@ -332,13 +408,40 @@
   RESTORE
 %endmacro
 
+%macro SYSCALL4 5
+  SAVE
+  mov rdi, %2
+  mov rsi, %3
+  mov rdx, %4
+  mov rcx, %5
+  ALIGN_STACK
+  mov rax, %1
+  syscall
+  RESTORE_STACK
+  RESTORE
+%endmacro
+
+%macro SYSCALL5 6
+  SAVE
+  mov rdi, %2
+  mov rsi, %3
+  mov rdx, %4
+  mov r10, %5
+  mov r8, %6
+  ALIGN_STACK
+  mov rax, %1
+  syscall
+  RESTORE_STACK
+  RESTORE
+%endmacro
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 section .text
 
-%ifdef EMBEDDED
+%ifdef FEATURE_EMBEDDED
 global ENTRYPOINT
 ENTRYPOINT:
   SAVE
@@ -356,12 +459,15 @@ ENTRYPOINT:
   mov SELF, rax			; saved K
   mov rax, [SELF + CELLS(1)]
   jmp rax
-%elifdef FEATURE_LINUX_BARE
+%elifdef FEATURE_NOLIBC
 global _start
 _start:
   pop rdi			; argc
   mov [argc], rdi
   mov [argv], rsp		; point to argument array
+  add rdi, 2
+  lea rax, [rsp + rdi * CELLS(1)]
+  mov [envp], rax
   mov rax, .exit
   push rax
   SAVE
@@ -370,12 +476,17 @@ _start:
 .exit:
   SYSCALL1 60, rax		; sys_exit
 %else
-global MANGLE_LIBCALL(main)
-MANGLE_LIBCALL(main):
+global main
+main:
   SAVE
   push rbp
+%ifdef FEATURE_WINDOWS
+  mov [argc], rcx
+  mov [argv], rdx
+%else
   mov [argc], rdi
   mov [argv], rsi
+%endif
   jmp init
 %endif
 
@@ -405,26 +516,40 @@ terminate:
 ;; consrest: registers/locals = arguments, r11 = argc, rax = non-rest args -> rax (ptr)
 consrest:
   push rcx			; save k
-  mov   rcx, null
+  mov rcx, null
   repeat
     cmp r11, rax
     je .done
     cmp r11, NUMBER_OF_ARGUMENT_REGISTERS
   while a
-    push  r11
-    sub   r11, NUMBER_OF_ARGUMENT_REGISTERS + 1
+    push r11
+    sub r11, NUMBER_OF_ARGUMENT_REGISTERS + 1
     mov [ALLOC + CELLS(2)], rcx
     mov rcx, PAIR | 2
     mov [ALLOC], rcx
     mov rcx, ALLOC
+%ifdef FEATURE_PIC
+    lea r15, [locals]
+    mov r15, [r15 + r11 * CELLS(1)]
+%else
     mov r15, [locals + r11 * CELLS(1)]
+%endif
     mov [ALLOC + CELLS(1)], r15
     add ALLOC, CELLS(3)
-    pop   r11
-    dec   r11
+    pop r11
+    dec r11
   again
   sub r11, 2
+%ifdef FEATURE_PIC
+  lea r15, [rel consrest_jmptable]
+  mov r15, [r15 + r11 * CELLS(1)]
+  call .a0
+.a0:
+  add r15, [rsp]
+  add rsp, CELLS(1)
+%else
   mov r15, [consrest_jmptable + r11 * CELLS(1)]
+%endif
   inc r11	      ;XXX get rid of this, probably by adjusting jmptable
   jmp r15
 %macro CONSREST1 1
@@ -453,15 +578,20 @@ consrest:
 
 section .data
 
+%ifdef FEATURE_PIC
+%define CONSREST_OFF(lbl)  consrest. %+ lbl - consrest.a0
+%else
+%define CONSREST_OFF(lbl)  consrest. %+ lbl
+%endif
 consrest_jmptable:
-  dq    consrest.a1
-  dq    consrest.a2
-  dq    consrest.a3
-  dq    consrest.a4
-  dq    consrest.a5
-  dq    consrest.a6
-  dq    consrest.a7
-  dq    consrest.a8
+  dq    CONSREST_OFF(a1)
+  dq    CONSREST_OFF(a2)
+  dq    CONSREST_OFF(a3)
+  dq    CONSREST_OFF(a4)
+  dq    CONSREST_OFF(a5)
+  dq    CONSREST_OFF(a6)
+  dq    CONSREST_OFF(a7)
+  dq    CONSREST_OFF(a8)
 
 section .text
 
@@ -1036,7 +1166,16 @@ PRIMITIVE apply
   cmp r11, NUMBER_OF_ARGUMENT_REGISTERS
   ja .l9
   sub r11, 4
+%ifdef FEATURE_PIC
+  lea r15, [apply_jmptable]
+  mov rax, [r15 + r11 * CELLS(1)]
+  call .l0
+.l0:
+  add rax, [rsp]
+  add rsp, CELLS(1)
+%else
   mov rax, [apply_jmptable + r11 * CELLS(1)]
+%endif
   jmp rax
   ;; jmptable: move all register arguments into "tempregisters", starting from rsi
 .l9:
@@ -1052,7 +1191,12 @@ PRIMITIVE apply
 .l4:
   mov [tempregisters], rsi
   ;; now deconstruct last argument
+%ifdef FEATURE_PIC
+  lea r15, [tempregisters]
+  lea rdi, [r15 + r11 * CELLS(1)]
+%else
   lea rdi, [tempregisters + r11 * CELLS(1)]
+%endif
   mov rsi, [rdi]
   mov rdx, null
   pop r11
@@ -1079,12 +1223,17 @@ PRIMITIVE apply
 
 section .data
 
+%ifdef FEATURE_PIC
+%define APPLY_OFF(lbl)  apply. %+ lbl - apply.l0
+%else
+%define APPLY_OFF(lbl)  apply. %+ lbl
+%endif
 apply_jmptable:
-  dq apply.l4
-  dq apply.l5
-  dq apply.l6
-  dq apply.l7
-  dq apply.l8
+  dq APPLY_OFF(l4)
+  dq APPLY_OFF(l5)
+  dq APPLY_OFF(l6)
+  dq APPLY_OFF(l7)
+  dq APPLY_OFF(l8)
 
 section .text
 
@@ -1268,10 +1417,14 @@ heap_full_trap:
 
 ;; write error message and exit: rax = raw string, r11 = length
 write_error_and_exit:
-%ifdef FEATURE_LINUX_BARE
+%ifdef FEATURE_NOLIBC
   SYSCALL3 1, 2, rax, r11
 %else
+ %ifdef FEATURE_WINDOWS
+  LIBCALL3 _write, 2, rax, r11	
+ %else
   LIBCALL3 write, 2, rax, r11	
+ %endif
 %endif
   mov rax, FIX(70)			; EXIT_FAILURE
   mov [exit_code], rax
@@ -1403,6 +1556,7 @@ reclaim:
   repeat
     cmp rsi, rdi
   while b
+    ;; ALIGNMENT: on 32-bit systems, skip alignment-hole marker
     mov rax, [rsi]		; get header
     mov rcx, rax		; rcx = block size
     and rcx, [size_mask]
@@ -1498,6 +1652,7 @@ mark:
     shr rcx, CELL_SHIFT			; bytes -> words
   endif
   ;; create forwarding ptr and copy object to tospace
+  ;; ALIGNMENT: on 32-bit systems, insert alignment-hole marker, if value is a flonum
   mov [rdi], rbx		; write header to tospace
   mov rdx, MARK_BIT		; mark header and install forwarding ptr
   or rdx, rdi
@@ -1540,22 +1695,13 @@ fill_bytes:
 
 ;; format string using sprintf(3) and write to stderr: rax = raw format-string, r11, r15 = args
 format_string:
-%ifndef FEATURE_LINUX_BARE
-extern MANGLE_LIBCALL(sprintf)
-extern MANGLE_LIBCALL(write)
-  mov rdi, buffer
-  mov rsi, rax
-  mov rdx, r11
-  mov rcx, r15
-  ALIGN_STACK
-  xor rax, rax
-  call MANGLE_LIBCALL(sprintf)
-  mov rdi, 2
-  mov rsi, buffer
-  mov rdx, rax
-  call MANGLE_LIBCALL(write)
-  RESTORE_STACK
-  RESTORE
+%ifndef FEATURE_NOLIBC
+  LIBCALL4 sprintf, buffer, rax, r11, r15
+ %ifdef FEATURE_WINDOWS
+  LIBCALL3 _write, 2, buffer, rax
+ %else
+  LIBCALL3 write, 2, buffer, rax
+ %endif
 %endif
   ret
 
@@ -1852,7 +1998,12 @@ hash_string:
   repeat
     movzx r15, byte [r11]
     xor rax, r15
+%ifdef FEATURE_PIC
+    lea r15, [random_numbers]
+    movzx rax, byte [r15 + rax]
+%else
     movzx rax, byte [random_numbers + rax]
+%endif
     inc r11
     dec rcx
   until z
@@ -1874,8 +2025,8 @@ compare_strings:
   if e 				; all characters compared
     mov rax, FIX(0)
   else
-    mov al, [esi - 1]
-    cmp al, [edi -1]
+    mov al, [rsi - 1]
+    cmp al, [rdi - 1]
     mov rax, FIX(1)
     mov r15, FIX(-1)
     cmovl rax, r15
@@ -1897,7 +2048,7 @@ compare_strings_ci:
   test r15, r15
   if nz
     repeat
-      mov al, [esi]
+      mov al, [rsi]
       cmp al, 'A'
       if ge			;XXX this can surely be done in a better way
         cmp al, 'Z'
@@ -1905,7 +2056,7 @@ compare_strings_ci:
 	  or al, 0x20
 	endif
       endif
-      mov bl, [edi]
+      mov bl, [rdi]
       cmp bl, 'A'
       if ge			;XXX s.a.
         cmp bl, 'Z'
@@ -1920,8 +2071,8 @@ compare_strings_ci:
         cmovl rax, r15
     	jmp .done 
       endif  
-      inc esi
-      inc edi
+      inc rsi
+      inc rdi
       dec r15
     until z
   endif
@@ -2112,6 +2263,7 @@ member_cmp_equal:
 
 ;; return to host program: rcx = k, rdx = result
 ;; crashes if used and not embedded
+%ifdef FEATURE_EMBEDDED
 return_to_host:
   mov [saved_k], rcx
   mov [saved_ALLOC], ALLOC
@@ -2121,32 +2273,22 @@ return_to_host:
   pop rbp
   RESTORE
   ret
+%endif
 
 
 ;; convert string to number: rax = string, r11 = base -> rax (number)
-%ifndef FEATURE_LINUX_BARE
-extern MANGLE_LIBCALL(strtol)
-extern MANGLE_LIBCALL(strtod)
+%ifndef FEATURE_NOLIBC
 str2num:
-  SAVE
   call copy_to_buffer
+  push rdx
+  push rbx
   push rax			; endptr
-  mov rdi, buffer
-  mov rsi, rsp
+  mov rdx, buffer
+  mov r15, rsp
   FIX2INT r11
-  mov rdx, r11
-  ALIGN_STACK
-  call MANGLE_LIBCALL(strtol)
-  RESTORE_STACK
-  ;; check endptr being identical to startptr
-  pop r11
-  mov r15, buffer
-  cmp r11, buffer
-  if e
-    mov rax, FALSE
-    jmp .done
-  endif
+  LIBCALL3 strtol, rdx, r15, r11
   ;; check endptr for being '\0'
+  pop r11
   mov bl, [r11]
   test bl, bl
   if z
@@ -2154,12 +2296,10 @@ str2num:
     INT2FIX rax
   else
     ;; now try if it is a float
-    mov rdi, buffer
+    mov rax, buffer
     push rax			; endptr
-    mov rsi, rsp
-    ALIGN_STACK
-    call MANGLE_LIBCALL(strtod)			; ignores base
-    RESTORE_STACK
+    mov r15, rsp
+    LIBCALL2 strtod, buffer, r15
     pop r11
     mov bl, [r11]
     test bl, bl
@@ -2174,63 +2314,56 @@ str2num:
     endif
   endif
 .done:
-  RESTORE
+  pop rbx
+  pop rdx
   ret
 
 
 ;; convert number to string: rax = number, r11 = base -> rax (string)
-extern MANGLE_LIBCALL(sprintf)
 num2str:
-  SAVE
+  push rdx
   FIX2INT r11
-  mov rdi, stat_buffer
   test rax, 1
   if nz
     cmp r11, 8
     if e
-      mov rsi, ocvt
+      mov r15, ocvt
     else
       cmp r11, 16
       if e
-        mov rsi, xcvt
+        mov r15, xcvt
       else
-        mov rsi, dcvt
+        mov r15, dcvt
       endif
     endif
-    mov rdx, rax
-    FIX2INT rdx
-    ALIGN_STACK
-    xor rax, rax
-    call MANGLE_LIBCALL(sprintf)
+    FIX2INT rax
+    LIBCALL3 sprintf, buffer, r15, rax
   else
-    mov rsi, gcvt
-    movsd xmm0, [rax + CELLS(1)]
-    ALIGN_STACK
-    mov rax, 1			; 1 float argument
-    call MANGLE_LIBCALL(sprintf)
+    LIBCALL3_1 sprintf, buffer, gcvt, [rax + CELLS(1)]
   endif
-  RESTORE_STACK
-  mov rax, stat_buffer
+  mov rax, buffer
   call alloc_zstring
-  RESTORE
+  pop rdx
   ret    
 %endif
 
 
 ;; get string representation of "errno": -> rax (string)
-%ifndef FEATURE_LINUX_BARE
-extern MANGLE_LIBCALL(__errno_location)
-extern MANGLE_LIBCALL(strerror)
+%ifndef FEATURE_NOLIBC
+ %ifdef  FEATURE_WINDOWS
+  %define GET_ERRNO_LOCATION  _errno
+ %else
+  %define GET_ERRNO_LOCATION __errno_location
+ %endif
 get_last_error:
-  SAVE
-  ALIGN_STACK
-  call MANGLE_LIBCALL(__errno_location)
+  LIBCALL0 GET_ERRNO_LOCATION
   mov eax, dword [rax]
-  mov rdi, rax
-  call MANGLE_LIBCALL(strerror)
-  RESTORE_STACK
+%ifdef FEATURE_WINDOWS
+  LIBCALL1 _strerror, rax
+%else
+  LIBCALL1 strerror, rax
+%endif
   call alloc_zstring
-  RESTORE
   ret  
 %endif
 
@@ -2301,7 +2434,7 @@ random_numbers:
 dcvt: db "%ld", 0
 ocvt: db "%lo", 0
 xcvt: db "%lx", 0
-gcvt: db "%.15g", 0
+gcvt: db "%.16g", 0
 
 rsp_alignment_mask: dq ~(CELLS(2) - 1)
 size_mask: dq SIZE_MASK
@@ -2314,16 +2447,21 @@ section .bss
 
 toplevel_rsp: resq 1
 gc_count: resq 1
-buffer: resb 1024
+buffer: resb 2048
 gcsave: resq 2			; holds 2 additional registers to those in "tempregisters"
 tempregisters: resq 7		; must follow "gcsave"
 locals:	resq 1024		; must be right after "tempregisters"!
 area1: resb TOTAL_HEAP_SIZE / 2
 area2: resb TOTAL_HEAP_SIZE / 2
 argv: resq 1
+envp: resq 1
 saved_ALLOC: resq 1
 saved_LIMIT: resq 1
 rsp_save: resq 1
 stat_buffer: resb 1024
-	      
+
+
 section .text
+
+
+%endif

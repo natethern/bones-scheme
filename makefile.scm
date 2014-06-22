@@ -38,7 +38,8 @@
 (define (bones-x86_64-linux.s)
   (make/proc
    (list (list "bones-x86_64-linux.s"
-	       (append compiler-sources compiler-sources-x86_64)
+	       (append compiler-sources compiler-sources-x86_64
+		       '("x86_64/linux/syscalls.scm"))
 	       (lambda ()
 		 (run (./bones1 bones.scm -o bones-x86_64-linux.s -feature linux)))))))
 
@@ -46,21 +47,15 @@
   (bones)
   (make/proc
    (list (list "bones-x86_64-windows.s"
-	       (append compiler-sources compiler-sources-x86_64)
+	       (append compiler-sources compiler-sources-x86_64
+		       '("x86_64/windows/syscalls.scm"))
 	       (lambda ()
 		 (run (./bones bones.scm -o bones-x86_64-windows.s -feature windows)))))))
 
-(define (bones-x86_64-macosx.s)
-  (bones)
-  (make/proc
-   (list (list "bones-x86_64-macosx.s"
-	       (append compiler-sources compiler-sources-x86_64)
-	       (lambda ()
-		 (run (./bones bones.scm -o bones-x86_64-windows.s -feature macosx)))))))
-
 (define (bones-x86_64-linux.o)
   (bones-x86_64-linux.s)
-  (make (("bones-x86_64-linux.o" ("bones-x86_64-linux.s" "x86_64/boneslib.s" 
+  (make (("bones-x86_64-linux.o" ("bones-x86_64-linux.s" 
+				  "x86_64/boneslib.s" 
 				  "x86_64/structured.s")
 	  (run (nasm -f elf64 -g -F dwarf bones-x86_64-linux.s -o bones-x86_64-linux.o))))))
 
@@ -78,18 +73,20 @@
 (define (tags)
   (make-tags "."))
 
-(define (compile+run fname . opts)
+(define (compile+run title fname . opts)
   (let-optionals opts ((cmplr "./bones")
 		       (runargs '())
-		       (features '()))
+		       (bopts '()))
     (let* ((name fname)
 	   (sname (string-append "tmp/" name ".s"))
 	   (oname (string-append "tmp/" name ".o"))
 	   (xname (string-append "tmp/" name)))
-      (and (zero? (run* (,cmplr ,(string-append fname ".scm") -o ,sname
-				,@(append-map (cut list '-feature <>) features))))
+      (print (padl (string-append " " title) 60 #\=) ": " fname)
+      (and (zero? (run* (,cmplr ,(string-append fname ".scm") -o ,sname ,@bopts)))
 	   (zero? (run* (nasm -f elf64 -g -F dwarf ,sname -o ,oname)))
-	   (zero? (run* (bin/musl-gcc ,oname -o ,xname)))
+	   (zero? (if (memq 'nolibc bopts)
+		      (run* (ld ,oname -o ,xname))
+		      (run* (bin/musl-gcc ,oname -o ,xname))))
 	   (zero? (run* (memtime ,xname ,@runargs)))))))
 
 (define (check)
@@ -97,33 +94,41 @@
   (run (mkdir -p tmp))
   (print
    (let ((ok #t))
-     (print "---------linux--------------------------------------------------")
      (for-each
       (lambda (prg)
-	(unless (compile+run prg) (set! ok #f)))
+	(let ((bopts (if (member prg '("r4rstest")) '(-case-insensitive) '())))
+	  (unless (compile+run "linux" prg "./bones" '() bopts)
+	    (set! ok #f))))
       '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth"))
-     (print "---------linux-bare---------------------------------------------")
      (for-each
       (lambda (prg)
-	(unless (compile+run prg '() '(linux-bare))
+	(let ((bopts (if (member prg '("r4rstest")) '(-case-insensitive) '())))
+	  (unless (compile+run "linux/PIC" prg "./bones" '() `(-feature pic ,@bopts))
+	    (set! ok #f))))
+      '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth"))
+     (for-each
+      (lambda (prg)
+	(unless (compile+run "linux/nolibc" prg "./bones" '() '(-feature nolibc))
 	  (set! ok #f)))
-      '("fac" "tak" #;"dynamic" "forth"))
-     (print "---------self-compile-------------------------------------------")     
-     (unless (compile+run "bones" "./bones" '(bones.scm -o tmp/bones.s))
+      '("fac" "tak" #;"r4rstest" #;"dynamic" "forth"))
+     (unless (compile+run "self-compile" "bones" "./bones"
+			  '(bones.scm -o tmp/bones.s -feature linux)
+			  '(-feature linux))
        (set! ok #f))
      (unless (zero? (run* (cmp bones-x86_64-linux.s tmp/bones.s)))
        (set! ok #f))
-     (print "---------embedded-----------------------------------------------")     
+     (print (padl " embedded" 60 #\=))
      (unless (check-embedded) (set! ok #f))
-     (print "----------------------------------------------------------------")     
      (if ok
-	 "\nall checks succeeded."
-	 "\nsome checks failed."))))
+	 "\n\nall checks succeeded."
+	 "\n\nSOME CHECKS FAILED."))))
 
 (define (check-embedded)
-  (let ((r (and (zero? (run* (./bones embedded.scm -o tmp/embedded.s)))
-		(zero? (run* (nasm -f elf64 -g -F dwarf tmp/embedded.s -o tmp/embedded1.o -DEMBEDDED -DPREFIX=my)))
-		(zero? (run* (nasm -f elf64 -g -F dwarf tmp/embedded.s -o tmp/embedded2.o -DEMBEDDED -DPREFIX=my_other)))
+  (let ((r (and (zero? (run* (./bones embedded.scm -o tmp/embedded.s -feature embedded)))
+		(zero? (run* (nasm -f elf64 -g -F dwarf tmp/embedded.s 
+				   -o tmp/embedded1.o -DPREFIX=my)))
+		(zero? (run* (nasm -f elf64 -g -F dwarf tmp/embedded.s
+				   -o tmp/embedded2.o -DPREFIX=my_other)))
 		(zero? (run* (gcc -g -I. embedded.c tmp/embedded1.o tmp/embedded2.o -o tmp/embedded)))
 		(zero? (run* (tmp/embedded))))))
     (unless r
@@ -147,10 +152,9 @@
   (run (tail -n 30 benchmark.txt)))
 
 (define distfiles
-  '("MANUAL"
+  '("MANUAL.txt"
     "bones-x86_64-linux.s"
     "bones-x86_64-windows.s"
-    "bones-x86_64-macosx.s"
     "alexpand.scm"
     "all.scm"
     "base.scm"
@@ -160,7 +164,6 @@
     "tsort.scm"
     "x86_64.scm"
     "cps.scm"
-    "x86_64/intrinsics.scm"
     "mangle.scm"
     "main.scm"
     "match.scm"
@@ -170,8 +173,14 @@
     "r5rs.scm"
     "program.scm"
     "source.scm"
+    "records.scm"
+    "copy.scm"
+    "x86_64/intrinsics.scm"
     "x86_64/structured.s"
     "x86_64/boneslib.s"
+    "x86_64/linux/syscalls.scm"
+    "x86_64/linux/syscalls-nolibc.scm"
+    "x86_64/windows/syscalls.scm"
     "support.scm"))
 
 (define (dist)
@@ -180,12 +189,16 @@
     (bones-x86_64-linux.s)
     (bones-x86_64-windows.s)
     (run (rm -fr ,arch))
-    (run (mkdir -p ,(string-append arch "/x86_64")))
+    (run (mkdir -p
+		,(string-append arch "/x86_64")
+		,(string-append arch "/x86_64/linux")
+		,(string-append arch "/x86_64/windows")))
     (for-each
      (lambda (df)
        (run (cp ,df ,(string-append arch "/" df))))
      distfiles)
-    (run (tar cfz ,(string-append arch ".tar.gz") ,arch))
+    (run (tar cfz bones.tar.gz ,arch))
+    (run (zip -r bones.tar.gz ,arch))
     (run (rm -fr ,arch))))
 
 (define (-n)

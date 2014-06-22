@@ -79,6 +79,30 @@
        (define var #f) ...
        (define-values "1" (var ...) exp ())))))
 
+(define-syntax parameterize
+  (letrec-syntax ((bind-param 
+		   (syntax-rules ()
+		     ((_ () (param ...) (new ...) (old ...) body)
+		      (dynamic-wind
+			  (lambda () 
+			    (param new) ...)
+			  (lambda () body)
+			  (lambda ()
+			    (param old #t) ...)))
+		     ((_ ((name val) . more) (param ...) (new ...) (old ...) body)
+		      (let* ((newname name)
+			     (newval val)
+			     (oldval (newname)))
+			(bind-param
+			 more
+			 (param ... newname)
+			 (new ... newval)
+			 (old ... oldval)
+			 body))))))
+    (syntax-rules ()
+      ((_ bindings body ...)
+       (bind-param bindings () () () (begin body ...))))))
+
 
 (define open-input-string
   (let ((substring substring))
@@ -138,34 +162,32 @@
 
 (cond-expand
   (time
-   (define-inline (current-second) ($inline "LIBCALL1 time, 0; INT2FIX rax")))
+   (define-inline (current-second) (%time)))
   (else))
 
 
 (cond-expand
   (process-environment
-   (define-inline (get-environment-variable str)
-     ($inline 
-      "CALL copy_to_buffer; LIBCALL1 getenv, buffer; test rax, rax; if z; mov rax, FALSE; endif; CALL alloc_zstring" 
-      str)) )
-  (else))
+   (define-inline (get-environment-variable str) (%getenv str))
 
-(cond-expand
-  ((or process-environment linux-bare)
    (define command-line
      (let* ((argc (%argc))
 	    (lst (let loop ((i 0))
 		   (if (%fx>=? i argc)
 		       '()
 		       (cons (%argv-ref i) (loop (%fx+ i 1)))))))
-       (lambda () lst))))
+       (lambda () lst)))
+
+   (define-inline (current-process-id) (%getpid))
+   (define-inline (system str) (%system str)))
+
   (else))
 
 
 (cond-expand
   (jiffy-clock
-   (define-inline (current-jiffy) ($inline "LIBCALL0 clock; INT2FIX rax"))
-   (define-inline (jiffies-per-second) 1000000))
+   (define-inline (current-jiffy) (%clock))
+   (define-inline (jiffies-per-second) %clocks-per-sec))
   (else))
 
 
@@ -192,43 +214,19 @@
   (file-system
 
    (define (current-directory . dir)
-     (define (getcwd)
-       (cond-expand
-	 (linux-bare
-	  ($inline "SYSCALL2 79, buffer, 1024; mov rax, buffer; CALL alloc_zstring"))
-	 (else
-	  ($inline "LIBCALL2 getcwd, buffer, 1024; mov rax, buffer; CALL alloc_zstring"))))
-     (define (chdir dir)
-       (cond-expand
-	 (linux-bare
-	  ($inline "CALL copy_to_buffer; SYSCALL1 80, buffer; INT2FIX rax" dir))
-	 (else
-	  ($inline "CALL copy_to_buffer; LIBCALL1 chdir, buffer; INT2FIX rax" dir))))
      (if (null? dir)
-	 (if (%fx<? (getcwd) 0)
+	 (if (%fx<? (%getcwd) 0)
 	     (%file-error 'current-directory)
-	     (let ((r (chdir (car dir))))
+	     (let ((r (%chdir (car dir))))
 	       (when (%fx<? r 0)
 		 (%file-error 'current-directory (car dir)))))))
 
-   (cond-expand
-     (linux-bare
-      (define-inline (delete-file str) 
-	(when (%fx<? ($inline "CALL copy_to_buffer; SYSCALL1 87, buffer; INT2FIX rax" str) 0)
-	  (%file-error 'delete-file str)))
-      (define-inline (file-exists? str)
-	(and
-	 ($inline "CALL copy_to_buffer; SYSCALL2 4, buffer, stat_buffer; test rax, rax; SET_T rax; cmovnz rax, FALSE" str) 
-      str)))
+   (define-inline (delete-file str) 
+     (when (%fx<? (%unlink str) 0)
+       (%file-error 'delete-file str)))
 
-     (else
-      (define-inline (delete-file str) 
-	(when (%fx<? ($inline "CALL copy_to_buffer; LIBCALL1 unlink, buffer; INT2FIX rax" str) 0)
-	  (%file-error 'delete-file str)))
-      (define-inline (file-exists? str)
-	(and
-	 ($inline "CALL copy_to_buffer; LIBCALL2 stat, buffer, stat_buffer; test rax, rax; SET_T rax; cmovnz rax, FALSE" str) 
-	 str)))))
+   (define-inline (file-exists? str)
+     (and (%exists? str) str)))
 
   (else))
 
@@ -237,26 +235,10 @@
 
 
 (cond-expand
-  (process-environment
-   (define-inline (current-process-id) ($inline "LIBCALL0 getpid; INT2FIX rax"))
-
-   (define-inline (system str)
-     ($inline "CALL copy_to_buffer; LIBCALL1 system, buffer; INT2FIX rax" str)))
-
-  (else))
-
-
-(cond-expand
   (file-ports
    (define (open-append-output-file name)
      ;; open-flags: O_WRONLY|O_CREAT|O_APPEND, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-     (define (open name)
-       (cond-expand
-	 (linux-bare 
-	  ($inline "CALL copy_to_buffer; SYSCALL3 1, buffer, 1089, 420; INT2FIX rax" name))
-	 (else
-	  ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 1089, 420; INT2FIX rax" name))))
-     (let ((fd (open name)))
+     (let ((fd (%open name 1089 420)))
        (if (%fx<? fd 0)
 	   (%file-error 'open-append-output-file name)
 	   (%make-file-output-port fd)))))
@@ -270,4 +252,23 @@
 
 (define-inline (free) (%free))
 
-(define return-to-host ($primitive "return_to_host"))
+(define (make-parameter val . guard)
+  (let ((guard (optional guard (lambda (x) x)))
+	(tag (%list #f)))
+    (lambda args
+      (let-optionals args ((new tag) (restore #f))
+	(cond ((eq? new tag) val)
+	      (else
+	       (set! val (if restore new (guard new)))
+	       val))))))
+
+(define %record-type-id-counter 2)	; 1 is used for error-objects
+
+(define (make-disjoint-type . name)
+  (let ((id %record-type-id-counter)
+	(name (optional name 'record)))
+    (set! %record-type-id-counter (%fx+ %record-type-id-counter 1))
+    (values
+     (lambda (data) ($allocate 10 3 name id data))
+     (lambda (x) (and (record? x) (eq? id (%slot-ref x 1))))
+     (lambda (rec) (%slot-ref rec 2)))))

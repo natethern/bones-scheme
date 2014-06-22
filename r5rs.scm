@@ -83,21 +83,17 @@
 (define-inline (output-port? x) (and (port? x) (not (%slot-ref x 1))))
 (define-inline (promise? x) (eq? (%type-of x) 9))
 
-(cond-expand 
-  (flonums
-   (define-inline (number? x) (or (%fixnum? x) (eq? (%type-of x) #x10)))
-   (define-syntax real? number?)
-   (define-inline (exact? x) (%fixnum? x))
+(define-inline (number? x) (or (%fixnum? x) (eq? (%type-of x) #x10)))
+(define-syntax real? number?)
+(define-inline (exact? x) (%fixnum? x))
 
-   (define-inline (rational? x)
-     (or (exact? x)
-	 (not (eq? 2047 (%ieee754-exponent x))))) ; inf or nan
+(define-inline (rational? x)
+  (or (exact? x)
+      (not (eq? 2047 (%ieee754-exponent x))))) ; inf or nan
 
-   (define-inline (inexact? x) 
-     (and (not (%fixnum? x))
-	  (eq? (%type-of x) #x10))))
-  (else
-   (define-inline (number? x) (%fixnum? x))))
+(define-inline (inexact? x) 
+  (and (not (%fixnum? x))
+       (eq? (%type-of x) #x10)))
 
 (define-inline (char->integer x) (%slot-ref x 0))
 (define-inline (integer->char x) ($allocate 4 1 x))
@@ -133,60 +129,48 @@
 (define %allocate-block ($primitive "alloc_block"))
 
 (define-inline (negative? x)
-  (cond-expand
-    (flonums (%fx<? (if (exact? x) x (%ieee754-sign x)) 0))
-    (else (%fx<? x 0))))
+  (%fx<? (if (exact? x) x (%ieee754-sign x)) 0))
 
 (define-inline (positive? x)
-  (cond-expand
-    (flonums (%fx>? (if (exact? x) x (%ieee754-sign x)) 0))
-    (else (%fx>=? x 0))))
+  (%fx>? (if (exact? x) x (%ieee754-sign x)) 0))
 
 (define-inline (zero? n)
-  (cond-expand
-    (flonums
-     (eq? (if (exact? n) n (%ieee754-exponent-and-mantissa n)) 0))
-    (else (eq? n 0))))
+  (eq? (if (exact? n) n (%ieee754-exponent-and-mantissa n)) 0))
 
 (define-inline (even? n)
-  (cond-expand
-    (flonums (zero? (if (exact? n) (bitwise-and n 1) (%/ n 2))))
-    (else (eq? 0 (bitwise-and n 1)))))
+  (zero? (if (exact? n) (bitwise-and n 1) (%/ n 2))))
 
 (define-inline (odd? n) (not (even? n)))
 
-(cond-expand
-  (flonums
-   (define-inline (finite? x)
-     (or (exact? x)
-	 (not (eq? 2047 (%ieee754-exponent x))) ; inf or nan
-	 (not (eq? 0 (%ieee754-mantissa x)))))  ; nan
+(define-inline (finite? x)
+  (or (exact? x)
+      (not (eq? 2047 (%ieee754-exponent x)))   ; inf or nan
+      (not (eq? 0 (%ieee754-mantissa x)))))    ; nan
 
-   (define-inline (nan? x)
-     (and (not (exact? x))
-	  (eq? 2047 (%ieee754-exponent x))
-	  (not (eq? 0 (%ieee754-mantissa x)))))
+(define-inline (nan? x)
+  (and (not (exact? x))
+       (eq? 2047 (%ieee754-exponent x))
+       (not (eq? 0 (%ieee754-mantissa x)))))
 
-   (define-inline (inexact->exact x)
-     (if (exact? x)
-	 x
-	 (%ieee754-truncate x)))
+(define-inline (inexact->exact x)
+  (if (exact? x)
+      x
+      (%ieee754-truncate x)))
 
-   (define-inline (exact->inexact x)
-     (if (exact? x)
-	 (%fixnum->ieee754 x)
-	 x))
+(define-inline (exact->inexact x)
+  (if (exact? x)
+      (%fixnum->ieee754 x)
+      x))
 
-   (define-inline (integer? x)
-     (or (exact? x)
-	 (let ((e (%ieee754-exponent x))
-	       (m (%ieee754-mantissa x)))
-	   (cond ((eq? #x7ff e) #f)	; inf or nan
-		 ((eq? 0 e) (eq? 0 m))	; zero or denormal
-		 ((%fx>=? e 1075))	    	; exceeds precision of mantissa, so must be integer (1023 + 52)
-		 ((%fx<? e 1023) #f)	; no integer part, so must be fraction
-		 (else (eq? 0 (arithmetic-shift m (%fx- e 1023)))))))))
-  (else))
+(define-inline (integer? x)
+  (or (exact? x)
+      (let ((e (%ieee754-exponent x))
+	    (m (%ieee754-mantissa x)))
+	(cond ((eq? #x7ff e) #f)	; inf or nan
+	      ((eq? 0 e) (eq? 0 m))	; zero or denormal
+	      ((%fx>=? e 1075))	; exceeds precision of mantissa, so must be integer (1023 + 52)
+	      ((%fx<? e 1023) #f) ; no integer part, so must be fraction
+	      (else (eq? 0 (arithmetic-shift m (%fx- e 1012)))))))) ; e - 1023 + 11 (1 bit gets lost in fixnum)
 
 (define-inline (quotient x y) ($inline "CALL quotient" x y))
 (define-inline (remainder x y) ($inline "CALL remainder" x y))
@@ -200,17 +184,14 @@
 (define-inline (abs x) 
   (if (negative? x) (%- x) x))
 
-(cond-expand
-  (flonums
+(define-inline (sin x) (%ieee754-sin x))
+(define-inline (cos x) (%ieee754-cos x))
+(define-inline (tan x) (%ieee754-tan x))
 
-   (define-inline (sin x) (%ieee754-sin x))
-   (define-inline (cos x) (%ieee754-cos x))
-   (define-inline (tan x) (%ieee754-tan x))
-
-   (define atan
-     (let* ((pi (%ieee754-pi)) 
+(define atan
+  (let* ((pi (%ieee754-pi)) 
 	    (pi/2 (%/ pi 2)))
-       (case-lambda
+    (case-lambda
 	((x) (%ieee754-atan1 x))
 	((y x)
 	 (let ((y (exact->inexact y)))
@@ -219,29 +200,25 @@
 		 ((%< y 0) (%- (%ieee754-atan1 (%/ y x)) pi))
 		 (else (%+ (%ieee754-atan1 (%/ y x)) pi))))))))
 
-   ;;XXX this seems to be broken
-   #;(define-inline (log x)
-     (let ((r ($allocate #x10 1)))
-       ($inline "fld1; fld qword [r11 + CELLS(1)]; fyl2x; fstp qword [rax + CELLS(1)]" r (exact->inexact x))))
+(define-inline (asin x) (%ieee754-asin x))
+(define-inline (atan x) (%ieee754-atan x))
 
-   (define-inline (sqrt x) (%ieee754-sqrt x)))
-  (else))
+;;XXX this seems to be broken
+#;(define-inline (log x)
+  (let ((r ($allocate #x10 1)))
+    ($inline "fld1; fld qword [r11 + CELLS(1)]; fyl2x; fstp qword [rax + CELLS(1)]" r (exact->inexact x))))
+
+(define-inline (sqrt x) (%ieee754-sqrt x))
 
 (define-inline (expt x y)
   (if (eq? y 0) 
       1
-      (cond-expand
-	(flonums
-	 (cond ((and (inexact? y) (%= y 0.0)) 1.0)
-	       ((and (exact? x) (exact? y) (positive? y) (%fx<? y 256)) ($inline "CALL fixnum_expt" x y))
-	       (else ($inline "CALL flonum_expt" x y))))
-	(else ($inline "CALL fixnum_expt" x y)))))
+      (cond ((and (inexact? y) (%= y 0.0)) 1.0)
+	    ((and (exact? x) (exact? y) (positive? y) (%fx<? y 256)) ($inline "CALL fixnum_expt" x y))
+	    (else ($inline "CALL flonum_expt" x y)))))
 
-(cond-expand
-  (flonums
-   (let-syntax ((e 2.7182818284590452353602874))
-     (define-inline (exp x) (expt e x))))
-  (else))
+(let-syntax ((e 2.7182818284590452353602874))
+  (define-inline (exp x) (expt e x)))
 
 (define-inline (cons x y) ($allocate 2 2 x y))
 (define-inline (length x) ($inline "CALL list_length" x))
@@ -346,70 +323,60 @@
     p))
 
 
+(define-inline (raise exn)
+  (%current-exception-handler exn))
+
+(define-syntax-rule (%make-error-object kind loc msg args)
+  (let ((exn ($allocate 10 6 'error-object 1 msg)))
+    (%slot-set! exn 3 args)
+    (%slot-set! exn 4 loc)
+    (%slot-set! exn 5 kind)
+    exn))
+
+
 (cond-expand
   ((or file-ports file-system)
    (define (%file-error loc . args)
-     (cond-expand 
-       (linux-bare (%apply %error loc "system call failed" args))
-       (else (%apply %error loc ($inline "CALL get_last_error") args)))))
+     (raise (%make-error-object 'file loc (%errno-string) args))))
   (else))
 
 
 (cond-expand
   (file-ports
 
-   (let-syntax ((close
-		 (syntax-rules ()
-		   ((_ fd)
-		    (cond-expand
-		      (linux-bare ($inline "FIX2INT rax; SYSCALL1 3, rax; INT2FIX rax" fd))
-		      (else ($inline "FIX2INT rax; LIBCALL1 close, rax; INT2FIX rax" fd)))))))
-     (begin
+   (define (%make-file-input-port fd)
+     (%make-port 
+      #t fd
+      (lambda (p)
+	(%slot-set! p 4 #f)
+	(when (%fx<? (%close (%slot-ref p 0)) 0)
+	  (%file-error 'close-input-port p)))
+      (lambda (p n) 
+	(let* ((str (%allocate-block #x11 n #f n #f #f))
+	       (nr (%read str (%slot-ref p 0) n)))
+	  (cond ((eq? nr 0) (eof-object))
+		((eq? n nr) str)
+		((%fx>? nr 0)
+		 (let ((str2 (%allocate-block #x11 nr #f nr #f #f)))
+		   ($inline "CALL copy_bytes" (cons str 0) (cons str2 0) nr)
+		   str2))
+		(else (%file-error 'read-string p n)))))
+      #f))
 
-       (define (%make-file-input-port fd)
-	 (define (read buf fd n)
-	   (cond-expand
-	    (linux-bare ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); SYSCALL3 0, r11, rax, r15; INT2FIX rax" buf fd n))
-	    (else
-	     ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); LIBCALL3 read, r11, rax, r15; INT2FIX rax" buf fd n))))
-	 (%make-port 
-	  #t fd
-	  (lambda (p)
-	    (%slot-set! p 4 #f)
-	    (when (%fx<? (close (%slot-ref p 0)) 0)
-	      (%file-error 'close-input-port p)))
-	  (lambda (p n) 
-	    (let* ((str (%allocate-block #x11 n #f n #f #f))
-		   (nr (read str (%slot-ref p 0) n)))
-	      (cond ((eq? nr 0) (eof-object))
-		    ((eq? n nr) str)
-		    ((%fx>? nr 0)
-		     (let ((str2 (%allocate-block #x11 nr #f nr #f #f)))
-		       ($inline "CALL copy_bytes" (cons str 0) (cons str2 0) nr)
-		       str2))
-		    (else (%file-error 'read-string p n)))))
-	  #f))
-
-       (define (%make-file-output-port fd)
-	 (define (write buf fd n)
-	   (cond-expand
-	     (linux-bare
-	      ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); SYSCALL3 1, r11, rax, r15; INT2FIX rax" buf fd n))
-	     (else
-	      ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); LIBCALL3 write, r11, rax, r15; INT2FIX rax" buf fd n))))
-	 (%make-port 
-	  #f fd
-	  (lambda (p)
-	    (when (%fx<? (close (%slot-ref p 0)) 0)
-	      (%file-error 'close-output-port p)))
-	  (lambda (p str)
-	    (when (%fx<? (write str (%slot-ref p 0) (string-length str)) 0)
-	      (%file-error 'write-string p str)))
-	  #f))
+   (define (%make-file-output-port fd)
+     (%make-port 
+      #f fd
+      (lambda (p)
+	(when (%fx<? (%close (%slot-ref p 0)) 0)
+	  (%file-error 'close-output-port p)))
+      (lambda (p str)
+	(when (%fx<? (%write str (%slot-ref p 0) (string-length str)) 0)
+	  (%file-error 'write-string p str)))
+      #f))
        
-       (define %standard-input-port (%make-file-input-port 0))
-       (define %standard-output-port (%make-file-output-port 1))
-       (define %standard-error-port (%make-file-output-port 2)))))
+   (define %standard-input-port (%make-file-input-port 0))
+   (define %standard-output-port (%make-file-output-port 1))
+   (define %standard-error-port (%make-file-output-port 2)))
   
   (else
 
@@ -427,7 +394,7 @@
 
    (define %standard-input-port (%make-null-input-port))
    (define %standard-output-port (%make-null-output-port))
-   (define %standard-error-port (%make-null-output-port))) )
+   (define %standard-error-port (%make-null-output-port))))
    
 
 (define-syntax current-input-port
@@ -450,22 +417,14 @@
 
    (define (open-input-file name)
      ;; flags: O_RDONLY, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-     (let ((fd (cond-expand
-		 (linux-bare
-		  ($inline "CALL copy_to_buffer; SYSCALL3 2, buffer, 0, 420; INT2FIX rax" name))
-		 (else
-		  ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 0, 420; INT2FIX rax" name)))))
+     (let ((fd (%open name 0 420)))
        (if (%fx<? fd 0)
 	   (%file-error 'open-input-file name)
 	   (%make-file-input-port fd))))
 
    (define (open-output-file name)
      ;; flags: O_WRONLY|O_CREAT|O_TRUNC, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-     (let ((fd (cond-expand
-		 (linux-bare
-		  ($inline "CALL copy_to_buffer; SYSCALL3 2, buffer, 577, 420; INT2FIX rax" name))
-		 (else 
-		  ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 577, 420; INT2FIX rax" name)))))
+     (let ((fd (%open name 577 420)))
        (if (%fx<? fd 0)
 	   (%file-error 'open-output-file name)
 	   (%make-file-output-port fd)))))
@@ -708,16 +667,9 @@
       ($inline "CALL copy_bytes" (cons str from) (cons str2 0) len)
       str2))))
 
-(cond-expand
-  (flonums
-   ;;XXX does not parse "nan.0", "inf.0"
-   (define-syntax string->number
-     (case-lambda 
-       ((str base)
-	($inline "CALL str2num" str base))
-       ((str)
-	($inline "CALL str2num" str 10)))))
-  (else
+(cond-expand 
+  (nolibc
+
    (define (string->number str . base)
      (let ((base (optional base 10))
 	   (len (string-length str))
@@ -739,43 +691,52 @@
 			    (loop (%fx+ p 1)
 				  (%fx+ (%fx* n base)
 					(%fx- (char->integer c)
-					      (if (char>=? c #\a) 87 48))))))))))))))
+					      (if (char>=? c #\a) 87 48))))))))))))
 
-(define number->string
-  (cond-expand
-    (flonums
-     (lambda (num . base)
-       (cond ((nan? num) "+nan.0")
-	     ((finite? num)
-	      (let ((str ($inline "CALL num2str" num (optional base 10))))
-		(if (and (inexact? num) (integer? num))
-		    (string-append str ".0")
-		    str)))
-	     ((negative? num) "-inf.0")
-	     (else "+inf.0"))))
-    (else
-     (let-syntax ((buflen 100))
+   (let-syntax ((buflen 100))
+     (define number->string
        (let ((buffer (make-string buflen)))
 	 (lambda (num . base)
-	   (if (eq? num 0)
-	       "0"
-	       (let ((neg (negative? num))
-		     (base (optional base 10)))
-		 (let loop ((p buflen) (n (if neg (%fx- 0 num) num)))
-		   (cond ((eq? n 0)
-			  (when neg
-			    (set! p (%fx- p 1))
-			    (string-set! buffer p #\-))
-			  (substring buffer p))
-			 (else
-			  (%fx-divmod 
-			   n base
-			   (lambda (q r)
-			     (let ((p (%fx- p 1)))
-			       (string-set! 
-				buffer p
-				(integer->char (%fx+ (if (%fx>=? r 10) 87 48) r)))
-			       (loop p q)))))))))))))))
+	   (cond ((inexact? num) (%error "sorry, float->string conversion is not implemented, yet"))
+		 ((eq? num 0) "0")
+		 (else
+		  (let ((neg (negative? num))
+			(base (optional base 10)))
+		    (let loop ((p buflen) (n (if neg (%fx- 0 num) num)))
+		      (cond ((eq? n 0)
+			     (when neg
+			       (set! p (%fx- p 1))
+			       (string-set! buffer p #\-))
+			     (substring buffer p))
+			    (else
+			     (%fx-divmod 
+			      n base
+			      (lambda (q r)
+				(let ((p (%fx- p 1)))
+				  (string-set! 
+				   buffer p
+				   (integer->char (%fx+ (if (%fx>=? r 10) 87 48) r)))
+				  (loop p q)))))))))))))))
+
+  (else
+   
+   (define-syntax string->number
+     (case-lambda 
+       ((str base)
+	($inline "CALL str2num" str base))
+       ((str)
+	($inline "CALL str2num" str 10))))
+
+   (define (number->string num . base)
+     (cond ((nan? num) "+nan.0")
+	   ((finite? num)
+	    (let ((str ($inline "CALL num2str" num (optional base 10))))
+	      (if (and (inexact? num) (integer? num))
+		  (string-append str ".0")
+		  str)))
+	   ((negative? num) "-inf.0")
+	   (else "+inf.0")))))
+
 
 (define-inline (vector-fill! v x)
   ($inline "CALL fill_slots" v x))
@@ -788,8 +749,8 @@
 
 (define-syntax make-vector
   (case-lambda 
-   ((n) (%allocate-block 3 (arithmetic-shift n 3) #f n #f (%undefined)))
-   ((n x) (%allocate-block 3 (arithmetic-shift n 3) #f n #t x))))
+   ((n) (%allocate-block 3 (arithmetic-shift n %cell-shift) #f n #f (%undefined)))
+   ((n x) (%allocate-block 3 (arithmetic-shift n %cell-shift) #f n #t x))))
 
 (define (list->vector lst) ;XXX this can probably be done more efficiently
   (let* ((n (length lst))
@@ -1075,34 +1036,74 @@
 	       ((cdr dw))
 	       (loop)))))))
 
-(define %error
+(cond-expand
+  (embedded
+   (define return-to-host ($primitive "return_to_host")))
+  (else))
+
+
+(define-inline (error-object? x) 
+  (and (record? x) (eq? (%slot-ref x 1) 1)))
+
+(define-inline (error-object-message exn) (%slot-ref exn 2))
+(define-inline (error-object-irritants exn) (%slot-ref exn 3))
+(define-inline (error-object-location exn) (%slot-ref exn 4))
+
+(define %current-exception-handler
   (let ((write write)
 	(display display)
 	(newline newline)
-	(emergency-exit emergency-exit)
-	(string-append string-append))
-    (lambda (msg . args)
-      (cond ((and (symbol? msg) (pair? args) (string? (car args)))
-	     (display (string-append "\nError: (" (symbol->string msg) ") " (car args)) 
-		      %standard-error-port)
-	     (set! args (cdr args)))
-	    ((string? msg)
-	     (display (string-append "\nError: " msg) %standard-error-port))
-	    (else
-	     (display "\nError")
-	     (set! args (cons msg args))))
-      (cond ((null? args) (newline %standard-error-port))
-	    (else
-	     (newline %standard-error-port)
+	(emergency-exit emergency-exit))
+    (lambda (exn)
+      (cond-expand
+	(embedded (return-to-host exn))
+	(else
+	 (let* ((exn? (error-object? exn))
+		(msg (if exn? (error-object-message exn) "unhandled exception"))
+		(loc (and exn? (error-object-location exn)))
+		(args (if exn? (error-object-irritants exn) (list exn))))
+	   (display "\nError: " %standard-error-port)
+	   (when loc
+	     (display (string-append "(" (%slot-ref loc 0) ") ") %standard-error-port))
+	   (display (string-append msg "\n") %standard-error-port)
+	   (unless (null? args)
 	     (for-each
 	      (lambda (arg)
 		(newline %standard-error-port)
 		(write arg)
 		(newline %standard-error-port))
-	      args)))
-      (emergency-exit 70))))		; EXIT_FAILURE
+	      args))
+	   (emergency-exit 70)))))))      	; EXIT_FAILURE
+
+(define %error
+  (let ((string-append string-append))
+    (lambda (msg . args)
+      (let ((loc #f))
+	(cond ((and (symbol? msg) (pair? args) (string? (car args)))
+	       (set! loc msg)
+	       (set! msg (car args))
+	       (set! args (cdr args)))
+	      ((and (not (string? msg)) (pair? args))
+	       (set! msg "unknown error")
+	       (set! args (cons msg args))))
+	(raise
+	 (if (string? msg)
+	     (%make-error-object #f loc msg args)
+	     msg))))))
 
 (define-syntax error %error)
+
+(define-syntax current-exception-handler
+  (case-lambda
+    (() %current-exception-handler)
+    ((xh . more) (set! %current-exception-handler xh)))) ; fake parameter
+
+(define-inline (file-error? x)
+  (and (error-object? x) (eq? 'file (%slot-ref x 5))))
+
+(define-inline (read-error? x)
+  (and (error-object? x) (eq? 'read (%slot-ref x 5))))
+
 
 (define case-sensitive
   (let ((cs #t))
@@ -1125,7 +1126,7 @@
 	(case-sensitive case-sensitive)
 	(string->symbol string->symbol))
     (define (read-error msg . args)
-      (%apply %error 'read msg args))
+      (%make-error-object 'read 'read msg args))
     (lambda p
       (let ((port (optional p %standard-input-port))
 	    (cs (case-sensitive))
@@ -1183,23 +1184,17 @@
 			  (n (string->number tok)))
 		     (if (not (number? n))
 			 (read-error "invalid number syntax" tok)
-			 (cond-expand
-			   (flonums
-			    (if (inexact? n) 
-				n
-				(exact->inexact n)))
-			   (else n)))))	; ignored
+			 (if (inexact? n) 
+			     n
+			     (exact->inexact n)))))
 		  ((#\e #\E) 
 		   (let* ((tok (read-token '() #f))
 			  (n (string->number tok)))
 		     (if (not (number? n))
 			 (read-error "invalid number syntax" tok)
-			 (cond-expand
-			   (flonums
-			    (if (exact? n) 
-				n
-				(inexact->exact n)))
-			   (else n)))))	; always exact
+			 (if (exact? n) 
+			     n
+			     (inexact->exact n)))))
 		  ((#\() (list->vector (read-list #\))))
 		  ((#\;) (read1) (read1))
 		  ((#\%) (string->symbol (read-token (%list (docase c) #\#) cs)))
@@ -1365,64 +1360,58 @@
       ((%slot-ref p 0))
       p))
 
-(cond-expand
-  (flonums
+(define-inline (truncate n)
+  (if (exact? n)
+      n
+      (let ((e (%ieee754-exponent n)))
+	(cond ((%fx>=? e 1075) n)	; no fractional part
+	      ((%fx<? e 1023) 0.0)	; no integral part
+	      (else
+	       (let* ((m (%ieee754-mantissa n))
+		      (mask (arithmetic-shift #xfffffffffffff (%fx- 0 (%fx- e 1023)))))
+		 (if (eq? 0 (bitwise-and m mask))
+		     n
+		     (%ieee754-mask n (bitwise-not mask)))))))))
 
-   (define-inline (truncate n)
-     (if (exact? n)
-	 n
-	 (let ((e (%ieee754-exponent n)))
-	   (cond ((%fx>=? e 1075) n)	; no fractional part
-		 ((%fx<? e 1023) 0.0)	; no integral part
-		 (else
-		  (let* ((m (%ieee754-mantissa n))
-			 (mask (arithmetic-shift #xfffffffffffff (%fx- 0 (%fx- e 1023)))))
-		    (if (eq? 0 (bitwise-and m mask))
-			n
-			(%ieee754-mask n (bitwise-not mask)))))))))
+(define-inline (ceiling n)
+  (if (exact? n)
+      n
+      (let ((e (%ieee754-exponent n)))
+	(cond ((%fx>=? e 1075) n)	; no fractional part
+	      ((%fx<? e 1023)		; no integral part
+	       (if (eq? 0 (%ieee754-sign n))
+		   1.0
+		   0.0))
+	      (else
+	       (let* ((m (%ieee754-mantissa n))
+		      (mask (arithmetic-shift #xfffffffffffff (%fx- 0 (%fx- e 1023)))))
+		 (if (eq? 0 (bitwise-and m mask))
+		     1.0
+		     (let ((n2 (%ieee754-mask n (bitwise-not mask))))
+		       (if (eq? 0 (%ieee754-sign n))
+			   (%+ 1.0 n2)
+			   n2)))))))))
 
-   (define-inline (ceiling n)
-     (if (exact? n)
-	 n
-	 (let ((e (%ieee754-exponent n)))
-	   (cond ((%fx>=? e 1075) n)	; no fractional part
-		 ((%fx<? e 1023)	; no integral part
-		  (if (eq? 0 (%ieee754-sign n))
-		      1.0
-		      0.0))
-		 (else
-		  (let* ((m (%ieee754-mantissa n))
-			 (mask (arithmetic-shift #xfffffffffffff (%fx- 0 (%fx- e 1023)))))
-		    (if (eq? 0 (bitwise-and m mask))
-			1.0
-			(let ((n2 (%ieee754-mask n (bitwise-not mask))))
-			  (if (eq? 0 (%ieee754-sign n))
-			      (%+ 1.0 n2)
-			      n2)))))))))
+(define-inline (floor n)
+  (if (exact? n)
+      n
+      (let ((e (%ieee754-exponent n)))
+	(cond ((%fx>=? e 1075) n)	; no fractional part
+	      ((%fx<? e 1023)		; no integral part
+	       (if (eq? 0 (%ieee754-sign n))
+		   0.0
+		   -1.0))
+	      (else
+	       (let* ((m (%ieee754-mantissa n))
+		      (mask (arithmetic-shift #xfffffffffffff (%fx- 0 (%fx- e 1023)))))
+		 (if (eq? 0 (bitwise-and m mask))
+		     0.0
+		     (let ((n2 (%ieee754-mask n (bitwise-not mask))))
+		       (if (eq? 0 (%ieee754-sign n))
+			   n2
+			   (%- 1.0 n2))))))))))
 
-   (define-inline (floor n)
-     (if (exact? n)
-	 n
-	 (let ((e (%ieee754-exponent n)))
-	   (cond ((%fx>=? e 1075) n)	; no fractional part
-		 ((%fx<? e 1023)	; no integral part
-		  (if (eq? 0 (%ieee754-sign n))
-		      0.0
-		      -1.0))
-		 (else
-		  (let* ((m (%ieee754-mantissa n))
-			 (mask (arithmetic-shift #xfffffffffffff (%fx- 0 (%fx- e 1023)))))
-		    (if (eq? 0 (bitwise-and m mask))
-			0.0
-			(let ((n2 (%ieee754-mask n (bitwise-not mask))))
-			  (if (eq? 0 (%ieee754-sign n))
-			      n2
-			      (%- 1.0 n2))))))))))
-
-   (define-inline (round n)
-     (if (exact? n)
-	 n
-	 (let ((tmp ($allocate #x10 1)))
-	   ($inline "fld qword [r11 + CELLS(1)]; frndint; fstp qword [rax + CELLS(1)]" tmp n)))))
-
-  (else))
+(define-inline (round n)
+  (if (exact? n)
+      n
+      (%ieee754-round n)))
