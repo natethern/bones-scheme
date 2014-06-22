@@ -10,8 +10,6 @@ BONES                                                                     -*- Or
 * provide manual as text in dist tarball and html on web-site
 * TODO test file:copy.scm
 * TODO write web-page
-* DONE complete library support for 'nolibc mode
-  - not sure if the handling of the clock_getres results is right.
 * TODO file:dynamic.scm fails with 'nolibc config
   - bogus results (counters seem to be wrong - bug in integer-only
     arithmetic?)
