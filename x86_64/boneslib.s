@@ -2025,8 +2025,8 @@ compare_strings:
   if e 				; all characters compared
     mov rax, FIX(0)
   else
-    mov al, [esi - 1]
-    cmp al, [edi - 1]
+    mov al, [rsi - 1]
+    cmp al, [rdi - 1]
     mov rax, FIX(1)
     mov r15, FIX(-1)
     cmovl rax, r15
@@ -2048,7 +2048,7 @@ compare_strings_ci:
   test r15, r15
   if nz
     repeat
-      mov al, [esi]
+      mov al, [rsi]
       cmp al, 'A'
       if ge			;XXX this can surely be done in a better way
         cmp al, 'Z'
@@ -2056,7 +2056,7 @@ compare_strings_ci:
 	  or al, 0x20
 	endif
       endif
-      mov bl, [edi]
+      mov bl, [rdi]
       cmp bl, 'A'
       if ge			;XXX s.a.
         cmp bl, 'Z'
@@ -2071,8 +2071,8 @@ compare_strings_ci:
         cmovl rax, r15
     	jmp .done 
       endif  
-      inc esi
-      inc edi
+      inc rsi
+      inc rdi
       dec r15
     until z
   endif
