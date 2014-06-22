@@ -1022,6 +1022,9 @@
    The compiler has a very simple structure and basically consists of
    the following files:
 
+   - =bones.scm= :: A program-specification file referencing all modules
+		    of the compiler.
+
    - =main.scm= :: The /driver/, parsing command-line arguments and
                  invoking the translation process.
 
@@ -1057,6 +1060,18 @@
    - =x86_64.scm= :: The /backend/ for generating X86_64 code. This
                    file is the only part of the compiler that is
                    architecture specific.
+
+   Building the compiler is straightforward:
+
+   #+BEGIN_SRC sh
+   bones bones.scm -o bones.s
+   #+END_SRC
+
+   Building the Windows version requires enabling the =windows= feature:
+
+   #+BEGIN_SRC sh
+   bones bones.scm -o bones.s -feature windows
+   #+END_SRC
 
    The compiler does not use an abstract syntax tree as an internal
    code representation - s-expressions representing code are used
