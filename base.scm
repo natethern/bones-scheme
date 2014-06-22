@@ -39,10 +39,3 @@
 ;; add primitives
 (files "r5rs.scm"
        "nonstd.scm")
-
-;; optionally add SRFI-9 records
-(cond-expand
-  (records
-   (provide srfi-9)
-   (files "records.scm"))
-  (else))
