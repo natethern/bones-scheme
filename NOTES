@@ -7,9 +7,7 @@ BONES                                                                     -*- Or
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values has two words.
 * TODO disable ".directve" section when using mingw
-* TODO write manual
-  - document that =string->number= does not parse "nan.0"/"inf.0".
-  - provide manual as text in dist tarball and html on web-site.
+* provide manual as text in dist tarball and html on web-site
 * TODO test file:copy.scm
 * TODO write web-page
 * DONE complete library support for 'nolibc mode
@@ -33,18 +31,14 @@ BONES                                                                     -*- Or
     bytevector-length, bytevector-copy, bytevector-copy!
   - "u8(...)" read-syntax + printing.
 * go through r7rs and look for possibly useful primitives
-* TODO default library paths?
-  - env-variable "BONES_LIBRARY_PATH".
-  - "/usr/share/bones", "/usr/local/share/bones", "." ?
-* DONE windows port
-  - try latest changes, should work better now.
-* TODO try compiling grond
+* TODO windows port
+  - "-o" option seems not to be recognized.
+  - printer does work, somehow (r4rstest prints loads of "unknown object").
+  - r4rstest crashes at some stage.
+* try compiling grond
   + fails to compile bones-grond, either with OOM or, with 1GB heap, SIGILL.
 * we could coalesce allocations inside a lambda
   - but will probably gain very little.
-* TODO something is wrong with musl's "sprintf" (or varargs) implementation
-  - "(number->string (expt 2.1 3))" returns "nan".
-  - ok with glibc.
 * implement basic known procedure optimizations
   - beta-contraction (needs knowledge about FVs).
   - direct-calls (implies loops).
@@ -53,13 +47,13 @@ BONES                                                                     -*- Or
   - needs write-barrier to record assignments of heap-data into non-heap objects.
     - then evict recursively.
   - also, keep GC-count in block header.
-* TODO implement eval/repl
+* implement eval/repl
   - could start with a simplification from grass.
   - keep it simply, without environments.
   - install signal-handlers for SIGSEGV/SIGBUS/SIGILL/SIGFPE.
 * TODO pre-allocated chars in the range 0-255
   - means: all chars are preallocated, unless we allow chars with arbitrary code.
-* TODO we need FP num/str conversion
+* we need FP num/str conversion
   - atof: http://pastebin.com/prYRrseH
     #+BEGIN_SRC asm
 ; atof implementation using SSE
@@ -167,7 +161,7 @@ mainCRTStartup:
 
 	ret
   #+END_SRC
-* TODO "(if X S1 S2)" can be computed more efficiently
+* "(if X S1 S2)" can be computed more efficiently
   - use "cmovCC" if S1, S2 are simple-expressions.
 * implement "peephole" pass?
   - match expressions for certain cases.
@@ -177,19 +171,12 @@ mainCRTStartup:
   - seems to be broken.
 * TODO =string->number= does not parse "+/-nan.0"/"+/-inf.0"
 * remove unused globals
+* TODO add backend-call to align block-pointer when trsnslating =$allocate=
 * secure inline-primitives against redefinition of internally used primitives
   - like this:
     (let-syntax ((PRIMITIVE PRIMITIVE))
       (define-inline (OTHER-PRIMITIVE ...) ...))
   - or redefinition of PRIMITIVE will change behaviour of OTHER-PRIMITIVE.
-* TODO mark places in file:x86_64/boneslib.s for 32-bit alignment issues
-  - flonum allocation
-    - "ALLOCATE_FLONUM"
-    - "$allocate", perhaps align bytevectors in general.
-    - "alloc_block"
-  - GC
-    - mark: insert alignment marker when copying bytevector block.
-    - scan: skip alignment marker.
 * Issues
 ** "inexact->exact" uses "fisttp", so needs SSE3
 ** i don't fully trust that "integer?" handles all cases correctly
@@ -202,6 +189,9 @@ mainCRTStartup:
      - GC: when copying, insert marker word before flonum; during scan,
        check for marker word and skip.
 ** there is no way to access =locals= from other modules or host programs
+** something is wrong with musl's "sprintf" (or varargs) implementation
+  - "(number->string (expt 2.1 3))" returns "nan".
+  - ok with glibc.
 * Referencess
   - X86_64:
     - x87: http://www.website.masmforum.com/tutorials/fptute/index.html
