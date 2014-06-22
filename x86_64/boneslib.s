@@ -323,7 +323,8 @@
 %ifdef FEATURE_WINDOWS
   mov rcx, %2
   mov rdx, %3
-  movsd xmm2, %4
+  mov r8, %4
+  movq xmm2, r8		; this is so silly...
 %else
   mov rdi, %2
   mov rsi, %3
