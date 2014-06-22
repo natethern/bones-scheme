@@ -187,7 +187,10 @@
     (bones-x86_64-linux.s)
     (bones-x86_64-windows.s)
     (run (rm -fr ,arch))
-    (run (mkdir -p ,(string-append arch "/x86_64")))
+    (run (mkdir -p
+		,(string-append arch "/x86_64")
+		,(string-append arch "/x86_64/linux")
+		,(string-append arch "/x86_64/windows")))
     (for-each
      (lambda (df)
        (run (cp ,df ,(string-append arch "/" df))))
