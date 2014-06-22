@@ -2461,12 +2461,6 @@ rsp_save: resq 1
 stat_buffer: resb 1024
 
 
-%ifdef FEATURE_WINDOWS
-section .drectve info 
-  db      '/defaultlib:libcmt.lib '
-%endif
-
-
 section .text
 
 
