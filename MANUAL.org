@@ -97,7 +97,7 @@
     #+BEGIN_SRC sh
     cd bones-<date>
     nasm -f win64 bones-x86_64-windows.s -o bones.obj
-    link /subsystem:console bones.obj /out:bones.exe
+    link bones.obj libcmt.lib /out:bones.exe
     #+END_SRC
 
     If you are using MINGW, linking is done with the following
@@ -118,7 +118,18 @@
   The =bones= executable can be moved anywhere you desire, but assumes
   that some supporting files are in the directory where it is invoked.
   You can use the =-L= command-line option (described below) to set
-  the the directory where the supporting files are located.
+  the the directory where the supporting files are located. The default
+  search path contains the following directories:
+
+  - The current directory (".")
+
+  - The value of =BONES_LIBRARY_PATH=, if set. Multiple directories
+    can be given, when separated by ";" (semicolon) on Windows or ":"
+    (colon) on other systems.
+
+  - "/usr/share/bones"
+
+  - "/usr/local/share/bones"
 
 * Usage
 
@@ -173,7 +184,7 @@
    used:
 
    #+BEGIN_SRC sh
-   link /subsystem:console <OBJECTFILENAME> /out:<PROGRAMFILENAME>
+   link <OBJECTFILENAME> libcmt.lib /out:<PROGRAMFILENAME>
    #+END_SRC
 
    Alternatively, use the MINGW compiler driver:
@@ -813,10 +824,22 @@
     - =(void ARGUMENT ...)= :: Ignores its arguments and returns an
       undefined result.
 
-**** SRFI-9 record definitions
+*** Additional Library Code
 
-     A record-definition-facility compatible to [[http://srfi.schemers.org/srfi-9/][SRFI-9]] is also available,
-     as an option, when =-feature records= is passed to the compiler.
+    Some library files are available with additional procedures and
+    syntactic extensions. Use these with "
+
+    - =records.scm= :: A record-definition-facility compatible to
+                       [[http://srfi.schemers.org/srfi-9/][SRFI-9]].
+
+    - =match.scm= :: Alex Shinn's pattern matching facility, also
+                     available at
+                     http://synthcode.com/scheme/match.scm.
+
+    - =megalet.scm= :: The [[http://srfi.schemers.org/srfi-71/][SRFI-71]] reference implementation, extending =let=
+		       for convenient binding of multiple values. This also
+		       adds "curried" =define= syntax.
+
 
 * Compiler Details
 
