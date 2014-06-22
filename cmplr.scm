@@ -37,7 +37,11 @@
 	    (list default-configuration)
 	    basic-implementation-features))
   (set! file-search-path
-    (append (collect-options 'library-path: options) '(".")))
+    (append (collect-options 'library-path: options)
+	    '(".")
+	    (let ((lp (get-environment-variable "BONES_LIBRARY_PATH")))
+	      (if lp (string-split lp (cond-expand (windows ";") (else ":"))) '()))
+	    '("/usr/share/bones" "/usr/local/share/bones")))
   (let ((prg (match code
 	       (('begin ('program . _))
 		(expand-program (cadr code)))
