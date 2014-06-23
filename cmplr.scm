@@ -302,7 +302,7 @@
     (_ (error "bad expression" x))))
 
 
-;;; order argument-evulation to minimize spills
+;;; order argument-evaluation to minimize spills
 ;
 ; - compute registers used for each argument.
 ; - identify circular dependencies between target registers and target-registers
@@ -321,12 +321,15 @@
     (define (circular? ra rargs)
       ;;XXX special case: arg depends on own target register - could be
       ;;    ignored, but will make tsort fail
-      (match-let (((tr _ deps) ra))
-	(any (match-lambda
-	       ((tr2 _ deps2) 
-		(and (memv tr2 deps)
-		     (memv tr deps2))))
-	     rargs)))
+      (define (follow r done)
+	(or (memq r done)
+	    (let ((done (cons r done)))
+	      (cond ((assq r rargs) =>
+		     (match-lambda 
+		       ((r2 _ deps)
+			(any (cut follow <> done) deps))))
+		    (else #f)))))
+      (any (cut follow <> '()) (caddr ra)))
     (define (translate-arguments spilled unspilled)
       (let* ((n (length spilled))
 	     (reserve (cells n)))
