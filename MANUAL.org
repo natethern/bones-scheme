@@ -327,8 +327,8 @@
 
     Argument types to primitive procedures are not checked. The only
     detected errors are errors related to port- and file-system
-    operations, mutating literal constants or when the heap is
-    exhausted.
+    operations, mutating literal constants, when the heap is
+    exhausted, or explicit calls to the =error= procedure.
 
 *** Section 2
 
@@ -998,6 +998,12 @@
    Still BONES is very simple and will be no match for programs coded
    in C or high-performance Scheme systems. That is the price payed
    for a simple system.
+
+   Note that I/O is fully unbuffered, the =read(2)= and =write(2)=
+   library function or system calls are directly invoked for every
+   input or output operation. If you have a lot of operations on
+   ports, consider using intermediate string-ports or strings for
+   accumulating data before writing or parsing it.
 
    Some tips for obtaining fast code:
 
