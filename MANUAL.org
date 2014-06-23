@@ -1184,6 +1184,23 @@
   a record-tag (symbol) and a fixnum id, designating the exact type
   of the record. Id 1 is used for error-objects.
 
+  As argument types are not checked, primitives are only sensitive to
+  the underlying representation, not the actual type. This can be used
+  for interesting effects, for example:
+
+  #+BEGIN_SRC scheme
+  (string->copy <FLOAT>)  ==>  <a string containing the raw bytes of the IEEE double>
+
+  (vector->list '(1 . 2)) ==>  #(1 2)
+  
+  (define-values (make pred? data) (make-disjoint-type 'foo))
+  (vector-copy (make 99))    ==>  #(foo 2 99)
+  #+END_SRC
+
+  Operations that expect a normal block will have an undefined effect
+  when invoked on objects that are byte-blocks and vice versa. Usually
+  the program will crash.
+
 * Garbage Collection
 
   BONES uses a Cheney-style copying garbage collector. This sacrifices
