@@ -2,7 +2,6 @@ BONES                                                                     -*- Or
 
 
 * DONE test "smart-spill" branch
-  - simple tests seem to work, but needs more testing.
 * work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values has two words.
@@ -10,6 +9,7 @@ BONES                                                                     -*- Or
 * provide manual as text in dist tarball and html on web-site
 * TODO test file:copy.scm
 * TODO write web-page
+* TODO fixnum/flonum specific primitives would vastly speed up things
 * TODO file:dynamic.scm fails with 'nolibc config
   - bogus results (counters seem to be wrong - bug in integer-only
     arithmetic?)
