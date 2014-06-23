@@ -138,3 +138,6 @@
 (define (generate-argc-check argc rest? lbl)
   (emit " cmp r11, " argc "\n "
 	(if rest? "jb " "jne ") lbl "\n"))
+
+(define (generate-conditional-move test src dest)
+  (emit " cmp " test ", FALSE\n cmove " dest ", " src "\n"))
