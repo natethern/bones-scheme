@@ -1,7 +1,7 @@
 BONES                                                                     -*- Org -*-
 
 
-* DONE [#B] test "smart-spill" branch
+* DONE test "smart-spill" branch
   - simple tests seem to work, but needs more testing.
 * work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
@@ -168,7 +168,8 @@ mainCRTStartup:
 * TODO log: "fld1; fld XXX; fyl2x"
   - seems to be broken.
 * TODO =string->number= does not parse "+/-nan.0"/"+/-inf.0"
-* remove unused globals
+* TODO remove unused globals
+  - also add "-dump-unused".
 * TODO add backend-call to align block-pointer when trsnslating =$allocate=
 * secure inline-primitives against redefinition of internally used primitives
   - like this:
