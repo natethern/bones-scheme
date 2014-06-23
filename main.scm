@@ -10,7 +10,8 @@
   (for-each
    (cut display <> (current-error-port))
    '("usage: bones [-o OUTFILE] [-L LIBRARY_PATH] [-feature FEATURE] [-expand]"
-     " [-dump-features] [-comment] [-nostdlib] [-case-insensitive] FILENAME\n"))
+     " [-dump-features] [-comment] [-nostdlib] [-case-insensitive]"
+     " [-dump-unused] FILENAME\n"))
   (exit 1))
 
 (define (main args)

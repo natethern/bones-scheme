@@ -207,6 +207,9 @@
                        program specification has been completely
                        parsed.
 
+   - =-dump-unused= :: Dump unused global variables, including library
+		       definitions and 
+
    - =-expand= :: Dump source code to stdout after syntax-expansion and
                 stop.
 

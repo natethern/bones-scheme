@@ -67,17 +67,21 @@
 	      (dumpcc (option 'dump-cc: options))
 	      (dumpcps (option 'dump-cps: options))
 	      (dumpserial (not (option 'dump-nested: options)))
-	      (dumpcompiled (option 'dump: options))
 	      (outfile (option 'output-file: options))
 	      (code (canonicalize-expression code))
 	      (defs code (cps code))
 	      (_ (when dumpcps
 		   (dump-expressions code dumpserial)
 		   (stop)))
-	      (code (detect-unused-variables code))
-	      (_ (when dumpcompiled
-		   (dump-expressions code dumpserial)
-		   (stop)))
+	      (code unused (detect-unused-variables code))
+	      (_ (cond ((option 'dump-unused: options)
+			(for-each 
+			 (lambda (var) (write var) (newline))
+			 unused)
+			(stop))
+		       ((option 'dump: options)
+			(dump-expressions code dumpserial)
+			(stop))))
 	      (ccode (cc code '())))
 	 (set! emit-expr-comments (option 'comment: options))
 	 (when dumpcc
