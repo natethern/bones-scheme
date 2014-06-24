@@ -214,11 +214,15 @@
     (('if x y z)
      (cond ((and (simple-expression? y)
 		 (simple-expression? z))
-	    ;; we must swap the order of x and y here, in case t is the 1st temporary
 	    ;;XXX adapt the line below when mergining /smart-spill/
-	    (match-let ((((_ . r1) (_ . r2) (_ . r3)) (translate-inline-arguments (list y x z))))
-	      (generate-move t r1)
-	      (generate-conditional-move r2 r3 t)
+	    (match-let ((((_ . r1) (_ . r2) (_ . r3)) 
+			 (translate-inline-arguments (list x y z))))
+	      (cond ((memq t temporary-registers)
+		     (generate-conditional-move r1 r3 r2)
+		     (generate-move t r2))
+		    (else
+		     (generate-move t r2)
+		     (generate-conditional-move r1 r3 t)))
 	      #t))
 	   (else
 	    (translate x t)
