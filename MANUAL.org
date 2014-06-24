@@ -61,7 +61,7 @@
 * Installation
 
   BONES is written in Scheme and translates Scheme to x86_64
-  assembler, specifically, in the syntax accepted by =NASM=, which will
+  assembler, specifically, in the syntax accepted by NASM, which will
   have to be installed on your system. To link the assembled code you
   will need a linker and C runtime support files, including the C
   library, so a C compiler should be installed as well.
@@ -162,7 +162,7 @@
 ** Assembling and linking Executables
 
    Once the compiler has produced an assembler file, it has to be
-   assembled and linked. Using =NASM=, this is done like this:
+   assembled and linked. Using NASM, this is done like this:
 
    #+BEGIN_SRC sh
    nasm -f <FORMAT> <FILENAME> -o <OBJECTFILENAME>
@@ -237,7 +237,7 @@
        every time a garbage collection is triggered.
 
   - =PREFIX= :: Defines a custom entry-point prefix for embedding. By
-     passing -DPREFIX=my= to =nasm=, the Scheme toplevel can be run by
+     passing -DPREFIX=my= to NASM, the Scheme toplevel can be run by
      calling =my_bones=.
 
   - =TOTAL_HEAP_SIZE= :: Total size of the heap. Half of this space can be
@@ -269,7 +269,7 @@
    | Feature             | Meaning                                                          |
    |---------------------+------------------------------------------------------------------|
    | x86_64              | Architecture identifier                                          |
-   | ieee745             | Floating point format used                                       |
+   | ieee754             | Floating point format used                                       |
    | linux               | Operating system                                                 |
    | windows             | Operating system                                                 |
    | file-ports          | Primitives operating on file-ports are available                 |
@@ -285,10 +285,11 @@
    The following features are by default available to enable language
    extensions or target-specific compilation modes:
 
-   | Feature | Meaning                                                                          |
-   |---------+----------------------------------------------------------------------------------|
-   | pic     | Generate position-independent code, always enabled on Windows, optional on Linux |
-   | nolibc  | Generate code that does not require linking with the C runtime library           |
+   | Feature  | Meaning                                                                          |
+   |----------+----------------------------------------------------------------------------------|
+   | pic      | Generate position-independent code, always enabled on Windows, optional on Linux |
+   | nolibc   | Generate code that does not require linking with the C runtime library           |
+   | embedded | Generate code that can be embedded into an application                           |
 
 * Language Description
 
@@ -601,7 +602,8 @@
          implemented by defining an /identifier-macro/ for =NAME=,
          which the syntax-expander will replace with a =lambda= form
          containing the procedure body , when used in the
-         operator-position of a procedure-call.
+         operator-position of a procedure-call. Any use of an inline
+         procedure must appear textually after its definition.
 
     - =(define-syntax-rule (NAME ARGUMENTS ...) BODY)= :: A more concise
         way of defining single-rule syntax.
@@ -864,7 +866,7 @@
    refer to the same free variable which ensures that assignments by
    one closure are seen in the other.
 
-   Finally code is generated, currently in =NASM= assembler syntax.
+   Finally code is generated, currently in NASM assembler syntax.
    The code includes one or more support libraries that provide core
    runtime routines and the garbage collector.
 
@@ -1158,7 +1160,7 @@
 
   | Type        | Typecode | Immediate | Byteblock | Special | Remarks             |
   |-------------+----------+-----------+-----------+---------+---------------------|
-  | Fixnum      | -        | X         |           | -       |                     |
+  | Fixnum      | -        | X         | -         | -       |                     |
   | Null        | #x00     |           |           |         | The empty list      |
   | Symbol      | #x01     |           |           |         |                     |
   | Pair        | #x02     |           |           |         |                     |
@@ -1226,7 +1228,7 @@
   data in the heap on every collection (because it is copied from the
   old heap-space to the new one), the old pointer will be invalid
   after the collection finishes. This check can be disabled by passing
-  =-DDISABLE_WRITE_BARRIER= to =nasm=, which gives better performance,
+  =-DDISABLE_WRITE_BARRIER= to NASM, which gives better performance,
   but may lead to very hard to find bugs.
 
   The heap can not be resized dynamically and has a fixed size.  use
@@ -1475,7 +1477,7 @@
 
   - Generate code for the GNU assembler (=as=). Since the GNU binutils
     are needed anyway on Linux, and because =as= is quite fast, this
-    would remove the need to =NASM=. On the other hand, =NASM= is more
+    would remove the need to NASM. On the other hand, NASM is more
     featureful and supports an arguably nicer assembler syntax.
 
   - Generate code for [[http://asm-js.org][asm.js]]. This is quite a project, and the use of
