@@ -1761,14 +1761,14 @@ copy_slots:
   push rcx
   push rdx
   FIX2INT r15
-  mov rbx, [rax + CELLS(1)]
-  mov rax, [rax + CELLS(2)]
+  mov rbx, [rax + CELLS(1)]	; (car src)
+  mov rax, [rax + CELLS(2)]	; (cdr src)
   FIX2INT rax
   inc rax			; header
   shl rax, CELL_SHIFT
   add rbx, rax
-  mov rcx, [r11 + CELLS(1)]
-  mov rax, [r11 + CELLS(2)]
+  mov rcx, [r11 + CELLS(1)]	; (car dest)
+  mov rax, [r11 + CELLS(2)]	; (cdr dest)
   FIX2INT rax
   inc rax			; header
   shl rax, CELL_SHIFT
@@ -1779,6 +1779,7 @@ copy_slots:
       mov rdx, [rbx]
       WRITE_BARRIER [rcx], rdx
       add rbx, CELLS(1)
+      add rcx, CELLS(1)
       dec r15
     until z
   endif

@@ -42,13 +42,9 @@
     (define (status) 
       ($inline "mov eax, [buffer + 6 * 4]; INT2FIX rax"))
     (let ((pid (fork)))
-      (cond ((%fx<? pid 0) (%error "unable to fork" cmd))
-	    ((eq? pid 0)		; child process
-	     (when (%fx<? (execve) 0)
-	       (%error "unable to exec" cmd)))
-	    ((%fx<? (waitid pid) 0)			; parent
-	     (%error "unable to wait for child process" pid cmd))
-	    (else (status))))))
+      (when (eq? pid 0) (execve))		; child process
+      (waitid pid)			; parent
+      (status))))
 
 (define-syntax-rule (%errno-string) "system call failed")
 
