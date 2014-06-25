@@ -842,6 +842,16 @@
 		       for convenient binding of multiple values. This also
 		       adds "curried" =define= syntax.
 
+    - =fastmath.scm= :: Provides numeric operations, specific for
+                        fixnums (exact integers) and floating-point
+                        numbers.  Note that this is an "include" file, i.e.
+			it is intended to by used by adding
+
+			#+BEGIN_SRC scheme
+			(include "fastmath.scm")
+			#+END_SRC
+
+			in a program-specification.
 
 * Compiler Details
 
@@ -1016,6 +1026,9 @@
    - Dispatching among the cases of a =case-lambda= is very efficient
      and is preferrable to using rest-argument lists and destructuring
      them manually.
+
+   - If you are doing a lot of numerical calculations, consider using
+     =fastmath.scm=.
 
    - There are a number of low-level "intrinsic" procedures, mostly
      intended for internal use and often implemented as macros or
