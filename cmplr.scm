@@ -16,6 +16,7 @@
 (define environment '())
 (define locals-counter 0)
 (define available-registers '())
+(define unused-global-variables '())
 
 (define (cells n) (* word-size n))
 
@@ -93,16 +94,17 @@
 	      (lambda (thunk)
 		(with-output-to-file outfile thunk))
 	      (lambda (thunk) (thunk)))
-	  (cut generate-code defs ccode)))))))
+	  (cut generate-code defs ccode unused)))))))
 
 (define (compile-file fname . options)
   (apply compile (read-forms fname) options))
 
-(define (generate-code defs code)
+(define (generate-code defs code unused)
   (set! label-counter 0)
   (generate-header (map mangle-feature-name implementation-features))
   (set! literals-to-be-translated '())
   (set! primitives '())
+  (set! unused-global-variables unused)
   (generate-closures code)
   (generate-globals defs)
   (generate-literals)
@@ -130,6 +132,8 @@
 (define (label)
   (string-append "L" (number->string (inc! label-counter))))
 
+;; test if expression does not need any registers, mostly those
+;; that just need a single machine-instruction
 (define (simple-expression? exp)
   (match exp
     ;;XXX $allocate?
@@ -138,6 +142,21 @@
 	 '($uninitialized)
 	 ('$closure-ref _)
 	 ('$box-ref (? simple-expression?))
+	 ('$global-ref _)
+	 ('$local-ref _))
+     #t)
+    (_ #f)))
+
+;; test if expression is side-effect free
+(define (pure-expression? exp)
+  (match exp
+    ((or ('quote _)
+	 ('$closure _ ((? pure-expression?) ...) . _)
+	 ('$allocate _ _ (? pure-expression?) ...)
+	 '($undefined)
+	 '($uninitialized)
+	 ('$closure-ref _)
+	 ('$box-ref (? pure-expression?))
 	 ('$global-ref _)
 	 ('$local-ref _))
      #t)
@@ -175,7 +194,7 @@
 	  (lambda (var val)
 	    (cond ((eq? var '$unused)
 		   ;; drop if simple or just evaluate but don't bind
-		   (unless (simple-expression? val)
+		   (unless (pure-expression? val)
 		     (translate val arg-register)))
 		  ((null? available-registers)
 		   ;; evaluate and move into local
@@ -196,8 +215,14 @@
 	 (set! environment newenv)
 	 (translate body t))))
     (('$global-set! var val)
-     (translate val t)
-     (generate-global-store var (mangle-identifier var) t)
+     (cond ((memq var unused-global-variables)
+	    ;; either drop assignment entirely or just evaluate "val"
+	    (if (pure-expression? val)
+		(generate-immediate-ref t "undefined" "dropped: " var)
+		(translate val t)))
+	   (else
+	    (translate val t)
+	    (generate-global-store var (mangle-identifier var) t)))
      #t)
     (('$global-ref var)
      (generate-global-ref t var (mangle-identifier var))
