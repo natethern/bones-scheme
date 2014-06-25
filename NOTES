@@ -21,21 +21,12 @@ BONES                                                                     -*- Or
 * provide manual as text in dist tarball and html on web-site
 * TODO test file:copy.scm
 * TODO write web-page
-* TODO fixnum/flonum specific primitives would vastly speed up things
-  - it's quite ugly, still it will by very effective for time-critical
-    code.
-  - fx+, fx-, fx*, fx/, fxmod, fxneg, fxshr, fxshl, fxabs, fxquotient,
-    fxremainder, fxmax, fxmin
-  - fx=, fx>, fx<, fx>=, fx<=, fxnegative?, fxpositive?
-  - fl+, fl-, fl*, fl/, flneg, flabs, flsqrt, flsin, flcos, fltan,
-    flasin, flacos, flatan, flfloor, flceiling, fltruncate, flround,
-    flexp, flexpt, flsqrt, fllog, flmax, flmin
-  - fl=, fl>, fl<, fl>=, fl<=, flinteger?, flodd?, fleven? flfinite?,
-    flnan?, flpositive?, flnegative?, flzero?
-  - as separate package ("fastmath.scm")
-  - port file:fft2.scm and replace file:fft.scm
-  - f64vectors could be simulated via bytevectors.
+* fixnum/flonum specific primitives would vastly speed up things   :fastmath:
+  - benchmark.
+  - add f64vectors
+    - FLOATVECTOR_TYPE (#x12)
     - would need proper alignment on 32-bit systems.
+    - adapt printer + reader.
 * TODO file:dynamic.scm fails with 'nolibc config
   - gives error message while reading input.
 * TODO start with ARM port
