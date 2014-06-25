@@ -190,18 +190,18 @@
 
 (define atan
   (let* ((pi (%ieee754-pi)) 
-	    (pi/2 (%/ pi 2)))
+	 (pi/2 (%/ pi 2)))
     (case-lambda
-	((x) (%ieee754-atan1 x))
-	((y x)
-	 (let ((y (exact->inexact y)))
-	   (cond ((%= x 0) (if (%> y 0) pi/2 (%- pi/2))) ; y == 0 -> undefined
-		 ((%> x 0) (%ieee754-atan1 (%/ y x)))
-		 ((%< y 0) (%- (%ieee754-atan1 (%/ y x)) pi))
-		 (else (%+ (%ieee754-atan1 (%/ y x)) pi))))))))
+      ((x) (%ieee754-atan1 x))
+      ((y x)
+       (let ((y (exact->inexact y)))
+	 (cond ((%= x 0) (if (%> y 0) pi/2 (%- pi/2))) ; y == 0 -> undefined
+	       ((%> x 0) (%ieee754-atan1 (%/ y x)))
+	       ((%< y 0) (%- (%ieee754-atan1 (%/ y x)) pi))
+	       (else (%+ (%ieee754-atan1 (%/ y x)) pi))))))))
 
 (define-inline (asin x) (%ieee754-asin x))
-(define-inline (atan x) (%ieee754-atan x))
+(define-inline (acos x) (%ieee754-acos x))
 
 ;;XXX this seems to be broken
 #;(define-inline (log x)
