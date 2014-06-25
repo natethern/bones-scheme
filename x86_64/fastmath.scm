@@ -36,7 +36,7 @@
 
 (define-inline (fxmodulo x y)
   (let ((z (fxremainder x y)))
-    (if (%fx<? y)
+    (if (%fx<? y 0)
 	(if (%fx>? z 0) (%fx+ z y) z)
 	(if (%fx<? z 0) (%fx+ z y) z))))
 
