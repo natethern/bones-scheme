@@ -67,7 +67,7 @@
   library, so a C compiler should be installed as well.
 
   To build the system, you need the pre-compiled assembler code for
-  the "bones" executable, which you can obtain by downloading
+  the =bones= executable, which you can obtain by downloading
   a distribution tarball at this location:
 
     http://www.call-with-current-continuation.org/bones/bones.tar.gz
@@ -142,7 +142,7 @@
    invoked automatically. The compiler accepts a few command-line
    options which are described below.
 
-   Optionally, the file given to "bones" may be a /program
+   Optionally, the file given to =bones= may be a /program
    specification/, an extended variant of the configuration language
    described in [[http://srfi.schemers.org/srfi-7][SRFI-7]]. The compiler treats code that consists of a
    single toplevel expression in the form =(program ...)= as a program
@@ -542,10 +542,10 @@
 
     Expressions among internal definitions.
 
-    A definition of the form (define <expression>) causes the
+    A definition of the form =(define <expression>)= causes the
     expression to be evaluated at the conclusion of any enclosing set
-    of internal definitons.  That is, at top level, (define
-    <expression>) is equivalent to just plain <expression>.  As for
+    of internal definitons.  That is, at top level, =(define
+    <expression>)= is equivalent to just plain =<expression>=.  As for
     internal definitions, the following are equivalent:
 
     #+BEGIN_SRC scheme
@@ -1231,12 +1231,12 @@
   =-DDISABLE_WRITE_BARRIER= to NASM, which gives better performance,
   but may lead to very hard to find bugs.
 
-  The heap can not be resized dynamically and has a fixed size.  use
+  The heap can not be resized dynamically and has a fixed size.  Use
   the =TOTAL_HEAP_SIZE= macro to specify a heap-size different from
-  the default size. 1% of the heap is used as a /red zone/ - once the
-  allocation-pointer enters this zone, a garbage collection will be
-  triggered. This allows to defer the limit-check when small blocks of
-  data are allocated.
+  the default size. 1% of the heap is used as a /reserve zone/ - once
+  the allocation-pointer enters this zone, a garbage collection will
+  be triggered. This allows to defer the limit-check when small blocks
+  of data are allocated.
 
 * Interfacing to Foreign Code
 
@@ -1306,7 +1306,7 @@
   provided they are able to interface to C. Normally an object file
   compiled with BONES exports the entry-point =main= (or =_start= when
   the C-libray is disabled). By compiling the Scheme program with the
-  option =-feature embedded=, the entry-point is renamed to "bones",
+  option =-feature embedded=, the entry-point is renamed to =bones=,
   having this signature:
 
   #+BEGIN_SRC c
@@ -1490,7 +1490,7 @@
   Some parts of BONES are not by the author, but have been taken from
   other sources:
 
-    The pretty-printer (pp.scm) is
+    The pretty-printer (=pp.scm=) is
 
     Copyright (c) 1991, Marc Feeley
     Author: Marc Feeley (feeley@iro.umontreal.ca)
@@ -1499,7 +1499,7 @@
     The pattern-matching package was written by Alex Shinn and
     is in the public domain.
 
-    The syntax-expander (alexpand.scm) is
+    The syntax-expander (=alexpand.scm=) is
 
     Copyright 2002-2004 Al Petrofsky <alexpander@petrofsky.org>
 
