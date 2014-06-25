@@ -4,9 +4,7 @@ BONES                                                                     -*- Or
 * TODO merge "smart-spill" branch				:smart-spill:
   - seems to work fine, make check runs.
   - benchmark.
-* TODO optimize assignments to unused globals			       :ugve:
-  - remove assignment if in unused set.
-  - remove exprs if simple.
+* DONE optimize assignments to unused globals			       :ugve:
   - benchmark. 
   - document, test, merge.
   - check what from file:support.scm is not needed, when compiling
@@ -22,19 +20,12 @@ BONES                                                                     -*- Or
 * TODO test file:copy.scm
 * TODO write web-page
 * TODO fixnum/flonum specific primitives would vastly speed up things
-  - it's quite ugly, still it will by very effective for time-critical
-    code.
-  - fx+, fx-, fx*, fx/, fxmod, fxneg, fxshr, fxshl, fxabs, fxquotient,
-    fxremainder, fxmax, fxmin
-  - fx=, fx>, fx<, fx>=, fx<=, fxnegative?, fxpositive?
-  - fl+, fl-, fl*, fl/, flneg, flabs, flsqrt, flsin, flcos, fltan,
-    flasin, flacos, flatan, flfloor, flceiling, fltruncate, flround,
-    flexp, flexpt, flsqrt, fllog, flmax, flmin
-  - fl=, fl>, fl<, fl>=, fl<=, flinteger?, flodd?, fleven? flfinite?,
-    flnan?, flpositive?, flnegative?, flzero?
-  - as separate package ("fastmath.scm")
+  - fxzero?, fxmod, fxshr, fxshl, fxmodulo, fxremainder, fxmax, fxmin,
+    fxodd?, fxeven?
+  - flfloor, flceiling, fltruncate, fllog, flmax, flmin
+  - flinteger?, flodd?, fleven? flfinite?, flnan?, flzero?
   - port file:fft2.scm and replace file:fft.scm
-  - f64vectors could be simulated via bytevectors.
+  - add f64vectors
     - would need proper alignment on 32-bit systems.
 * TODO file:dynamic.scm fails with 'nolibc config
   - gives error message while reading input.
