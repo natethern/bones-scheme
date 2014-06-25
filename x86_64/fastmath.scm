@@ -1,6 +1,8 @@
 ;;;; type-specific numeric operations
 
 
+(define-syntax fixnum? exact?)
+
 (define-inline (fx+ x y) (%fx+ x y))
 
 (define-syntax fx-
@@ -16,14 +18,30 @@
 (define-inline (fx>= x y) (%fx>=? x y))
 (define-inline (fx<= x y) (%fx<=? x y))
 (define-syntax fxand bitwise-and)
-(define-syntax fxior bitwise-ior)	;XXX fxor?
+(define-syntax fxior bitwise-ior)      
 (define-syntax fxxor bitwise-xor)
-(define-inline (fxshr x n) (arithmetic-shift x (%fx- 0 n))) ;XXX fxarithmetic-shift-right?
-(define-inline (fxshl x n) (arithmetic-shift x n)) ;XXX fxarithmetic-shift-left?
+(define-syntax fxnot bitwise-not)
+(define-inline (fxarithmetic-shift-right x n) (arithmetic-shift x (%fx- 0 n)))
+(define-inline (fxarithmetic-shift-left x n) (arithmetic-shift x n))
 (define-inline (fxpositive? x) (%fx>? x 0))
 (define-inline (fxnegative? x) (%fx<? x 0))
+(define-inline (fxeven? x) (eq? 0 (bitwise-and x 1)))
+(define-inline (fxodd? x) (not (eq? 0 (bitwise-and x 1))))
+(define-inline (fxzero? x) (eq? 0 x))
 
 (define-inline (fxabs x) (if (%fx<? x 0) (fx- x) x))
+
+(define-inline (fxremainder x y)
+  ($inline "FIX2INT rax; FIX2INT r11; push rdx; cdq; idiv r11; mov rax, rdx; pop rdx; INT2FIX rax" x y))
+
+(define-inline (fxmodulo x y)
+  (let ((z (fxremainder x y)))
+    (if (%fx<? y)
+	(if (%fx>? z 0) (%fx+ z y) z)
+	(if (%fx<? z 0) (%fx+ z y) z))))
+
+(define-inline (fxmax x y) (if (%fx>? x y) x y))
+(define-inline (fxmin x y) (if (%fx<? x y) x y))
 
 (define-inline (fl+ x y)
   (let ((r ($allocate #x10 1)))
@@ -67,6 +85,14 @@
   ($inline "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1; lea rax, [FALSE + CELLS(2)]; cmovg rax, FALSE" x y))
 
 (define-inline (flround x) (%ieee754-round x))
+
+;; these are not worth the trouble
+(define-syntax flfloor floor)
+(define-syntax flceiling ceiling)
+(define-syntax fltruncate truncate)
+(define-syntax flfloor floor)
+(define-syntax flinteger? integer?)
+
 (define-inline (flsin x) (%ieee754-sin x))
 (define-inline (flcos x) (%ieee754-cos x))
 (define-inline (fltan x) (%ieee754-tan x))
@@ -95,3 +121,23 @@
 
 (define-inline (flpositive? x) (fl> x 0))
 (define-inline (flnegative? x) (fl< x 0))
+
+(define-syntax flonum? inexact?)
+
+(define-inline (flzero? x) (eqv? x 0.0))
+(define-inline (fleven? x) (fxzero? (fl/ x 2)))
+(define-inline (flodd? x) (not (fxzero? (fl/ x 2))))
+
+(define-inline (flmax x y) (if (fl> x y) x y))
+(define-inline (flmin x y) (if (fl< x y) x y))
+
+(define-inline (flfinite? x)
+  (or (not (eq? 2047 (%ieee754-exponent x)))   ; inf or nan
+      (not (eq? 0 (%ieee754-mantissa x)))))    ; nan
+
+(define-inline (flnan? x)
+  (and (eq? 2047 (%ieee754-exponent x))
+       (not (eq? 0 (%ieee754-mantissa x)))))
+
+
+;;XXX missing: fllog
