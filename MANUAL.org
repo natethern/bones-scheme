@@ -237,7 +237,7 @@
        every time a garbage collection is triggered.
 
   - =PREFIX= :: Defines a custom entry-point prefix for embedding. By
-     passing -DPREFIX=my= to NASM, the Scheme toplevel can be run by
+     passing =-DPREFIX=my= to NASM, the Scheme toplevel can be run by
      calling =my_bones=.
 
   - =TOTAL_HEAP_SIZE= :: Total size of the heap. Half of this space can be
@@ -1421,7 +1421,7 @@
   garbage collector copying data from one heap-space to the other need
   to take this into account.
 
-  On x86_64 systems, thr FPU provides machine-instructions for many
+  On x86_64 systems, the FPU provides machine-instructions for many
   transcendental functions. Other architectures will probably not have
   support for these, so the associated intrinsic operations in
   =<ARCH>/intrinsics.scm= need to be adapted to call C library
@@ -1475,13 +1475,15 @@
   - Porting the system to other architectures and operating systems,
     of course.
 
-  - Generate code for the GNU assembler (=as=). Since the GNU binutils
-    are needed anyway on Linux, and because =as= is quite fast, this
-    would remove the need to NASM. On the other hand, NASM is more
-    featureful and supports an arguably nicer assembler syntax.
+  - Generate code suitable for the GNU assembler (=as=). Since the GNU
+    binutils are needed anyway on Linux, and because =as= is quite
+    fast, this would remove the need to NASM. On the other hand, NASM
+    is more featureful and supports an arguably nicer assembler
+    syntax.
 
-  - Generate code for [[http://asm-js.org][asm.js]]. This is quite a project, and the use of
-    labels and arbitrary jumps may be an interesting challenge.
+  - Other backends, say, [[http://asm-js.org][asm.js]] or LLVM. This can be quite a
+    challenge, as these languages do not support jumps to arbitrary
+    locations.
 
 * Terms of Use
 
@@ -1570,7 +1572,7 @@
 #+DESCRIPTION: 
 #+KEYWORDS: 
 #+LANGUAGE:  en
-#+OPTIONS:   H:3 num:t toc:t \n:nil @:t ::t |:t ^:{} -:t f:t *:t <:t
+#+OPTIONS:   H:3 num:t toc:2 \n:nil @:t ::t |:t ^:{} -:t f:t *:t <:t
 #+OPTIONS:   TeX:nil LaTeX:nil skip:nil d:nil todo:t pri:nil tags:not-in-toc
 #+INFOJS_OPT: view:nil toc:nil ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
 #+EXPORT_SELECT_TAGS: export
