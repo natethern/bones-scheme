@@ -1,20 +1,27 @@
 BONES                                                                     -*- Org -*-
 
 
-* TODO merge "smart-spill" branch				:smart:spill:
+* TODO merge "smart-spill" branch				:smart-spill:
   - seems to work fine, make check runs.
   - benchmark.
-* TODO optimize assignments to unused globals
+* TODO optimize assignments to unused globals			       :ugve:
   - remove assignment if in unused set.
   - remove exprs if simple.
-  - document.
+  - benchmark. 
+  - document, test, merge.
+  - check what from file:support.scm is not needed, when compiling
+    bones.
+* TODO benchmark						     :master:
+* TODO manual layout
+  - make TOC only 2 levels deep.
+  - <code> font-size is too large.
 * work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values has two words.
 * provide manual as text in dist tarball and html on web-site
 * TODO test file:copy.scm
 * TODO write web-page
-* fixnum/flonum specific primitives would vastly speed up things
+* TODO fixnum/flonum specific primitives would vastly speed up things
   - it's quite ugly, still it will by very effective for time-critical
     code.
   - fx+, fx-, fx*, fx/, fxmod, fxneg, fxshr, fxshl, fxabs, fxquotient,
@@ -26,19 +33,12 @@ BONES                                                                     -*- Or
   - fl=, fl>, fl<, fl>=, fl<=, flinteger?, flodd?, fleven? flfinite?,
     flnan?, flpositive?, flnegative?, flzero?
   - as separate package ("fastmath.scm")
+  - port file:fft2.scm and replace file:fft.scm
+  - f64vectors could be simulated via bytevectors.
+    - would need proper alignment on 32-bit systems.
 * TODO file:dynamic.scm fails with 'nolibc config
-  - bogus results (counters seem to be wrong - bug in integer-only
-    arithmetic?)
-* unboxing
-  - "($the TYPE EXP)" annotates with type.
-  - "let" can check for "$the" and assign FP-register.
-  - accessing variables in FP-registers needs to move them to normal registers.
-  - requires special intrinsics for FP arguments.
-  - implement primitives as "($typed-case-lambda (((VAR TYPE) ...) BODY ...) ...)"
-    - specially handled in operator position during canonicalization.
-  - have local FA pass ("lfa") that expands $typed-case-lambda according to inferred
-    types and convert "let"-bound flonum vars using a custom binding form
-    - e.g. "($let-float ...)" or something like this.
+  - gives error message while reading input.
+* TODO start with ARM port
 * add bytevectors
   - interchangable with strings.
   - make-bytevector, bytevector?, bytevector, bytevector-u8-ref, bytevector-u8-set!,
@@ -53,12 +53,27 @@ BONES                                                                     -*- Or
     memory.
 * try compiling grond
   + fails to compile bones-grond, either with OOM or, with 1GB heap, SIGILL.
-* we could coalesce allocations inside a lambda
+* potential optimizations
+** we could coalesce allocations inside a lambda
   - but will probably gain very little.
-* implement basic known procedure optimizations
+** implement basic known procedure optimizations
   - beta-contraction (needs knowledge about FVs).
   - direct-calls (implies loops).
   - perhaps a bit of constant-propagation.
+** improve inlining manifest lambdas
+  - don't bind temporaries for arguments that are variables or literals.
+  - not that easy: we have to replace variable-references for the
+    dropped llist-variables.
+** unboxing
+  - "($the TYPE EXP)" annotates with type.
+  - "let" can check for "$the" and assign FP-register.
+  - accessing variables in FP-registers needs to move them to normal registers.
+  - requires special intrinsics for FP arguments.
+  - implement primitives as "($typed-case-lambda (((VAR TYPE) ...) BODY ...) ...)"
+    - specially handled in operator position during canonicalization.
+  - have local FA pass ("lfa") that expands $typed-case-lambda according to inferred
+    types and convert "let"-bound flonum vars using a custom binding form
+    - e.g. "($let-float ...)" or something like this.
 * try using libgc as 2nd heap generation
   - needs write-barrier to record assignments of heap-data into non-heap objects.
     - then evict recursively.
@@ -178,10 +193,8 @@ mainCRTStartup:
 	ret
   #+END_SRC
 * DONE "(if X S1 S2)" can be computed more efficiently		      :cmove:
-  - use "cmovCC" if S1, S2 are simple-expressions.
-  - seems to work, but the swapped args to t-i-a looks hairy and might break.
-    - what if the dest-register ("t") is r11 or r15?
-  - benchmark
+  - benchmark.
+  - when merging /smart-spill/, adapt use of t-i-a.
 * implement "peephole" pass?
   - match expressions for certain cases.
   - perhaps add "($comment COMMENT EXP)" special form to detect particular
@@ -192,16 +205,14 @@ mainCRTStartup:
 * TODO log: "fld1; fld XXX; fyl2x"
   - seems to be broken.
 * TODO =string->number= does not parse "+/-nan.0"/"+/-inf.0"
-* TODO remove unused globals					       :ugve:
-  - also add "-dump-unused".
-  - walk tree and collect what global defs refer to which globals.
-  - remove iteratively to get also those that are used by unused globals.
-* TODO add backend-call to align block-pointer when trsnslating =$allocate=
+* TODO add backend-call to align block-pointer when translating =$allocate=
+  - needed for 32-bit targets.
 * secure inline-primitives against redefinition of internally used primitives
   - like this:
     (let-syntax ((PRIMITIVE PRIMITIVE))
       (define-inline (OTHER-PRIMITIVE ...) ...))
   - or redefinition of PRIMITIVE will change behaviour of OTHER-PRIMITIVE.
+  - need to go through every primitive and check it's dependencies.
 * Issues
 ** "inexact->exact" uses "fisttp", so needs SSE3
 ** i don't fully trust that "integer?" handles all cases correctly
@@ -217,6 +228,10 @@ mainCRTStartup:
 ** something is wrong with musl's "sprintf" (or varargs) implementation
   - "(number->string (expt 2.1 3))" returns "nan".
   - ok with glibc.
+** precision of 16 in num2str produces sometimes garbage digits
+   - see file:r5rs_pitfalls.scm, where test 8.1 is printed as "8.1..."
+   - but precision 15 does not match result of =integer?=, which
+     might be inaccurate or needs to be less accurate.
 * Referencess
   - X86_64:
     - x87: http://www.website.masmforum.com/tutorials/fptute/index.html
