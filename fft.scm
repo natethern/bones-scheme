@@ -13,6 +13,7 @@
 (define-syntax f64vector vector)
 (define-syntax f64vector-ref vector-ref)
 (define-syntax f64vector-set! vector-set!)
+(define-syntax f64vector-length vector-length)
 
 
 (define lut-table-size 512)
@@ -1590,7 +1591,6 @@
 	  (define (extend-lut multiplier-lut bit-reverse-size bit-reverse-multiplier start end)
 
 	    (define (bit-reverse x n)
-	      (declare (not interrupts-enabled))
 	      (do ((i 0 (fx+ i 1))
 		   (x x (fxarithmetic-shift-right x 1))
 		   (result 0 (fx+ (fx* result 2)
@@ -1825,8 +1825,6 @@
       ;; two pass with w=1 (so W[0]=1.0 and W[1] = 0.)  and then
       ;; call recursive-bit appropriately on the two half arrays.
 
-      (declare (not interrupts-enabled))
-
       (let ((SizeOfGroup
 	     (fxarithmetic-shift-right (f64vector-length a) 1)))
 	(let loop ((J0 0))
@@ -1991,7 +1989,6 @@
 	    (main-loop M N K SizeOfGroup))))
 
     (define (radix-2-pass a)
-      (declare (not interrupts-enabled))
       (let ((SizeOfGroup
 	     (fxarithmetic-shift-right (f64vector-length a) 1)))
 	(let loop ((J0 0))
@@ -2040,7 +2037,7 @@
 	   (make-f64vector (fx* two^n 2) 0.)))
       (do ((i 0 (fx+ i 1)))
 	  ((fx= i iters)
-	   ;(write table) (newline)
+	   (write table) (newline)
 	   )
 	(direct-fft-recursive-4 a table)
 	(inverse-fft-recursive-4 a table)))))
