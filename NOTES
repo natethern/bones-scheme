@@ -16,11 +16,10 @@ BONES                                                                     -*- Or
 * TODO test file:copy.scm
 * TODO write web-page
   - find logo.
-* DONE merge fixnum/flonum specific primitives			   :fastmath:
-  - benchmark.
 * add f64vectors
    - FLOATVECTOR_TYPE (#x12)
    - would need proper alignment on 32-bit systems.
+   - put API into file:fastmath.scm
    - adapt printer + reader.
 * TODO file:dynamic.scm fails with 'nolibc config
   - gives error message while reading input.
