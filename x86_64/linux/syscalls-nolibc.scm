@@ -18,7 +18,7 @@
   ;; flags: O_WRONLY|O_CREAT|O_TRUNC, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
   ($inline "call copy_to_buffer; SYSCALL3 2, buffer, 577, 420; INT2FIX rax" name))
 
-(define-syntax-rule (%open-append-file mode)
+(define-syntax-rule (%open-append-file name)
   ;; open-flags: O_WRONLY|O_CREAT|O_APPEND, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
   ($inline "call copy_to_buffer; SYSCALL3 2, buffer, 1089, 420; INT2FIX rax" name))
 
