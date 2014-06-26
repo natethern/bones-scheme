@@ -9,7 +9,6 @@ BONES                                                                     -*- Or
   - document, test, merge.
   - check what from file:support.scm is not needed, when compiling
     bones, and what is not useful.
-* TODO benchmark						     :master:
 * work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values has two words.
@@ -17,15 +16,15 @@ BONES                                                                     -*- Or
 * TODO test file:copy.scm
 * TODO write web-page
   - find logo.
-* TODO fixnum/flonum specific primitives			   :fastmath:
+* DONE merge fixnum/flonum specific primitives			   :fastmath:
   - benchmark.
-  - add f64vectors
-    - FLOATVECTOR_TYPE (#x12)
-    - would need proper alignment on 32-bit systems.
-    - adapt printer + reader.
-  - =fllog= still missing
+* add f64vectors
+   - FLOATVECTOR_TYPE (#x12)
+   - would need proper alignment on 32-bit systems.
+   - adapt printer + reader.
 * TODO file:dynamic.scm fails with 'nolibc config
   - gives error message while reading input.
+* ise fastmath in file:forth.scm
 * start with ARM port
 * add bytevectors
   - interchangable with strings.
@@ -192,6 +191,7 @@ mainCRTStartup:
     (if (if X FALSE TRUE) Y Z) -> (if X Z Y)
 * TODO log: "fld1; fld XXX; fyl2x"
   - seems to be broken.
+  - =fllog= still missing from file:fastmath.scm
 * TODO =string->number= does not parse "+/-nan.0"/"+/-inf.0"
 * TODO add backend-call to align block-pointer when translating =$allocate=
   - needed for 32-bit targets.
