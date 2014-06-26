@@ -926,7 +926,7 @@
    by =let= or =letrec=) are also put into the remaining argument
    registers as long as registers are still available.
 
-   =eax=, =r11= and =r15= are used throughout compiled code and the
+   =rax=, =r11= and =r15= are used throughout compiled code and the
    runtime-system as temporaries.
 
    =rbp= holds the /allocation pointer/, a pointer to the next
