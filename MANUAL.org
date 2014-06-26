@@ -657,7 +657,7 @@
       from the string-port =PORT=. 
 
     - =(open-append-output-file STRING)= :: Opens the file =STRING= in
-     /append/ mode, and returns an output port.
+      /append/ mode, and returns an output port.
 
     - =(open-input-string STRING)= :: Returns an input-port oin =STRING=
       from which data can be read.
@@ -677,6 +677,9 @@
 
     - =(write-string STRING [PORT])= :: Writes the characters in =STRING= to =PORT=,
       which defaults to the current output port.
+
+    On Windows, all files are opened in binary mode, so no
+    line-terminator translations take place.
 
 **** Process Environment
 
