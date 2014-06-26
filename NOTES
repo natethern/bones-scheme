@@ -10,9 +10,6 @@ BONES                                                                     -*- Or
   - check what from file:support.scm is not needed, when compiling
     bones, and what is not useful.
 * TODO benchmark						     :master:
-* TODO manual layout
-  - make TOC only 2 levels deep.
-  - <code> font-size is too large.
 * work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values has two words.
@@ -21,7 +18,6 @@ BONES                                                                     -*- Or
 * TODO write web-page
   - find logo.
 * TODO fixnum/flonum specific primitives			   :fastmath:
-  - test (with file:fft.scm)
   - benchmark.
   - add f64vectors
     - FLOATVECTOR_TYPE (#x12)
@@ -38,11 +34,7 @@ BONES                                                                     -*- Or
   - "u8(...)" read-syntax + printing.
 * go through r7rs and look for possibly useful primitives
 * TODO complete windows port
-  - "-o" option seems not to be recognized.
-  - printer does work, somehow (r4rstest prints loads of "unknown object").
-  - r4rstest crashes at some stage.
-  - probably still code exists that depends on address being in low
-    memory.
+  - "-o" produces crash, but everything else seems to work.
 * try compiling grond
   + fails to compile bones-grond, either with OOM or, with 1GB heap, SIGILL.
 * potential optimizations
