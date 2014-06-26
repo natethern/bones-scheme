@@ -20,7 +20,8 @@
 ;; include OS-specific definitions and features
 (cond-expand
   (linux
-   (provide file-ports file-system process-environment time jiffy-clock)
+   (provide file-ports file-system process-environment time jiffy-clock
+	    lp64)
    (cond-expand
      (x86_64
       (cond-expand
@@ -29,7 +30,7 @@
      (else (error "unsupported architecture for linux"))))
   (windows
    (provide file-ports file-system time jiffy-clock file-system
-	    process-environment pic)
+	    process-environment pic llp64)
    (files "x86_64/windows/syscalls.scm"))
   (else (error "no operating system selected")))
 

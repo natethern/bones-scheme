@@ -40,3 +40,44 @@ Exit [0]
 mandelbrot:
 Exit [0]
 5.99 user, 0.06 system, 6.11 elapsed -- Max VSize = 105344KB, Max RSS = 103224KB
+
+2014-06-26:
+affe316458b600651cd80a3e58c9102fb285a871
+bones:
+Exit [0]
+2.75 user, 0.31 system, 3.10 elapsed -- Max VSize = 98652KB, Max RSS = 78672KB
+-rwxr-xr-x 1 felix felix 857680 Jun 26 21:24 bones
+dynamic:
+done
+Exit [0]
+0.48 user, 0.21 system, 0.70 elapsed -- Max VSize = 98176KB, Max RSS = 78404KB
+-rwxr-xr-x 1 felix felix 373224 Jun 26 21:25 dynamic
+mandelbrot:
+Exit [0]
+6.12 user, 0.04 system, 6.21 elapsed -- Max VSize = 97968KB, Max RSS = 78144KB
+-rwxr-xr-x 1 felix felix 158248 Jun 26 21:25 mandelbrot
+fft:
+Exit [0]
+12.58 user, 0.04 system, 12.72 elapsed -- Max VSize = 98108KB, Max RSS = 78140KB
+-rwxr-xr-x 1 felix felix 301768 Jun 26 21:25 fft
+
+2014-06-26: (fastmath)
+001e815c2f57e207c17f5c3b51edfc55ec2c1e33
+bones:
+Exit [0]
+2.78 user, 0.31 system, 3.10 elapsed -- Max VSize = 98652KB, Max RSS = 78672KB
+-rwxr-xr-x 1 felix felix 857680 Jun 26 22:51 bones
+dynamic:
+done
+Exit [0]
+0.53 user, 0.17 system, 0.80 elapsed -- Max VSize = 98176KB, Max RSS = 78408KB
+-rwxr-xr-x 1 felix felix 373224 Jun 26 22:51 dynamic
+mandelbrot:
+Exit [0]
+6.02 user, 0.05 system, 6.11 elapsed -- Max VSize = 97968KB, Max RSS = 78140KB
+-rwxr-xr-x 1 felix felix 158248 Jun 26 22:51 mandelbrot
+fft:
+Exit [0]
+1.71 user, 0.04 system, 1.80 elapsed -- Max VSize = 98156KB, Max RSS = 78144KB
+-rwxr-xr-x 1 felix felix 350896 Jun 26 22:51 fft
+heap used: 4440
