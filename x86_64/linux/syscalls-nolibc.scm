@@ -10,8 +10,17 @@
 (define-syntax-rule (%read buf fd n)
   ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); SYSCALL3 0, r11, rax, r15; INT2FIX rax" buf fd n))
 
-(define-syntax-rule (%open name flags mode)
-  ($inline "call copy_to_buffer; FIX2INT r11; FIX2INT r15; SYSCALL3 2, buffer, r11, r15; INT2FIX rax" name))
+(define-syntax-rule (%open-input-file name)
+  ;; flags: O_RDONLY
+  ($inline "call copy_to_buffer; SYSCALL3 2, buffer, 0, 0; INT2FIX rax" name))
+
+(define-syntax-rule (%open-output-file name)
+  ;; flags: O_WRONLY|O_CREAT|O_TRUNC, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
+  ($inline "call copy_to_buffer; SYSCALL3 2, buffer, 577, 420; INT2FIX rax" name))
+
+(define-syntax-rule (%open-append-file name)
+  ;; open-flags: O_WRONLY|O_CREAT|O_APPEND, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
+  ($inline "call copy_to_buffer; SYSCALL3 2, buffer, 1089, 420; INT2FIX rax" name))
 
 (define-syntax-rule (%getcwd)
   ($inline "SYSCALL2 79, buffer, 1024; mov rax, buffer; call alloc_zstring"))

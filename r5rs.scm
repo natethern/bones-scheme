@@ -416,15 +416,13 @@
   (file-ports
 
    (define (open-input-file name)
-     ;; flags: O_RDONLY, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-     (let ((fd (%open name 0 420)))
+     (let ((fd (%open-input-file name)))
        (if (%fx<? fd 0)
 	   (%file-error 'open-input-file name)
 	   (%make-file-input-port fd))))
 
    (define (open-output-file name)
-     ;; flags: O_WRONLY|O_CREAT|O_TRUNC, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-     (let ((fd (%open name 577 420)))
+     (let ((fd (%open-output-file name)))
        (if (%fx<? fd 0)
 	   (%file-error 'open-output-file name)
 	   (%make-file-output-port fd)))))

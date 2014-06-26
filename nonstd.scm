@@ -237,8 +237,7 @@
 (cond-expand
   (file-ports
    (define (open-append-output-file name)
-     ;; open-flags: O_WRONLY|O_CREAT|O_APPEND, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-     (let ((fd (%open name 1089 420)))
+     (let ((fd (%open-append-file name)))
        (if (%fx<? fd 0)
 	   (%file-error 'open-append-output-file name)
 	   (%make-file-output-port fd)))))
