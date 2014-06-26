@@ -186,7 +186,7 @@
 	 (arch (string-append "bones-" date)))
     (bones-x86_64-linux.s)
     (bones-x86_64-windows.s)
-    (run (rm -fr ,arch))
+    (run (rm -fr ,arch bones.tar.gz bones.zip))
     (run (mkdir -p
 		,(string-append arch "/x86_64")
 		,(string-append arch "/x86_64/linux")
@@ -196,7 +196,7 @@
        (run (cp ,df ,(string-append arch "/" df))))
      distfiles)
     (run (tar cfz bones.tar.gz ,arch))
-    (run (zip -r bones.tar.gz ,arch))
+    (run (zip -r bones.zip ,arch))
     (run (rm -fr ,arch))))
 
 (define (-n)
