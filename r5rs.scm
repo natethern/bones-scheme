@@ -203,10 +203,7 @@
 (define-inline (asin x) (%ieee754-asin x))
 (define-inline (acos x) (%ieee754-acos x))
 
-;;XXX this seems to be broken
-#;(define-inline (log x)
-  (let ((r ($allocate #x10 1)))
-    ($inline "fld1; fld qword [r11 + CELLS(1)]; fyl2x; fstp qword [rax + CELLS(1)]" r (exact->inexact x))))
+(define-inline (log x) (%ieee754-log x))
 
 (define-inline (sqrt x) (%ieee754-sqrt x))
 

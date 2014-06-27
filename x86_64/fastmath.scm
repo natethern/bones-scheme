@@ -139,5 +139,4 @@
   (and (eq? 2047 (%ieee754-exponent x))
        (not (eq? 0 (%ieee754-mantissa x)))))
 
-
-;;XXX missing: fllog
+(define-inline (fllog x) (%ieee754-log x))

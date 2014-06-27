@@ -156,6 +156,10 @@
   (let ((r ($allocate #x10 1)))
     ($inline "fld qword [r11 + CELLS(1)]; fld1; fpatan; fstp qword [rax + CELLS(1)]" r x)))
 
+(define-syntax-rule (%ieee754-log x)
+  (let ((r ($allocate #x10 1)))
+    ($inline "fldln2; fld qword [r11 + CELLS(1)]; fyl2x; fstp qword [rax + CELLS(1)]" r (exact->inexact x))))
+
 ;; IEEE-754 square root
 (define-syntax-rule (%ieee754-sqrt x)
   (let ((r ($allocate #x10 1)))
