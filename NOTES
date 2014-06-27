@@ -191,6 +191,10 @@ mainCRTStartup:
 * TODO log: "fld1; fld XXX; fyl2x"
   - seems to be broken.
   - =fllog= still missing from file:fastmath.scm
+  - from menuet libc:
+    fldln2
+    flds <arg>
+    fyl2x
 * TODO =string->number= does not parse "+/-nan.0"/"+/-inf.0"
 * TODO add backend-call to align block-pointer when translating =$allocate=
   - needed for 32-bit targets.
