@@ -152,7 +152,7 @@
   (run (./run fft.scm >>benchmark.txt 2>&1))
   (run (strip fft ";" ls -l fft >>benchmark.txt))
   (run (echo -n "'heap used: '" >>benchmark.txt))
-  (run (./run freeheap.scm >>benchmark.txt))
+  (run (./run usedheap.scm >>benchmark.txt))
   (print "--------------------------------------------------------------------------------")
   (run (tail -n 40 benchmark.txt)))
 
