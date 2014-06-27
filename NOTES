@@ -3,6 +3,7 @@ BONES                                                                     -*- Or
 
 * TODO merge "smart-spill" branch				:smart-spill:
   - seems to work fine, make check runs.
+  - adapt use of t-i-a in conditional-move code
   - benchmark.
 * work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
@@ -175,9 +176,6 @@ mainCRTStartup:
 
 	ret
   #+END_SRC
-* TODO merge "cmove" branch					      :cmove:
-  - benchmark.
-  - when merging /smart-spill/, adapt use of t-i-a.
 * implement "peephole" pass?
   - match expressions for certain cases.
   - perhaps add "($comment COMMENT EXP)" special form to detect particular
