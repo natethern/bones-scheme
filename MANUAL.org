@@ -980,11 +980,11 @@
    Some effort is made to reduce redundant saves of intermediate
    values when translating the arguments for a procedure-call, as
    target registers for call-arguments may conflict with the use of
-   local variables during the set-up of the call. This is currently
-   not overly sophisticated.
+   local variables during the call set-up.
 
-   Finally some very simple peephole-optimizations are done, like a
-   move from between identical registers.
+   Finally some simple optimizations are done, like the elimination of
+   moves between identical registers, or using conditional moves
+   instead of conditional jumps.
 
 ** Performance
 
