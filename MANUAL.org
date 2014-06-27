@@ -972,10 +972,10 @@
    (let ((VAR ARGUMENT) ...) BODY ...)
    #+END_SRC
 
-   Unused =let=-bound variables are removed, if they are initialized
-   to expressions that have no side-effects. Unused variables will not
-   use up an argument register, regardless of whether the
-   initialization expression has effects or not.
+   Unused variables are removed, and bound or assigned expressions
+   that have no side-effects will also be eliminated. Unused local
+   variables will not use up an argument register, regardless of
+   whether the initialization expression has effects or not.
 
    Some effort is made to reduce redundant saves of intermediate
    values when translating the arguments for a procedure-call, as
