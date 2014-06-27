@@ -4,11 +4,6 @@ BONES                                                                     -*- Or
 * TODO merge "smart-spill" branch				:smart-spill:
   - seems to work fine, make check runs.
   - benchmark.
-* DONE optimize assignments to unused globals			       :ugve:
-  - benchmark. 
-  - document, test, merge.
-  - check what from file:support.scm is not needed, when compiling
-    bones, and what is not useful.
 * work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values has two words.
@@ -23,7 +18,7 @@ BONES                                                                     -*- Or
    - adapt printer + reader.
 * TODO file:dynamic.scm fails with 'nolibc config
   - gives error message while reading input.
-* ise fastmath in file:forth.scm
+* use fastmath in file:forth.scm
 * start with ARM port
 * add bytevectors
   - interchangable with strings.
@@ -33,6 +28,7 @@ BONES                                                                     -*- Or
 * go through r7rs and look for possibly useful primitives
 * TODO complete windows port
   - "-o" produces crash, but everything else seems to work.
+  - might be related to output libcalls.
 * try compiling grond
   + fails to compile bones-grond, either with OOM or, with 1GB heap, SIGILL.
 * potential optimizations
@@ -42,14 +38,15 @@ BONES                                                                     -*- Or
   - beta-contraction (needs knowledge about FVs).
   - direct-calls (implies loops).
   - perhaps a bit of constant-propagation.
-** improve inlining manifest lambdas
+** TODO [#C] improve inlining manifest lambdas
   - don't bind temporaries for arguments that are variables or literals.
   - not that easy: we have to replace variable-references for the
     dropped llist-variables.
     - assignment must disable replacement.
-** implement simple copy-propagation
+** TODO [#C] implement simple copy-propagation
    - variables (same scope), and atomic literals (chars, booleans, numbers, null).
    - would solve problems related to [[inlining manifest lambdas]]
+   - need 2 passes: 1st to identify assigned vars, 2nd to propagate.
 ** unboxing
   - "($the TYPE EXP)" annotates with type.
   - "let" can check for "$the" and assign FP-register.
@@ -178,7 +175,7 @@ mainCRTStartup:
 
 	ret
   #+END_SRC
-* DONE "(if X S1 S2)" can be computed more efficiently		      :cmove:
+* TODO merge "cmove" branch					      :cmove:
   - benchmark.
   - when merging /smart-spill/, adapt use of t-i-a.
 * implement "peephole" pass?
@@ -188,12 +185,12 @@ mainCRTStartup:
   - examples:
     (if (if X TRUE FALSE) Y Z) -> (if X Y Z)
     (if (if X FALSE TRUE) Y Z) -> (if X Z Y)
-* TODO log: "fld1; fld XXX; fyl2x"
-  - seems to be broken.
+* TODO log is broken
+  - currently: "fld1; fld XXX; fyl2x"
   - =fllog= still missing from file:fastmath.scm
   - from menuet libc:
     fldln2
-    flds <arg>
+    fld <arg>
     fyl2x
 * TODO =string->number= does not parse "+/-nan.0"/"+/-inf.0"
 * TODO add backend-call to align block-pointer when translating =$allocate=
