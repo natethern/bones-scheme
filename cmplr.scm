@@ -243,9 +243,7 @@
     (('if x y z)
      (cond ((and (simple-expression? y)
 		 (simple-expression? z))
-	    ;;XXX adapt the line below when mergining /smart-spill/
-	    (match-let ((((_ . r1) (_ . r2) (_ . r3)) 
-			 (translate-inline-arguments (list x y z))))
+	    (match-let (((r1 r2 r3) (translate-inline-arguments (list x y z))))
 	      (cond ((memq t temporary-registers)
 		     (generate-conditional-move r1 r3 r2)
 		     (generate-move t r2))
