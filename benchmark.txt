@@ -81,3 +81,24 @@ Exit [0]
 1.71 user, 0.04 system, 1.80 elapsed -- Max VSize = 98156KB, Max RSS = 78144KB
 -rwxr-xr-x 1 felix felix 350896 Jun 26 22:51 fft
 heap used: 4440
+
+2014-06-27: (unused global variable removal)
+6538b3dc86acad37690f3667318dda53f509f09f
+bones:
+Exit [0]
+2.87 user, 0.28 system, 3.20 elapsed -- Max VSize = 98592KB, Max RSS = 78672KB
+-rwxr-xr-x 1 felix felix 798408 Jun 27 19:25 bones
+dynamic:
+done
+Exit [0]
+0.50 user, 0.22 system, 0.80 elapsed -- Max VSize = 98160KB, Max RSS = 78408KB
+-rwxr-xr-x 1 felix felix 356592 Jun 27 19:26 dynamic
+mandelbrot:
+Exit [0]
+5.98 user, 0.03 system, 6.11 elapsed -- Max VSize = 97952KB, Max RSS = 78140KB
+-rwxr-xr-x 1 felix felix 141696 Jun 27 19:26 mandelbrot
+fft:
+Exit [0]
+1.71 user, 0.03 system, 1.80 elapsed -- Max VSize = 98140KB, Max RSS = 78144KB
+-rwxr-xr-x 1 felix felix 334344 Jun 27 19:26 fft
+heap used: 3416
