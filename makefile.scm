@@ -208,6 +208,9 @@
     (run (zip -r bones.zip ,arch))
     (run (rm -fr ,arch))))
 
+(define (count)
+  (run (wc -l ,@compiler-sources)))
+
 (define (-n)
   (run-dry-run #t))
 
