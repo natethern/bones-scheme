@@ -163,66 +163,99 @@
 
 
 ;; detect unused local variables
-(define (detect-unused-variables form)	; expects expanded + canonicalized form
-  (define (used var env)
-    (cond ((assq var env) => (cut set-cdr! <> #t)))
-    var)
-  (define (used? var env)
-    (cond ((assq var env) => cdr)
-	  (else #f)))
-  (let walk ((x form) (env '()))
-    (match x
-      ((? symbol?) (used x env))
-      (('quote _) x)
-      (((or 'letrec* 'let) ((vars vals) ...) body)
-       (let* ((env2 (append (map (cut cons <> #f) vars) env))
-	      (body (walk body env2))
-	      (eenv (if (eq? 'letrec* (car x)) env2 env))
-	      (vals (map (cut walk <> eenv) vals)))
-	 (list (car x) 
-	       (map (lambda (var val)
-		      (list (if (used? var env2) var '$unused) val))
-		    vars vals)
-	       body)))
-      (('begin x) (walk x env))
-      (('begin x1 xs ...)
-       `(begin ,(walk x1 env) ,(walk `(begin ,@xs) env)))
-      (('$lambda id llist body)
-       (let* ((vars argc rest (parse-lambda-list llist))
-	      (env2 (append (map (cut cons <> #f) vars) env))
-	      (body (walk body env2)))
-	 `($lambda ,id ,(build-lambda-list 
-			 (map (lambda (var) (if (used? var env2) var '$unused)) vars)
-			 argc
-			 (and rest (if (used? rest env2) rest '$unused)))
-		   ,body)))
-      (('$case-lambda id (llists bodies) ...)
-       `($case-lambda
-	 ,id
-	 ,@(map (lambda (llist body)
-		  (let* ((vars argc rest (parse-lambda-list llist))
-			 (env2 (append (map (cut cons <> #f) vars) env))
-			 (body (walk body env2)))
-		    (list (build-lambda-list 
+(define (detect-unused-variables form) ; expects expanded + canonicalized form
+  (let ((globals '()))
+    (define (used var env where)
+      (cond ((assq var env) => (cut set-cdr! <> #t))
+	    ((assq var globals) =>
+	     (lambda (a)
+	       (set-cdr! a (adjoin (cdr a) where))))
+	    (else (push! (list var where) globals)))
+      var)
+    (define (defglobal var)
+      (cond ((assq var globals))
+	    (else (push! (list var) globals))))
+    (define (used? var env)
+      (cond ((assq var env) => cdr)
+	    (else #f)))
+    (define (destination var env)
+      (and (not (assq var env)) var))
+    (define (walk x env here dest)
+      (match x
+	((? symbol?) (used x env here))
+	(('quote _) x)
+	(((or 'letrec* 'let) ((vars vals) ...) body)
+	 (let* ((env2 (append (map (cut cons <> #f) vars) env))
+		(body (walk body env2 here dest))
+		(eenv (if (eq? 'letrec* (car x)) env2 env))
+		(vals (map (cut walk <> eenv here <>) vals vars)))
+	   (list (car x) 
+		 (map (lambda (var val)
+			(list (if (used? var env2) var '$unused) val))
+		      vars vals)
+		 body)))
+	(('begin x) (walk x env here dest))
+	(('begin x1 xs ...)
+	 `(begin ,(walk x1 env here #f) ,(walk `(begin ,@xs) env here dest)))
+	(('$lambda id llist body)
+	 (let* ((vars argc rest (parse-lambda-list llist))
+		(env2 (append (map (cut cons <> #f) vars) env))
+		(body (walk body env2 dest #f)))
+	   `($lambda ,id ,(build-lambda-list 
 			   (map (lambda (var) (if (used? var env2) var '$unused)) vars)
 			   argc
 			   (and rest (if (used? rest env2) rest '$unused)))
-			  body)))
-		llists bodies)))
-      (('if x y z) `(if ,(walk x env) ,(walk y env) ,(walk z env)))
-      (('set! var x)
-       (used var env)
-       (let ((x (walk x env)))
-	 `(set! ,var ,x)))
-      (('define v x) `(define ,v ,(walk x env)))
-      (('$primitive n) x)
-      (('$inline n xs ...)
-       `($inline ,n ,@(map (cut walk <> env) xs)))
-      (('$allocate t s xs ...)
-       `($allocate ,t ,s ,@(map (cut walk <> env) xs)))
-      ((op args ...) (map (cut walk <> env) x))
-      (_ (error "invalid expression" x)))))
-
+		     ,body)))
+	(('$case-lambda id (llists bodies) ...)
+	 `($case-lambda
+	   ,id
+	   ,@(map (lambda (llist body)
+		    (let* ((vars argc rest (parse-lambda-list llist))
+			   (env2 (append (map (cut cons <> #f) vars) env))
+			   (body (walk body env2 dest #f)))
+		      (list (build-lambda-list 
+			     (map (lambda (var) 
+				    (if (used? var env2) var '$unused)) vars)
+			     argc
+			     (and rest (if (used? rest env2) rest '$unused)))
+			    body)))
+		  llists bodies)))
+	(('if x y z)
+	 `(if ,(walk x env here #f) ,(walk y env here dest) ,(walk z env here dest)))
+	(('set! var x)
+	 (if (assq var env)
+	     (used var env here)
+	     (defglobal var))
+	 (let ((x (walk x env here (destination var env))))
+	   `(set! ,var ,x)))
+	(('define var x)
+	 (defglobal var)
+	 `(define ,var ,(walk x env here (destination var env))))
+	(('$primitive n) x)
+	(('$inline n xs ...)
+	 `($inline ,n ,@(map (cut walk <> env here #f) xs)))
+	(('$allocate t s xs ...)
+	 `($allocate ,t ,s ,@(map (cut walk <> env here #f) xs)))
+	((op args ...) (map (cut walk <> env here #f) x))
+	(_ (error "invalid expression" x))))
+    (let ((form (walk form '() #f #f)))
+      ;; now remove unused entries iteratively
+      (let loop ((globals globals) (unused '()))
+	(let ((ulist 
+	       (filter-map
+		(lambda (global)
+		  (and (null? (cdr global)) (car global)))
+		globals)))
+	  (if (null? ulist)
+	      (values form unused)
+	      (loop
+	       (filter-map
+		(lambda (global)
+		  (and (not (memq (car global) ulist))
+		       (cons (car global)
+			     (difference (cdr global) ulist))))
+		globals)
+	       (append ulist unused))))))))
 
 ;; separate definitions and toplevel forms
 (define (extract-definitions form)
@@ -258,9 +291,6 @@
   (let ((var (string->symbol (string-append prefix "^" (number->string rename-counter)))))
     (inc! rename-counter)
     var))
-
-(define (genvars lst)			; yes, any list is fine
-  (map (lambda _ (genvar)) lst))
 
 
 ;;; dump expressions, optionally in "lambda" format

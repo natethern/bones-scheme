@@ -558,8 +558,6 @@
 (define (with-output-to-port port thunk)
   (parameterize ((current-output-port port)) (thunk)))
 
-(define *open-custom-ports* '())
-
 (define close-file-input-port
   (let ((close close-input-port))
     (lambda (port) 

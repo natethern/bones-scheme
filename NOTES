@@ -1,19 +1,53 @@
 BONES                                                                     -*- Org -*-
 
 
-* DONE test "smart-spill" branch
+* TODO merge "smart-spill" branch				:smart-spill:
+  - seems to work fine, make check runs.
+  - benchmark.
 * work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values has two words.
-* TODO disable ".directve" section when using mingw
 * provide manual as text in dist tarball and html on web-site
 * TODO test file:copy.scm
 * TODO write web-page
-* TODO fixnum/flonum specific primitives would vastly speed up things
+  - find logo.
+* add f64vectors
+   - FLOATVECTOR_TYPE (#x12)
+   - would need proper alignment on 32-bit systems.
+   - put API into file:fastmath.scm
+   - adapt printer + reader.
 * TODO file:dynamic.scm fails with 'nolibc config
-  - bogus results (counters seem to be wrong - bug in integer-only
-    arithmetic?)
-* unboxing
+  - gives error message while reading input.
+* use fastmath in file:forth.scm
+* start with ARM port
+* add bytevectors
+  - interchangable with strings.
+  - make-bytevector, bytevector?, bytevector, bytevector-u8-ref, bytevector-u8-set!,
+    bytevector-length, bytevector-copy, bytevector-copy!
+  - "u8(...)" read-syntax + printing.
+* go through r7rs and look for possibly useful primitives
+* TODO complete windows port
+  - "-o" produces crash, but everything else seems to work.
+  - might be related to output libcalls.
+* try compiling grond
+  + fails to compile bones-grond, either with OOM or, with 1GB heap, SIGILL.
+* potential optimizations
+** we could coalesce allocations inside a lambda
+  - but will probably gain very little.
+** implement basic known procedure optimizations
+  - beta-contraction (needs knowledge about FVs).
+  - direct-calls (implies loops).
+  - perhaps a bit of constant-propagation.
+** TODO [#C] improve inlining manifest lambdas
+  - don't bind temporaries for arguments that are variables or literals.
+  - not that easy: we have to replace variable-references for the
+    dropped llist-variables.
+    - assignment must disable replacement.
+** TODO [#C] implement simple copy-propagation
+   - variables (same scope), and atomic literals (chars, booleans, numbers, null).
+   - would solve problems related to [[inlining manifest lambdas]]
+   - need 2 passes: 1st to identify assigned vars, 2nd to propagate.
+** unboxing
   - "($the TYPE EXP)" annotates with type.
   - "let" can check for "$the" and assign FP-register.
   - accessing variables in FP-registers needs to move them to normal registers.
@@ -23,24 +57,6 @@ BONES                                                                     -*- Or
   - have local FA pass ("lfa") that expands $typed-case-lambda according to inferred
     types and convert "let"-bound flonum vars using a custom binding form
     - e.g. "($let-float ...)" or something like this.
-* add bytevectors
-  - interchangable with strings.
-  - make-bytevector, bytevector?, bytevector, bytevector-u8-ref, bytevector-u8-set!,
-    bytevector-length, bytevector-copy, bytevector-copy!
-  - "u8(...)" read-syntax + printing.
-* go through r7rs and look for possibly useful primitives
-* TODO windows port
-  - "-o" option seems not to be recognized.
-  - printer does work, somehow (r4rstest prints loads of "unknown object").
-  - r4rstest crashes at some stage.
-* try compiling grond
-  + fails to compile bones-grond, either with OOM or, with 1GB heap, SIGILL.
-* we could coalesce allocations inside a lambda
-  - but will probably gain very little.
-* implement basic known procedure optimizations
-  - beta-contraction (needs knowledge about FVs).
-  - direct-calls (implies loops).
-  - perhaps a bit of constant-propagation.
 * try using libgc as 2nd heap generation
   - needs write-barrier to record assignments of heap-data into non-heap objects.
     - then evict recursively.
@@ -49,7 +65,7 @@ BONES                                                                     -*- Or
   - could start with a simplification from grass.
   - keep it simply, without environments.
   - install signal-handlers for SIGSEGV/SIGBUS/SIGILL/SIGFPE.
-* TODO pre-allocated chars in the range 0-255
+* pre-allocated chars in the range 0-255
   - means: all chars are preallocated, unless we allow chars with arbitrary code.
 * we need FP num/str conversion
   - atof: http://pastebin.com/prYRrseH
@@ -159,23 +175,32 @@ mainCRTStartup:
 
 	ret
   #+END_SRC
-* "(if X S1 S2)" can be computed more efficiently
-  - use "cmovCC" if S1, S2 are simple-expressions.
+* TODO merge "cmove" branch					      :cmove:
+  - benchmark.
+  - when merging /smart-spill/, adapt use of t-i-a.
 * implement "peephole" pass?
   - match expressions for certain cases.
   - perhaps add "($comment COMMENT EXP)" special form to detect particular
     primitive expansions (like "not").
-* TODO log: "fld1; fld XXX; fyl2x"
-  - seems to be broken.
+  - examples:
+    (if (if X TRUE FALSE) Y Z) -> (if X Y Z)
+    (if (if X FALSE TRUE) Y Z) -> (if X Z Y)
+* TODO log is broken
+  - currently: "fld1; fld XXX; fyl2x"
+  - =fllog= still missing from file:fastmath.scm
+  - from menuet libc:
+    fldln2
+    fld <arg>
+    fyl2x
 * TODO =string->number= does not parse "+/-nan.0"/"+/-inf.0"
-* TODO remove unused globals
-  - also add "-dump-unused".
-* TODO add backend-call to align block-pointer when trsnslating =$allocate=
+* TODO add backend-call to align block-pointer when translating =$allocate=
+  - needed for 32-bit targets.
 * secure inline-primitives against redefinition of internally used primitives
   - like this:
     (let-syntax ((PRIMITIVE PRIMITIVE))
       (define-inline (OTHER-PRIMITIVE ...) ...))
   - or redefinition of PRIMITIVE will change behaviour of OTHER-PRIMITIVE.
+  - need to go through every primitive and check it's dependencies.
 * Issues
 ** "inexact->exact" uses "fisttp", so needs SSE3
 ** i don't fully trust that "integer?" handles all cases correctly
@@ -191,6 +216,10 @@ mainCRTStartup:
 ** something is wrong with musl's "sprintf" (or varargs) implementation
   - "(number->string (expt 2.1 3))" returns "nan".
   - ok with glibc.
+** precision of 16 in num2str produces sometimes garbage digits
+   - see file:r5rs_pitfalls.scm, where test 8.1 is printed as "8.1..."
+   - but precision 15 does not match result of =integer?=, which
+     might be inaccurate or needs to be less accurate.
 * Referencess
   - X86_64:
     - x87: http://www.website.masmforum.com/tutorials/fptute/index.html
