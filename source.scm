@@ -292,9 +292,6 @@
     (inc! rename-counter)
     var))
 
-(define (genvars lst)			; yes, any list is fine
-  (map (lambda _ (genvar)) lst))
-
 
 ;;; dump expressions, optionally in "lambda" format
 
