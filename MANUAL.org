@@ -61,13 +61,13 @@
 * Installation
 
   BONES is written in Scheme and translates Scheme to x86_64
-  assembler, specifically, in the syntax accepted by =NASM=, which will
+  assembler, specifically, in the syntax accepted by NASM, which will
   have to be installed on your system. To link the assembled code you
   will need a linker and C runtime support files, including the C
   library, so a C compiler should be installed as well.
 
   To build the system, you need the pre-compiled assembler code for
-  the "bones" executable, which you can obtain by downloading
+  the =bones= executable, which you can obtain by downloading
   a distribution tarball at this location:
 
     http://www.call-with-current-continuation.org/bones/bones.tar.gz
@@ -142,7 +142,7 @@
    invoked automatically. The compiler accepts a few command-line
    options which are described below.
 
-   Optionally, the file given to "bones" may be a /program
+   Optionally, the file given to =bones= may be a /program
    specification/, an extended variant of the configuration language
    described in [[http://srfi.schemers.org/srfi-7][SRFI-7]]. The compiler treats code that consists of a
    single toplevel expression in the form =(program ...)= as a program
@@ -162,7 +162,7 @@
 ** Assembling and linking Executables
 
    Once the compiler has produced an assembler file, it has to be
-   assembled and linked. Using =NASM=, this is done like this:
+   assembled and linked. Using NASM, this is done like this:
 
    #+BEGIN_SRC sh
    nasm -f <FORMAT> <FILENAME> -o <OBJECTFILENAME>
@@ -207,6 +207,9 @@
                        program specification has been completely
                        parsed.
 
+   - =-dump-unused= :: Dump unused global variables, including library
+		       definitions and 
+
    - =-expand= :: Dump source code to stdout after syntax-expansion and
                 stop.
 
@@ -237,7 +240,7 @@
        every time a garbage collection is triggered.
 
   - =PREFIX= :: Defines a custom entry-point prefix for embedding. By
-     passing -DPREFIX=my= to =nasm=, the Scheme toplevel can be run by
+     passing =-DPREFIX=my= to NASM, the Scheme toplevel can be run by
      calling =my_bones=.
 
   - =TOTAL_HEAP_SIZE= :: Total size of the heap. Half of this space can be
@@ -269,7 +272,7 @@
    | Feature             | Meaning                                                          |
    |---------------------+------------------------------------------------------------------|
    | x86_64              | Architecture identifier                                          |
-   | ieee745             | Floating point format used                                       |
+   | ieee754             | Floating point format used                                       |
    | linux               | Operating system                                                 |
    | windows             | Operating system                                                 |
    | file-ports          | Primitives operating on file-ports are available                 |
@@ -285,10 +288,11 @@
    The following features are by default available to enable language
    extensions or target-specific compilation modes:
 
-   | Feature | Meaning                                                                          |
-   |---------+----------------------------------------------------------------------------------|
-   | pic     | Generate position-independent code, always enabled on Windows, optional on Linux |
-   | nolibc  | Generate code that does not require linking with the C runtime library           |
+   | Feature  | Meaning                                                                          |
+   |----------+----------------------------------------------------------------------------------|
+   | pic      | Generate position-independent code, always enabled on Windows, optional on Linux |
+   | nolibc   | Generate code that does not require linking with the C runtime library           |
+   | embedded | Generate code that can be embedded into an application                           |
 
 * Language Description
 
@@ -327,8 +331,8 @@
 
     Argument types to primitive procedures are not checked. The only
     detected errors are errors related to port- and file-system
-    operations, mutating literal constants or when the heap is
-    exhausted.
+    operations, mutating literal constants, when the heap is
+    exhausted, or explicit calls to the =error= procedure.
 
 *** Section 2
 
@@ -541,10 +545,10 @@
 
     Expressions among internal definitions.
 
-    A definition of the form (define <expression>) causes the
+    A definition of the form =(define <expression>)= causes the
     expression to be evaluated at the conclusion of any enclosing set
-    of internal definitons.  That is, at top level, (define
-    <expression>) is equivalent to just plain <expression>.  As for
+    of internal definitons.  That is, at top level, =(define
+    <expression>)= is equivalent to just plain =<expression>=.  As for
     internal definitions, the following are equivalent:
 
     #+BEGIN_SRC scheme
@@ -601,7 +605,8 @@
          implemented by defining an /identifier-macro/ for =NAME=,
          which the syntax-expander will replace with a =lambda= form
          containing the procedure body , when used in the
-         operator-position of a procedure-call.
+         operator-position of a procedure-call. Any use of an inline
+         procedure must appear textually after its definition.
 
     - =(define-syntax-rule (NAME ARGUMENTS ...) BODY)= :: A more concise
         way of defining single-rule syntax.
@@ -655,7 +660,7 @@
       from the string-port =PORT=. 
 
     - =(open-append-output-file STRING)= :: Opens the file =STRING= in
-     /append/ mode, and returns an output port.
+      /append/ mode, and returns an output port.
 
     - =(open-input-string STRING)= :: Returns an input-port oin =STRING=
       from which data can be read.
@@ -675,6 +680,9 @@
 
     - =(write-string STRING [PORT])= :: Writes the characters in =STRING= to =PORT=,
       which defaults to the current output port.
+
+    On Windows, all files are opened in binary mode, so no
+    line-terminator translations take place.
 
 **** Process Environment
 
@@ -840,6 +848,16 @@
 		       for convenient binding of multiple values. This also
 		       adds "curried" =define= syntax.
 
+    - =fastmath.scm= :: Provides numeric operations, specific for
+                        fixnums (exact integers) and floating-point
+                        numbers.  Note that this is an "include" file, i.e.
+			it is intended to by used by adding
+
+			#+BEGIN_SRC scheme
+			(include "fastmath.scm")
+			#+END_SRC
+
+			in a program-specification.
 
 * Compiler Details
 
@@ -864,7 +882,7 @@
    refer to the same free variable which ensures that assignments by
    one closure are seen in the other.
 
-   Finally code is generated, currently in =NASM= assembler syntax.
+   Finally code is generated, currently in NASM assembler syntax.
    The code includes one or more support libraries that provide core
    runtime routines and the garbage collector.
 
@@ -924,7 +942,7 @@
    by =let= or =letrec=) are also put into the remaining argument
    registers as long as registers are still available.
 
-   =eax=, =r11= and =r15= are used throughout compiled code and the
+   =rax=, =r11= and =r15= are used throughout compiled code and the
    runtime-system as temporaries.
 
    =rbp= holds the /allocation pointer/, a pointer to the next
@@ -954,10 +972,10 @@
    (let ((VAR ARGUMENT) ...) BODY ...)
    #+END_SRC
 
-   Unused =let=-bound variables are removed, if they are initialized
-   to expressions that have no side-effects. Unused variables will not
-   use up an argument register, regardless of whether the
-   initialization expression has effects or not.
+   Unused variables are removed, and bound or assigned expressions
+   that have no side-effects will also be eliminated. Unused local
+   variables will not use up an argument register, regardless of
+   whether the initialization expression has effects or not.
 
    Some effort is made to reduce redundant saves of intermediate
    values when translating the arguments for a procedure-call, as
@@ -999,6 +1017,12 @@
    in C or high-performance Scheme systems. That is the price payed
    for a simple system.
 
+   Note that I/O is fully unbuffered, the =read(2)= and =write(2)=
+   library function or system calls are directly invoked for every
+   input or output operation. If you have a lot of operations on
+   ports, consider using intermediate string-ports or strings for
+   accumulating data before writing or parsing it.
+
    Some tips for obtaining fast code:
 
    - Use =define-inline= or syntax-definitions for small procedures
@@ -1008,6 +1032,9 @@
    - Dispatching among the cases of a =case-lambda= is very efficient
      and is preferrable to using rest-argument lists and destructuring
      them manually.
+
+   - If you are doing a lot of numerical calculations, consider using
+     =fastmath.scm=.
 
    - There are a number of low-level "intrinsic" procedures, mostly
      intended for internal use and often implemented as macros or
@@ -1152,7 +1179,7 @@
 
   | Type        | Typecode | Immediate | Byteblock | Special | Remarks             |
   |-------------+----------+-----------+-----------+---------+---------------------|
-  | Fixnum      | -        | X         |           | -       |                     |
+  | Fixnum      | -        | X         | -         | -       |                     |
   | Null        | #x00     |           |           |         | The empty list      |
   | Symbol      | #x01     |           |           |         |                     |
   | Pair        | #x02     |           |           |         |                     |
@@ -1177,6 +1204,23 @@
   Records are vector-like blocks where the two first slots contain
   a record-tag (symbol) and a fixnum id, designating the exact type
   of the record. Id 1 is used for error-objects.
+
+  As argument types are not checked, primitives are only sensitive to
+  the underlying representation, not the actual type. This can be used
+  for interesting effects, for example:
+
+  #+BEGIN_SRC scheme
+  (string->copy <FLOAT>)  ==>  <a string containing the raw bytes of the IEEE double>
+
+  (vector->list '(1 . 2)) ==>  #(1 2)
+  
+  (define-values (make pred? data) (make-disjoint-type 'foo))
+  (vector-copy (make 99))    ==>  #(foo 2 99)
+  #+END_SRC
+
+  Operations that expect a normal block will have an undefined effect
+  when invoked on objects that are byte-blocks and vice versa. Usually
+  the program will crash.
 
 * Garbage Collection
 
@@ -1203,15 +1247,15 @@
   data in the heap on every collection (because it is copied from the
   old heap-space to the new one), the old pointer will be invalid
   after the collection finishes. This check can be disabled by passing
-  =-DDISABLE_WRITE_BARRIER= to =nasm=, which gives better performance,
+  =-DDISABLE_WRITE_BARRIER= to NASM, which gives better performance,
   but may lead to very hard to find bugs.
 
-  The heap can not be resized dynamically and has a fixed size.  use
+  The heap can not be resized dynamically and has a fixed size.  Use
   the =TOTAL_HEAP_SIZE= macro to specify a heap-size different from
-  the default size. 1% of the heap is used as a /red zone/ - once the
-  allocation-pointer enters this zone, a garbage collection will be
-  triggered. This allows to defer the limit-check when small blocks of
-  data are allocated.
+  the default size. 1% of the heap is used as a /reserve zone/ - once
+  the allocation-pointer enters this zone, a garbage collection will
+  be triggered. This allows to defer the limit-check when small blocks
+  of data are allocated.
 
 * Interfacing to Foreign Code
 
@@ -1281,7 +1325,7 @@
   provided they are able to interface to C. Normally an object file
   compiled with BONES exports the entry-point =main= (or =_start= when
   the C-libray is disabled). By compiling the Scheme program with the
-  option =-feature embedded=, the entry-point is renamed to "bones",
+  option =-feature embedded=, the entry-point is renamed to =bones=,
   having this signature:
 
   #+BEGIN_SRC c
@@ -1396,7 +1440,7 @@
   garbage collector copying data from one heap-space to the other need
   to take this into account.
 
-  On x86_64 systems, thr FPU provides machine-instructions for many
+  On x86_64 systems, the FPU provides machine-instructions for many
   transcendental functions. Other architectures will probably not have
   support for these, so the associated intrinsic operations in
   =<ARCH>/intrinsics.scm= need to be adapted to call C library
@@ -1450,20 +1494,22 @@
   - Porting the system to other architectures and operating systems,
     of course.
 
-  - Generate code for the GNU assembler (=as=). Since the GNU binutils
-    are needed anyway on Linux, and because =as= is quite fast, this
-    would remove the need to =NASM=. On the other hand, =NASM= is more
-    featureful and supports an arguably nicer assembler syntax.
+  - Generate code suitable for the GNU assembler (=as=). Since the GNU
+    binutils are needed anyway on Linux, and because =as= is quite
+    fast, this would remove the need to NASM. On the other hand, NASM
+    is more featureful and supports an arguably nicer assembler
+    syntax.
 
-  - Generate code for [[http://asm-js.org][asm.js]]. This is quite a project, and the use of
-    labels and arbitrary jumps may be an interesting challenge.
+  - Other backends, say, [[http://asm-js.org][asm.js]] or LLVM. This can be quite a
+    challenge, as these languages do not support jumps to arbitrary
+    locations.
 
 * Terms of Use
 
   Some parts of BONES are not by the author, but have been taken from
   other sources:
 
-    The pretty-printer (pp.scm) is
+    The pretty-printer (=pp.scm=) is
 
     Copyright (c) 1991, Marc Feeley
     Author: Marc Feeley (feeley@iro.umontreal.ca)
@@ -1472,7 +1518,7 @@
     The pattern-matching package was written by Alex Shinn and
     is in the public domain.
 
-    The syntax-expander (alexpand.scm) is
+    The syntax-expander (=alexpand.scm=) is
 
     Copyright 2002-2004 Al Petrofsky <alexpander@petrofsky.org>
 
@@ -1545,11 +1591,11 @@
 #+DESCRIPTION: 
 #+KEYWORDS: 
 #+LANGUAGE:  en
-#+OPTIONS:   H:3 num:t toc:t \n:nil @:t ::t |:t ^:{} -:t f:t *:t <:t
+#+OPTIONS:   H:3 num:t toc:2 \n:nil @:t ::t |:t ^:{} -:t f:t *:t <:t
 #+OPTIONS:   TeX:nil LaTeX:nil skip:nil d:nil todo:t pri:nil tags:not-in-toc
 #+INFOJS_OPT: view:nil toc:nil ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
 #+EXPORT_SELECT_TAGS: export
 #+EXPORT_EXCLUDE_TAGS: noexport
 #+LINK_UP:   http://www.call-with-current-continuation.org/bones/
 #+LINK_HOME: http://www.call-with-current-continuation.org
-#+STYLE: <link rel="stylesheet" type="text/css" href="stylesheet.css" />
+#+STYLE: <link rel="stylesheet" type="text/css" href="manual.css" />

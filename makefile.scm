@@ -142,14 +142,20 @@
   (run (git rev-parse HEAD >>benchmark.txt))
   (run (echo bones: >>benchmark.txt))
   (run (memtime ./bones compiler.scm -o /dev/null >>benchmark.txt 2>&1))
+  (run (strip bones ";" ls -l bones >>benchmark.txt))
   (run (echo dynamic: >>benchmark.txt))
   (run (./run dynamic.scm >>benchmark.txt 2>&1))
+  (run (strip dynamic ";" ls -l dynamic >>benchmark.txt))
   (run (echo mandelbrot: >>benchmark.txt))
   (run (./run mandelbrot.scm >>benchmark.txt 2>&1))
+  (run (strip mandelbrot ";" ls -l mandelbrot >>benchmark.txt))
   (run (echo fft: >>benchmark.txt))
   (run (./run fft.scm >>benchmark.txt 2>&1))
+  (run (strip fft ";" ls -l fft >>benchmark.txt))
+  (run (echo -n "'heap used: '" >>benchmark.txt))
+  (run (./run usedheap.scm >>benchmark.txt))
   (print "--------------------------------------------------------------------------------")
-  (run (tail -n 30 benchmark.txt)))
+  (run (tail -n 40 benchmark.txt)))
 
 (define distfiles
   '("MANUAL.txt"
@@ -174,21 +180,22 @@
     "program.scm"
     "source.scm"
     "records.scm"
+    "fastmath.scm"
     "copy.scm"
+    "support.scm"
     "x86_64/intrinsics.scm"
     "x86_64/structured.s"
     "x86_64/boneslib.s"
     "x86_64/linux/syscalls.scm"
     "x86_64/linux/syscalls-nolibc.scm"
-    "x86_64/windows/syscalls.scm"
-    "support.scm"))
+    "x86_64/windows/syscalls.scm"))
 
 (define (dist)
   (let* ((date (capture (date +%Y-%m-%d)))
 	 (arch (string-append "bones-" date)))
     (bones-x86_64-linux.s)
     (bones-x86_64-windows.s)
-    (run (rm -fr ,arch))
+    (run (rm -fr ,arch bones.tar.gz bones.zip))
     (run (mkdir -p
 		,(string-append arch "/x86_64")
 		,(string-append arch "/x86_64/linux")
@@ -198,7 +205,7 @@
        (run (cp ,df ,(string-append arch "/" df))))
      distfiles)
     (run (tar cfz bones.tar.gz ,arch))
-    (run (zip -r bones.tar.gz ,arch))
+    (run (zip -r bones.zip ,arch))
     (run (rm -fr ,arch))))
 
 (define (-n)

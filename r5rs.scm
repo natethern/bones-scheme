@@ -190,18 +190,18 @@
 
 (define atan
   (let* ((pi (%ieee754-pi)) 
-	    (pi/2 (%/ pi 2)))
+	 (pi/2 (%/ pi 2)))
     (case-lambda
-	((x) (%ieee754-atan1 x))
-	((y x)
-	 (let ((y (exact->inexact y)))
-	   (cond ((%= x 0) (if (%> y 0) pi/2 (%- pi/2))) ; y == 0 -> undefined
-		 ((%> x 0) (%ieee754-atan1 (%/ y x)))
-		 ((%< y 0) (%- (%ieee754-atan1 (%/ y x)) pi))
-		 (else (%+ (%ieee754-atan1 (%/ y x)) pi))))))))
+      ((x) (%ieee754-atan1 x))
+      ((y x)
+       (let ((y (exact->inexact y)))
+	 (cond ((%= x 0) (if (%> y 0) pi/2 (%- pi/2))) ; y == 0 -> undefined
+	       ((%> x 0) (%ieee754-atan1 (%/ y x)))
+	       ((%< y 0) (%- (%ieee754-atan1 (%/ y x)) pi))
+	       (else (%+ (%ieee754-atan1 (%/ y x)) pi))))))))
 
 (define-inline (asin x) (%ieee754-asin x))
-(define-inline (atan x) (%ieee754-atan x))
+(define-inline (acos x) (%ieee754-acos x))
 
 ;;XXX this seems to be broken
 #;(define-inline (log x)
@@ -416,15 +416,13 @@
   (file-ports
 
    (define (open-input-file name)
-     ;; flags: O_RDONLY, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-     (let ((fd (%open name 0 420)))
+     (let ((fd (%open-input-file name)))
        (if (%fx<? fd 0)
 	   (%file-error 'open-input-file name)
 	   (%make-file-input-port fd))))
 
    (define (open-output-file name)
-     ;; flags: O_WRONLY|O_CREAT|O_TRUNC, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-     (let ((fd (%open name 577 420)))
+     (let ((fd (%open-output-file name)))
        (if (%fx<? fd 0)
 	   (%file-error 'open-output-file name)
 	   (%make-file-output-port fd)))))

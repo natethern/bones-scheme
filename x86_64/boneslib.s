@@ -1761,14 +1761,14 @@ copy_slots:
   push rcx
   push rdx
   FIX2INT r15
-  mov rbx, [rax + CELLS(1)]
-  mov rax, [rax + CELLS(2)]
+  mov rbx, [rax + CELLS(1)]	; (car src)
+  mov rax, [rax + CELLS(2)]	; (cdr src)
   FIX2INT rax
   inc rax			; header
   shl rax, CELL_SHIFT
   add rbx, rax
-  mov rcx, [r11 + CELLS(1)]
-  mov rax, [r11 + CELLS(2)]
+  mov rcx, [r11 + CELLS(1)]	; (car dest)
+  mov rax, [r11 + CELLS(2)]	; (cdr dest)
   FIX2INT rax
   inc rax			; header
   shl rax, CELL_SHIFT
@@ -1779,6 +1779,7 @@ copy_slots:
       mov rdx, [rbx]
       WRITE_BARRIER [rcx], rdx
       add rbx, CELLS(1)
+      add rcx, CELLS(1)
       dec r15
     until z
   endif
@@ -2286,7 +2287,11 @@ str2num:
   mov rdx, buffer
   mov r15, rsp
   FIX2INT r11
+%ifdef FEATURE_WINDOWS
+  LIBCALL3 strtoll, rdx, r15, r11
+%else
   LIBCALL3 strtol, rdx, r15, r11
+%endif
   ;; check endptr for being '\0'
   pop r11
   mov bl, [r11]
@@ -2358,11 +2363,7 @@ num2str:
 get_last_error:
   LIBCALL0 GET_ERRNO_LOCATION
   mov eax, dword [rax]
-%ifdef FEATURE_WINDOWS
-  LIBCALL1 _strerror, rax
-%else
   LIBCALL1 strerror, rax
-%endif
   call alloc_zstring
   ret  
 %endif
@@ -2431,9 +2432,16 @@ random_numbers:
   db 238,87,240,155,180,170,242,212,191,163,78,218,137,194,175,110
   db 43,119,224,71,122,142,42,160,104,48,247,103,15,11,138,239
 
+%ifdef FEATURE_WINDOWS
+dcvt: db "%lld", 0
+ocvt: db "%llo", 0
+xcvt: db "%llx", 0
+%else
 dcvt: db "%ld", 0
 ocvt: db "%lo", 0
 xcvt: db "%lx", 0
+%endif
+
 gcvt: db "%.16g", 0
 
 rsp_alignment_mask: dq ~(CELLS(2) - 1)

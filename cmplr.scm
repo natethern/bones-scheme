@@ -16,6 +16,7 @@
 (define environment '())
 (define locals-counter 0)
 (define available-registers '())
+(define unused-global-variables '())
 
 (define (cells n) (* word-size n))
 
@@ -67,17 +68,21 @@
 	      (dumpcc (option 'dump-cc: options))
 	      (dumpcps (option 'dump-cps: options))
 	      (dumpserial (not (option 'dump-nested: options)))
-	      (dumpcompiled (option 'dump: options))
 	      (outfile (option 'output-file: options))
 	      (code (canonicalize-expression code))
 	      (defs code (cps code))
 	      (_ (when dumpcps
 		   (dump-expressions code dumpserial)
 		   (stop)))
-	      (code (detect-unused-variables code))
-	      (_ (when dumpcompiled
-		   (dump-expressions code dumpserial)
-		   (stop)))
+	      (code unused (detect-unused-variables code))
+	      (_ (cond ((option 'dump-unused: options)
+			(for-each 
+			 (lambda (var) (write var) (newline))
+			 unused)
+			(stop))
+		       ((option 'dump: options)
+			(dump-expressions code dumpserial)
+			(stop))))
 	      (ccode (cc code '())))
 	 (set! emit-expr-comments (option 'comment: options))
 	 (when dumpcc
@@ -89,16 +94,17 @@
 	      (lambda (thunk)
 		(with-output-to-file outfile thunk))
 	      (lambda (thunk) (thunk)))
-	  (cut generate-code defs ccode)))))))
+	  (cut generate-code defs ccode unused)))))))
 
 (define (compile-file fname . options)
   (apply compile (read-forms fname) options))
 
-(define (generate-code defs code)
+(define (generate-code defs code unused)
   (set! label-counter 0)
   (generate-header (map mangle-feature-name implementation-features))
   (set! literals-to-be-translated '())
   (set! primitives '())
+  (set! unused-global-variables unused)
   (generate-closures code)
   (generate-globals defs)
   (generate-literals)
@@ -126,6 +132,8 @@
 (define (label)
   (string-append "L" (number->string (inc! label-counter))))
 
+;; test if expression does not need any registers, mostly those
+;; that just need a single machine-instruction
 (define (simple-expression? exp)
   (match exp
     ;;XXX $allocate?
@@ -134,6 +142,21 @@
 	 '($uninitialized)
 	 ('$closure-ref _)
 	 ('$box-ref (? simple-expression?))
+	 ('$global-ref _)
+	 ('$local-ref _))
+     #t)
+    (_ #f)))
+
+;; test if expression is side-effect free
+(define (pure-expression? exp)
+  (match exp
+    ((or ('quote _)
+	 ('$closure _ ((? pure-expression?) ...) . _)
+	 ('$allocate _ _ (? pure-expression?) ...)
+	 '($undefined)
+	 '($uninitialized)
+	 ('$closure-ref _)
+	 ('$box-ref (? pure-expression?))
 	 ('$global-ref _)
 	 ('$local-ref _))
      #t)
@@ -171,7 +194,7 @@
 	  (lambda (var val)
 	    (cond ((eq? var '$unused)
 		   ;; drop if simple or just evaluate but don't bind
-		   (unless (simple-expression? val)
+		   (unless (pure-expression? val)
 		     (translate val arg-register)))
 		  ((null? available-registers)
 		   ;; evaluate and move into local
@@ -192,8 +215,14 @@
 	 (set! environment newenv)
 	 (translate body t))))
     (('$global-set! var val)
-     (translate val t)
-     (generate-global-store var (mangle-identifier var) t)
+     (cond ((memq var unused-global-variables)
+	    ;; either drop assignment entirely or just evaluate "val"
+	    (if (pure-expression? val)
+		(generate-immediate-ref t "undefined" "dropped: " var)
+		(translate val t)))
+	   (else
+	    (translate val t)
+	    (generate-global-store var (mangle-identifier var) t)))
      #t)
     (('$global-ref var)
      (generate-global-ref t var (mangle-identifier var))
@@ -212,16 +241,29 @@
 	   (generate-local-store var ref t)))
      #t)
     (('if x y z)
-     (translate x t)
-     (let ((l1 (label))
-	   (l2 (label)))
-       (generate-conditional-branch t l1)
-       (when (translate y t) ; ret-flag must be the same for both branches
-	 (generate-jump l2))
-       (emit l1 ":\n")
-       (let ((ret (translate z t)))
-	 (emit l2 ":\n")
-	 ret)))
+     (cond ((and (simple-expression? y)
+		 (simple-expression? z))
+	    ;;XXX adapt the line below when mergining /smart-spill/
+	    (match-let ((((_ . r1) (_ . r2) (_ . r3)) 
+			 (translate-inline-arguments (list x y z))))
+	      (cond ((memq t temporary-registers)
+		     (generate-conditional-move r1 r3 r2)
+		     (generate-move t r2))
+		    (else
+		     (generate-move t r2)
+		     (generate-conditional-move r1 r3 t)))
+	      #t))
+	   (else
+	    (translate x t)
+	    (let ((l1 (label))
+		  (l2 (label)))
+	      (generate-conditional-branch t l1)
+	      (when (translate y t) ; ret-flag must be the same for both branches
+		(generate-jump l2))
+	      (emit l1 ":\n")
+	      (let ((ret (translate z t)))
+		(emit l2 ":\n")
+		ret)))))
     (('$primitive (or ('quote name) name))
      (let ((l1 (label)))
        (push! (cons l1 name) primitives)
