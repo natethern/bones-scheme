@@ -178,14 +178,15 @@
     "program.scm"
     "source.scm"
     "records.scm"
+    "fastmath.scm"
     "copy.scm"
+    "support.scm"
     "x86_64/intrinsics.scm"
     "x86_64/structured.s"
     "x86_64/boneslib.s"
     "x86_64/linux/syscalls.scm"
     "x86_64/linux/syscalls-nolibc.scm"
-    "x86_64/windows/syscalls.scm"
-    "support.scm"))
+    "x86_64/windows/syscalls.scm"))
 
 (define (dist)
   (let* ((date (capture (date +%Y-%m-%d)))
