@@ -863,17 +863,14 @@
 
 (define %dynamic-winds '())
 
-(define dynamic-wind
-  (let ((call-with-values call-with-values)
-	(values values))
-    (lambda (before thunk after)
-      (before)
-      (set! %dynamic-winds (cons (cons before after) %dynamic-winds))
-      (call-with-values thunk
-	(lambda results
-	  (set! %dynamic-winds (cdr %dynamic-winds))
-	  (after)
-	  (%apply values results))))))
+(define (dynamic-wind before thunk after)
+  (before)
+  (set! %dynamic-winds (cons (cons before after) %dynamic-winds))
+  (call-with-values thunk
+    (lambda results
+      (set! %dynamic-winds (cdr %dynamic-winds))
+      (after)
+      (%apply values results))))
 
 (define (%dynamic-unwind topitems n)
   (cond ((eq? topitems %dynamic-winds))
@@ -898,24 +895,22 @@
 	      (%dynamic-unwind topitems (%fx- (length items2) (length topitems))) )
 	    (%apply cont results) ) ) ) ) ) ))
 
-(define display #f)
-(define write #f)
 
-(let ((vector->list vector->list)
-      (write-string (lambda (s p) ((%slot-ref p 3) p s)))
-      (number->string number->string))
-  (define (escape-symbol? str)	    ; look for symbol-characters to be escaped
-    (let ((len (string-length str)))
-      (let loop ((i 0))
-	(if (%fx>=? i len)
-	    #f
-	    (let ((c (string-ref str i)))
-	      (or (char=? c #\|) (char=? c #\\) (char=? c #\() (char=? c #\))
-		  (char=? c #\;) (char=? c #\#) (char=? c #\") (char=? c #\[)
-		  (char=? c #\]) (char=? c #\{) (char=? c #\})
-		  (%fx<=? (char->integer c) 32)
-		  (loop (%fx+ i 1))))))))
-  (define (output-to-port x rd port)
+(let-syntax ((write-string 
+	      (syntax-rules ()
+		((_ s p) ((%slot-ref p 3) p s)))))
+  (define (%output-to-port x rd port)
+    (define (escape-symbol? str) ; look for symbol-characters to be escaped
+      (let ((len (string-length str)))
+	(let loop ((i 0))
+	  (if (%fx>=? i len)
+	      #f
+	      (let ((c (string-ref str i)))
+		(or (char=? c #\|) (char=? c #\\) (char=? c #\() (char=? c #\))
+		    (char=? c #\;) (char=? c #\#) (char=? c #\") (char=? c #\[)
+		    (char=? c #\]) (char=? c #\{) (char=? c #\})
+		    (%fx<=? (char->integer c) 32)
+		    (loop (%fx+ i 1))))))))
     (letrec-syntax ((outs (syntax-rules ()
 			    ((_ s) (write-string s port))))
 		    (out (syntax-rules ()
@@ -990,13 +985,12 @@
 	      ((null? x) (outs "()"))
 	      ((promise? x) (outs "#<promise>"))
 	      ((record? x)
-	       (let ((rt (%slot-ref x 0)))
-		 (outs (string-append 
-		       "#<record "
-		       (symbol->string (%slot-ref rt 0))	; record-type name-symbol
-		       "/"
-		       (number->string (%slot-ref rt 1)) ; record-type id
-		       ">"))))
+	       (outs (string-append 
+		      "#<record "
+		      (symbol->string (%slot-ref x 0)) ; record-type name-symbol
+		      "/"
+		      (number->string (%slot-ref x 1)) ; record-type id
+		      ">")))
 	      ((input-port? x) (outs "#<input-port>"))
 	      ((output-port? x) (outs "#<output-port>"))
 	      ((procedure? x) (outs "#<procedure>"))
@@ -1004,13 +998,17 @@
 	      ((eq? (%undefined) x) (outs "#<undefined>"))
 	      ((eq? #t x) (outs "#t"))
 	      ((eq? #f x) (outs "#f"))
-	      (else (outs "#<unknown object>"))))))
-  (set! display 
-    (lambda (x . p)
-      (output-to-port x #f (if (null? p) %standard-output-port (car p)))))
-  (set! write
-    (lambda (x . p)
-      (output-to-port x #t (if (null? p) %standard-output-port (car p))))))
+	      (else (outs "#<unknown object>")))))))
+
+(define-syntax display
+  (case-lambda
+    ((x) (%output-to-port x #f %standard-output-port))
+    ((x p) (%output-to-port x #f p))))
+
+(define-syntax write
+  (case-lambda
+    ((x) (%output-to-port x #t %standard-output-port))
+    ((x p) (%output-to-port x #t p))))
 
 (define (emergency-exit . code)
   (let ((code (optional code 0)))
@@ -1043,47 +1041,40 @@
 (define-inline (error-object-irritants exn) (%slot-ref exn 3))
 (define-inline (error-object-location exn) (%slot-ref exn 4))
 
-(define %current-exception-handler
-  (let ((write write)
-	(display display)
-	(newline newline)
-	(emergency-exit emergency-exit))
-    (lambda (exn)
-      (cond-expand
-	(embedded (return-to-host exn))
-	(else
-	 (let* ((exn? (error-object? exn))
-		(msg (if exn? (error-object-message exn) "unhandled exception"))
-		(loc (and exn? (error-object-location exn)))
-		(args (if exn? (error-object-irritants exn) (list exn))))
-	   (display "\nError: " %standard-error-port)
-	   (when loc
-	     (display (string-append "(" (%slot-ref loc 0) ") ") %standard-error-port))
-	   (display (string-append msg "\n") %standard-error-port)
-	   (unless (null? args)
-	     (for-each
-	      (lambda (arg)
-		(newline %standard-error-port)
-		(write arg)
-		(newline %standard-error-port))
-	      args))
-	   (emergency-exit 70)))))))      	; EXIT_FAILURE
+(define (%current-exception-handler exn)
+  (cond-expand
+    (embedded (return-to-host exn))
+    (else
+     (let* ((exn? (error-object? exn))
+	    (msg (if exn? (error-object-message exn) "unhandled exception"))
+	    (loc (and exn? (error-object-location exn)))
+	    (args (if exn? (error-object-irritants exn) (list exn))))
+       (display "\nError: " %standard-error-port)
+       (when loc
+	 (display (string-append "(" (%slot-ref loc 0) ") ") %standard-error-port))
+       (display (string-append msg "\n") %standard-error-port)
+       (unless (null? args)
+	 (for-each
+	  (lambda (arg)
+	    (newline %standard-error-port)
+	    (write arg)
+	    (newline %standard-error-port))
+	  args))
+       (emergency-exit 70)))))      	; EXIT_FAILURE
 
-(define %error
-  (let ((string-append string-append))
-    (lambda (msg . args)
-      (let ((loc #f))
-	(cond ((and (symbol? msg) (pair? args) (string? (car args)))
-	       (set! loc msg)
-	       (set! msg (car args))
-	       (set! args (cdr args)))
-	      ((and (not (string? msg)) (pair? args))
-	       (set! msg "unknown error")
-	       (set! args (cons msg args))))
-	(raise
-	 (if (string? msg)
-	     (%make-error-object #f loc msg args)
-	     msg))))))
+(define (%error msg . args)
+  (let ((loc #f))
+    (cond ((and (symbol? msg) (pair? args) (string? (car args)))
+	   (set! loc msg)
+	   (set! msg (car args))
+	   (set! args (cdr args)))
+	  ((and (not (string? msg)) (pair? args))
+	   (set! msg "unknown error")
+	   (set! args (cons msg args))))
+    (raise
+     (if (string? msg)
+	 (%make-error-object #f loc msg args)
+	 msg))))
 
 (define-syntax error %error)
 
@@ -1106,248 +1097,217 @@
 	  cs
 	  (set! cs (car arg))))))
 
-(define read
-  (let ((read-char read-char)
-	(reverse reverse)
-	(peek-char peek-char)
-	(list->vector list->vector)
-	(list->string list->string)
-	(string->number string->number)
-	(append append)
-	(memv memv)
-	(string-ci=? string-ci=?)
-	(call-with-current-continuation call-with-current-continuation)
-	(case-sensitive case-sensitive)
-	(string->symbol string->symbol))
-    (define (read-error msg . args)
-      (%make-error-object 'read 'read msg args))
-    (lambda p
-      (let ((port (optional p %standard-input-port))
-	    (cs (case-sensitive))
-	    (eol (lambda (c) (read-error "unexpected delimiter" c))))
-	(define (parse-token t)
-	  (or (string->number t)
-	      (string->symbol t)))
-	(define (read1)
-	  (let ((c (read-char port)))
-	    (if (eof-object? c) 
-		c
-		(case c
-		  ((#\#) (read-sharp))
-		  ((#\() (read-list #\)))
-		  ((#\[) (read-list #\]))
-		  ((#\{) (read-list #\}))
-		  ((#\,)
-		   (cond ((eqv? (peek-char port) #\@)
-			  (read-char port)
-			  (%list 'unquote-splicing (read1)))
-			 (else (%list 'unquote (read1)))))
-		  ((#\`) (%list 'quasiquote (read1)))
-		  ((#\') `',(read1))
-		  ((#\;) (skip-line) (read1))
-		  ((#\") (read-string))
-		  ((#\|) (string->symbol (read-delimited #\|)))
-		  ((#\) #\] #\}) (eol c))
-		  (else
-		   (if (char-whitespace? c)
-		       (read1)
-		       (parse-token (read-token (%list (docase c)) cs))))))))
-	(define (skip-line)
-	  (let ((c (read-char port)))
-	    (unless (or (eof-object? c) (char=? #\newline c))
-	      (skip-line))))
-	(define (skip-whitespace)	; returns peeked char
-	  (let ((c (peek-char port)))
-	    (cond ((eof-object? c) c)
-		  ((char-whitespace? c)
-		   (read-char port)
-		   (skip-whitespace))
-		  (else c))))
-	(define (read-sharp)
-	  (let ((c (read-char port)))
-	    (if (eof-object? c)
-		(read-error "unexpected EOF after `#'")
-		(case c
-		  ((#\f #\F) #f)
-		  ((#\t #\T) #t)
-		  ((#\x #\X) (string->number (read-token '() #f) 16))
-		  ((#\o #\O) (string->number (read-token '() #f) 8))
-		  ((#\b #\B) (string->number (read-token '() #f) 2))
-		  ((#\i #\I) 
-		   (let* ((tok (read-token '() #f))
-			  (n (string->number tok)))
-		     (if (not (number? n))
-			 (read-error "invalid number syntax" tok)
-			 (if (inexact? n) 
-			     n
-			     (exact->inexact n)))))
-		  ((#\e #\E) 
-		   (let* ((tok (read-token '() #f))
-			  (n (string->number tok)))
-		     (if (not (number? n))
-			 (read-error "invalid number syntax" tok)
-			 (if (exact? n) 
-			     n
-			     (inexact->exact n)))))
-		  ((#\() (list->vector (read-list #\))))
-		  ((#\;) (read1) (read1))
-		  ((#\%) (string->symbol (read-token (%list (docase c) #\#) cs)))
-		  ((#\!) (skip-line) (read1))
-		  ((#\\) 
-		   (let ((t (read-token '() #t)))
-		     (cond ((string-ci=? "newline" t) #\newline)
-			   ((string-ci=? "tab" t) #\tab)
-			   ((string-ci=? "space" t) #\space)
-			   ((string-ci=? "return" t) #\return)
-			   ((eq? 0 (string-length t)) (read-char port))
-			   (else (string-ref t 0)))))
-		  ((#\') `(syntax ,(read1))) ; for...whatever
-		  (else (read-error "invalid `#' syntax" c))))))
-	(define (read-list delim)
-	  (call-with-current-continuation
-	   (lambda (return)
-	     (let ((lst '())
-		   (old eol))
-	       (set! eol
-		 (lambda (c)
-		   (set! eol old)
-		   (if (eqv? c delim)
-		       (return (reverse lst))
-		       (read-error "missing closing delimiter" delim))))
-	       (let loop ()
-		 (let ((c (skip-whitespace)))
-		   (cond ((eof-object? c)
-			  (read-error "unexpected EOF while reading list"))
-			 ((char=? c delim)
-			  (read-char port)
-			  (set! eol old)
-			  (return (reverse lst)))
-			 (else
-			  (if (eqv? #\. c)
-			      (let ((t (read-token '() cs)))
-				(if (string=? "." t)
-				    (let ((rest (read1)))
-				      (skip-whitespace)
-				      (set! eol old)
-				      (if (eqv? (read-char port) delim)
-					  (return (append (reverse lst) rest))
-					  (read-error "missing closing delimiter" delim)))
-				    (set! lst (cons (parse-token t) lst))))
-			      (set! lst (cons (read1) lst)))
-			  (loop)))))))))
-	(define (read-delimited delim)
-	  (let loop ((lst '()))
-	    (let ((c (read-char port)))
-	      (cond ((eof-object? c)
-		     (read-error "unexpected EOF while reading delimited token"))
-		    ((char=? delim c) 
-		     (list->string (reverse lst)))
-		    ((char=? #\\ c)
-		     (let ((c (read-char port)))
-		       (if (eof-object? c)
-			   (read-error "unexpected EOF while reading delimited token")
-			   (case c
-			     ((#\n) (loop (cons #\newline lst)))
-			     ((#\a) (loop (cons (integer->char 9) lst)))
-			     ((#\r) (loop (cons #\return lst)))
-			     ((#\t) (loop (cons #\tab lst)))
-			     ((#\x)
-			      (let loop2 ((v 0) (i 0))
-				(let ((c (read-char port)))
-				  (cond ((eof-object? c)
-					 (read-error "unexpected EOF while reading delimited token"))
-					((char=? #\; c) 
-					 (loop (cons (integer->char v) lst)))
-					((and (char>=? c #\0) (char<=? c #\9))
-					 (loop2 (%fx+ (arithmetic-shift v 4) (%fx- (char->integer c) 48)) (%fx+ i 1)))
-					((and (char>=? c #\a) (char<=? c #\f))
-					 (loop2 (%fx+ (arithmetic-shift v 4) (%fx- (char->integer c) 87)) (%fx+ i 1)))
-					((and (char>=? c #\A) (char<=? c #\F))
-					 (loop2 (%fx+ (arithmetic-shift v 4) (%fx- (char->integer c) 55)) (%fx+ i 1)))
-					(else (read-error "invalid escaped hexadecimal character in delimited token" c))))))
-			     (else (loop (cons c lst)))))))
-		    (else (loop (cons c lst)))))))
-	(define (read-string) (read-delimited #\"))
-	(define (docase c)
-	  (if cs
-	      c
-	      (char-downcase c)))
-	(define (read-token prefix cs)
-	  (let loop ((lst prefix))   ; prefix must be in reverse order
-	    (let ((c (peek-char port)))
-	      (if (or (eof-object? c)
-		      (char-whitespace? c)
-		      (memv c '(#\{ #\} #\( #\) #\[ #\] #\; #\")))
-		  (list->string (reverse lst))
-		  (let ((c (read-char port)))
-		    (loop (cons (if cs c (docase c)) lst)))))))
-	(read1)))))
+(define (read . p)
+  (define (read-error msg . args)
+    (raise (%make-error-object 'read 'read msg args)))
+  (let ((port (optional p %standard-input-port))
+	(cs (case-sensitive))
+	(eol (lambda (c) (read-error "unexpected delimiter" c))))
+    (define (parse-token t)
+      (or (string->number t)
+	  (string->symbol t)))
+    (define (read1)
+      (let ((c (read-char port)))
+	(if (eof-object? c) 
+	    c
+	    (case c
+	      ((#\#) (read-sharp))
+	      ((#\() (read-list #\)))
+	      ((#\[) (read-list #\]))
+	      ((#\{) (read-list #\}))
+	      ((#\,)
+	       (cond ((eqv? (peek-char port) #\@)
+		      (read-char port)
+		      (%list 'unquote-splicing (read1)))
+		     (else (%list 'unquote (read1)))))
+	      ((#\`) (%list 'quasiquote (read1)))
+	      ((#\') `',(read1))
+	      ((#\;) (skip-line) (read1))
+	      ((#\") (read-string))
+	      ((#\|) (string->symbol (read-delimited #\|)))
+	      ((#\) #\] #\}) (eol c))
+	      (else
+	       (if (char-whitespace? c)
+		   (read1)
+		   (parse-token (read-token (%list (docase c)) cs))))))))
+    (define (skip-line)
+      (let ((c (read-char port)))
+	(unless (or (eof-object? c) (char=? #\newline c))
+	  (skip-line))))
+    (define (skip-whitespace)		; returns peeked char
+      (let ((c (peek-char port)))
+	(cond ((eof-object? c) c)
+	      ((char-whitespace? c)
+	       (read-char port)
+	       (skip-whitespace))
+	      (else c))))
+    (define (read-sharp)
+      (let ((c (read-char port)))
+	(if (eof-object? c)
+	    (read-error "unexpected EOF after `#'")
+	    (case c
+	      ((#\f #\F) #f)
+	      ((#\t #\T) #t)
+	      ((#\x #\X) (string->number (read-token '() #f) 16))
+	      ((#\o #\O) (string->number (read-token '() #f) 8))
+	      ((#\b #\B) (string->number (read-token '() #f) 2))
+	      ((#\i #\I) 
+	       (let* ((tok (read-token '() #f))
+		      (n (string->number tok)))
+		 (if (not (number? n))
+		     (read-error "invalid number syntax" tok)
+		     (if (inexact? n) 
+			 n
+			 (exact->inexact n)))))
+	      ((#\e #\E) 
+	       (let* ((tok (read-token '() #f))
+		      (n (string->number tok)))
+		 (if (not (number? n))
+		     (read-error "invalid number syntax" tok)
+		     (if (exact? n) 
+			 n
+			 (inexact->exact n)))))
+	      ((#\() (list->vector (read-list #\))))
+	      ((#\;) (read1) (read1))
+	      ((#\%) (string->symbol (read-token (%list (docase c) #\#) cs)))
+	      ((#\!) (skip-line) (read1))
+	      ((#\\) 
+	       (let ((t (read-token '() #t)))
+		 (cond ((string-ci=? "newline" t) #\newline)
+		       ((string-ci=? "tab" t) #\tab)
+		       ((string-ci=? "space" t) #\space)
+		       ((string-ci=? "return" t) #\return)
+		       ((eq? 0 (string-length t)) (read-char port))
+		       (else (string-ref t 0)))))
+	      ((#\') `(syntax ,(read1))) ; for...whatever
+	      (else (read-error "invalid `#' syntax" c))))))
+    (define (read-list delim)
+      (call-with-current-continuation
+       (lambda (return)
+	 (let ((lst '())
+	       (old eol))
+	   (set! eol
+	     (lambda (c)
+	       (set! eol old)
+	       (if (eqv? c delim)
+		   (return (reverse lst))
+		   (read-error "missing closing delimiter" delim))))
+	   (let loop ()
+	     (let ((c (skip-whitespace)))
+	       (cond ((eof-object? c)
+		      (read-error "unexpected EOF while reading list"))
+		     ((char=? c delim)
+		      (read-char port)
+		      (set! eol old)
+		      (return (reverse lst)))
+		     (else
+		      (if (eqv? #\. c)
+			  (let ((t (read-token '() cs)))
+			    (if (string=? "." t)
+				(let ((rest (read1)))
+				  (skip-whitespace)
+				  (set! eol old)
+				  (if (eqv? (read-char port) delim)
+				      (return (append (reverse lst) rest))
+				      (read-error "missing closing delimiter" delim)))
+				(set! lst (cons (parse-token t) lst))))
+			  (set! lst (cons (read1) lst)))
+		      (loop)))))))))
+    (define (read-delimited delim)
+      (let loop ((lst '()))
+	(let ((c (read-char port)))
+	  (cond ((eof-object? c)
+		 (read-error "unexpected EOF while reading delimited token"))
+		((char=? delim c) 
+		 (list->string (reverse lst)))
+		((char=? #\\ c)
+		 (let ((c (read-char port)))
+		   (if (eof-object? c)
+		       (read-error "unexpected EOF while reading delimited token")
+		       (case c
+			 ((#\n) (loop (cons #\newline lst)))
+			 ((#\a) (loop (cons (integer->char 9) lst)))
+			 ((#\r) (loop (cons #\return lst)))
+			 ((#\t) (loop (cons #\tab lst)))
+			 ((#\x)
+			  (let loop2 ((v 0) (i 0))
+			    (let ((c (read-char port)))
+			      (cond ((eof-object? c)
+				     (read-error "unexpected EOF while reading delimited token"))
+				    ((char=? #\; c) 
+				     (loop (cons (integer->char v) lst)))
+				    ((and (char>=? c #\0) (char<=? c #\9))
+				     (loop2 (%fx+ (arithmetic-shift v 4) (%fx- (char->integer c) 48)) (%fx+ i 1)))
+				    ((and (char>=? c #\a) (char<=? c #\f))
+				     (loop2 (%fx+ (arithmetic-shift v 4) (%fx- (char->integer c) 87)) (%fx+ i 1)))
+				    ((and (char>=? c #\A) (char<=? c #\F))
+				     (loop2 (%fx+ (arithmetic-shift v 4) (%fx- (char->integer c) 55)) (%fx+ i 1)))
+				    (else (read-error "invalid escaped hexadecimal character in delimited token" c))))))
+			 (else (loop (cons c lst)))))))
+		(else (loop (cons c lst)))))))
+    (define (read-string) (read-delimited #\"))
+    (define (docase c)
+      (if cs
+	  c
+	  (char-downcase c)))
+    (define (read-token prefix cs)
+      (let loop ((lst prefix))	     ; prefix must be in reverse order
+	(let ((c (peek-char port)))
+	  (if (or (eof-object? c)
+		  (char-whitespace? c)
+		  (memv c '(#\{ #\} #\( #\) #\[ #\] #\; #\")))
+	      (list->string (reverse lst))
+	      (let ((c (read-char port)))
+		(loop (cons (if cs c (docase c)) lst)))))))
+    (read1)))
 
-(define call-with-output-file
-  (let ((open-output-file open-output-file)
-	(call-with-values call-with-values)
-	(values values))
-    (lambda (fname proc)
-      (let ((in (open-output-file fname)))
-	(call-with-values (lambda () (proc in))
-	  (lambda results
-	    (close-output-port in)
-	    (%apply values results)))))))
+(define (call-with-output-file fname proc)
+  (let ((in (open-output-file fname)))
+    (call-with-values (lambda () (proc in))
+      (lambda results
+	(close-output-port in)
+	(%apply values results)))))
 
-(define call-with-input-file
-  (let ((open-input-file open-input-file)
-	(call-with-values call-with-values)
-	(values values))
-    (lambda (fname proc)
-      (let ((in (open-input-file fname)))
-	(call-with-values (lambda () (proc in))
-	  (lambda results
-	    (close-input-port in)
-	    (%apply values results)))))))
+(define (call-with-input-file fname proc)
+  (let ((in (open-input-file fname)))
+    (call-with-values (lambda () (proc in))
+      (lambda results
+	(close-input-port in)
+	(%apply values results)))))
 
-(define with-input-from-file
-  (let ((call-with-input-file call-with-input-file)
-	(dynamic-wind dynamic-wind))
-    (lambda (fname thunk)
-      (call-with-input-file fname
-	(lambda (in)
-	  (let ((old %standard-input-port))
-	    (dynamic-wind
-		(lambda () (set! %standard-input-port in))
-		thunk
-		(lambda () (set! %standard-input-port old)))))))))
+(define (with-input-from-file fname thunk)
+  (call-with-input-file fname
+    (lambda (in)
+      (let ((old %standard-input-port))
+	(dynamic-wind
+	    (lambda () (set! %standard-input-port in))
+	    thunk
+	    (lambda () (set! %standard-input-port old)))))))
 
-(define with-output-to-file
-  (let ((call-with-output-file call-with-output-file)
-	(dynamic-wind dynamic-wind))
-    (lambda (fname thunk)
-      (call-with-output-file fname
-	(lambda (in)
-	  (let ((old %standard-output-port))
-	    (dynamic-wind
-		(lambda () (set! %standard-output-port in))
-		thunk
-		(lambda () (set! %standard-output-port old)))))))))
+(define (with-output-to-file fname thunk)
+  (call-with-output-file fname
+    (lambda (in)
+      (let ((old %standard-output-port))
+	(dynamic-wind
+	    (lambda () (set! %standard-output-port in))
+	    thunk
+	    (lambda () (set! %standard-output-port old)))))))
 
-(define %make-promise
-  (let ((apply apply)
-	(call-with-values call-with-values)
-	(values values))
-    (lambda (thunk)
-      (let ((ready #f)
-	    (results #f))
-	($allocate 
-	 9 1 
-	 (lambda ()
-	   (if ready
-	       (apply values results)
-	       (call-with-values thunk
-		 (lambda xs
-		   (cond (ready (apply values results))
-			 (else
-			  (set! ready #t)
-			  (set! results xs)
-			  (apply values results))))))))))))
+(define (%make-promise thunk)
+  (let ((ready #f)
+	(results #f))
+    ($allocate 
+     9 1 
+     (lambda ()
+       (if ready
+	   (apply values results)
+	   (call-with-values thunk
+	     (lambda xs
+	       (cond (ready (apply values results))
+		     (else
+		      (set! ready #t)
+		      (set! results xs)
+		      (apply values results))))))))))
 
 (define-inline (force p)
   (if (promise? p) 
