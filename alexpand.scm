@@ -9,7 +9,7 @@
 (let ()
 
 (define (expand-error . args)
-  (expand-error-hook args))
+  (apply expand-error-hook args))
 
 ;; Copyright 2002-2004 Al Petrofsky <alexpander@petrofsky.org>
 
