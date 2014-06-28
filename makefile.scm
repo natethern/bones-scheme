@@ -163,8 +163,11 @@
   (run (strip fft ";" ls -l fft >>benchmark.txt))
   (run (echo -n "'heap used: '" >>benchmark.txt))
   (run (./run usedheap.scm >>benchmark.txt))
+  (run (./run -feature nolibc null.scm >>benchmark.txt 2>&1))
+  (run (echo -n "'minimal program size: '" >>benchmark.txt))
+  (run (strip null ";" ls -l null >>benchmark.txt))
   (print "--------------------------------------------------------------------------------")
-  (run (tail -n 40 benchmark.txt)))
+  (run (tail -n 50 benchmark.txt)))
 
 (define distfiles
   '("MANUAL.txt"
