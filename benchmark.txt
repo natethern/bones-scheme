@@ -124,7 +124,7 @@ Exit [0]
 -rwxr-xr-x 1 felix felix 338440 Jun 27 23:36 fft
 heap used: 3416
 
-2014-06-27:
+2014-06-27: (smart spill)
 5f2999008cc1271bab412239c8eedef4384d23c7
 bones:
 Exit [0]
