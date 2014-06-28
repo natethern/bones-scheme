@@ -89,7 +89,7 @@
 			((memq 'glibc bopts)
 			 (run* (gcc ,oname -o ,xname)))
 			(else 
-			 (run* (bin/musl-gcc ,oname -o ,xname))))
+			 (run* (bin/musl-gcc ,oname -o ,xname)))))
 	   (zero? (run* (memtime ,xname ,@runargs)))))))
 
 (define (check)
