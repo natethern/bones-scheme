@@ -9,11 +9,10 @@
   BONES is a batch-compiler, it takes a Scheme source file and
   produces an assembler file to be subsequently assembled into object
   code. It is also a whole-program compiler, which means it does not
-  support producing code that is used as a library or for linking
-  together separately compiled Scheme programs. The runtime system is
-  by default added to user-code before it is compiled, so there are no
-  external libraries, with the exception of a few bits from the C
-  library ("libc").
+  support separate compilation of multiple modules. The runtime system
+  is by default added to your program before it is compiled, so there
+  are no external libraries, with the exception of a few bits from the
+  C library ("libc") (this is optional).
 
   BONES is mostly R5RS-compliant, but intentionally cuts some corners
   to reduce code-size, increase performance and simplify the compiler
@@ -31,18 +30,25 @@
   thousand lines of assembler code.
 
   The compiler is self-compiling and uses just a few functions from
-  the C-library. Removing this dependency and using system-calls
-  directly is basically no problem but will need some hand-written
-  replacements (mostly related to number<->string conversion).  Code
-  compiled with BONES can be easily embedded into programs written in
-  other languages as long as they allow calling C functions.
+  the C-library. Alternatively, programs can be compiled on Linux
+  without using a C library, by just invoking raw system calls, but
+  support for this is currently incomplete (mostly related to
+  number<->string conversion).  Code compiled with BONES can be easily
+  embedded into programs written in other languages as long as they
+  allow calling C functions.
+
+  There are no debugging facilities. The compiler expects correct
+  code an no attempt is made to provide more than the most basic error
+  messages. It is recommended to develop and test code first in an
+  interactive Scheme implementation and use BONES only for generating
+  executables when the code can be assumed to work.
 
 * Portability
 
   To run programs compiled with BONES (and to run the compiler
   itself), an x86_64 system is required, with support for SSE2 and
-  SSE3 instructions. Currently the system only runs under Linux and
-  Windows.
+  SSE3 instructions. Currently the the compiler only runs under the
+  Linux and Windows operating systems.
 
 * Requirements
 
@@ -274,12 +280,18 @@
    | ieee754             | Floating point format used                                       |
    | linux               | Operating system                                                 |
    | windows             | Operating system                                                 |
+   | lp64                | 64-bit data model (Linux)                                        |
+   | ilp64               | 64-bit data model (Windows)                                      |
    | file-ports          | Primitives operating on file-ports are available                 |
    | file-system         | Primitives operating on file-system entitities are available     |
    | process-environment | Access to the process-environment and subprocesses are available |
    | time                | Access to the system time is available                           |
    | jiffy-clock         | Access to the internal real-time clock is available              |
-   | srfi-NNN            | Specifies availability of SRFI functionality                     |
+   | srfi-0              | Specify availability of SRFI functionality                       |
+   | srfi-6              |                                                                  |
+   | srfi-7              |                                                                  |
+   | srfi-16             |                                                                  |
+   | srfi-46             |                                                                  |
 
    The compiler option =-dump-features= can be used to show the
    features that are by default available for a given configuration.
@@ -348,8 +360,8 @@
 *** Section 6
 
     Built-in procedures may be redefined (using =define= or
-    =define-syntax=), but modifying them using assignment may or may
-    not have the expected effect.
+    =define-syntax=), but it is undefined whether other standard
+    procedures will still work as expected.
 
 *** Section 6.1
 
