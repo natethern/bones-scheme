@@ -4,13 +4,9 @@ BONES                                                                     -*- Or
 * work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values has two words.
-* TODO provide manual as text in dist tarball and html on web-site
-  - can we automate this via "emacs -eval" ?
-    - "(org-export-as-html 2)"
-    - http://stackoverflow.com/questions/22123382/running-org-export-as-html-in-emacs-batch-mode
 * TODO test file:copy.scm
 * TODO upload files
-  - file:index.hmtl, file:MANUAL.html, file:manual.css
+  - file:index.html, file:MANUAL.html, file:manual.css
 * add f64vectors
    - FLOATVECTOR_TYPE (#x12)
    - would need proper alignment on 32-bit systems.
@@ -183,8 +179,6 @@ mainCRTStartup:
     (if (if X TRUE FALSE) Y Z) -> (if X Y Z)
     (if (if X FALSE TRUE) Y Z) -> (if X Z Y)
 * TODO =string->number= does not parse "+/-nan.0"/"+/-inf.0"
-* TODO add backend-call to align block-pointer when translating =$allocate=
-  - needed for 32-bit targets.
 * secure inline-primitives against redefinition of internally used primitives
   - like this:
     (let-syntax ((PRIMITIVE PRIMITIVE))
