@@ -300,7 +300,7 @@
      (let ((regs (translate-inline-arguments args))
 	   (bytevec (not (zero? (bitwise-and type #x10)))))
        (set! allocating #t)
-       ;;XXX ALIGNMENT: on 32-bit platforms, we must align the block if it is a flonum
+       (generate-alloc-alignment)
        (do ((regs regs (cdr regs))
 	    (off 1 (add1 off)))
 	   ((null? regs))

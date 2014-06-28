@@ -141,3 +141,7 @@
 
 (define (generate-conditional-move test src dest)
   (emit " cmp " test ", FALSE\n cmove " dest ", " src "\n"))
+
+(define (generate-alloc-alignment)
+  ;; ALIGNMENT: on 32-bit platforms, we must align the data-area of a block if it is a flonum
+  #f)
