@@ -2,8 +2,7 @@ BONES                                                                     -*- Or
 
 
 * TODO file:compiler.scm segfaults
-* TODO memtime doesn't report error when process crashes
-  - so error is not seen in "make check".
+  - c66d646 worked, probably related to smart spill (damn)
 * TODO compare performance and code size to chicken
 * work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
