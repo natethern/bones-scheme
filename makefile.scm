@@ -113,7 +113,7 @@
       (lambda (prg)
 	(unless (compile+run "linux/nolibc" prg "./bones" '() '(-feature nolibc))
 	  (set! ok #f)))
-      '("fac" "tak" #;"r4rstest" #;"dynamic" "forth"))
+      '("fac" "tak" #;"r4rstest" "dynamic" "forth"))
      (for-each
       (lambda (prg)
 	(let ((bopts (if (member prg '("r4rstest")) '(-case-insensitive) '())))
