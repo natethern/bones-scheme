@@ -2287,7 +2287,7 @@ str2num:
   mov rdx, buffer
   mov r15, rsp
   FIX2INT r11
-%ifdef FEATURE_WINDOWS
+%ifdef FEATURE_LLP64
   LIBCALL3 strtoll, rdx, r15, r11
 %else
   LIBCALL3 strtol, rdx, r15, r11
@@ -2432,7 +2432,7 @@ random_numbers:
   db 238,87,240,155,180,170,242,212,191,163,78,218,137,194,175,110
   db 43,119,224,71,122,142,42,160,104,48,247,103,15,11,138,239
 
-%ifdef FEATURE_WINDOWS
+%ifdef FEATURE_LLP64
 dcvt: db "%lld", 0
 ocvt: db "%llo", 0
 xcvt: db "%llx", 0
