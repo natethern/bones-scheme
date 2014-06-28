@@ -1,19 +1,24 @@
 BONES                                                                     -*- Org -*-
 
 
+* TODO file:compiler.scm segfaults
+* TODO memtime doesn't report error when process crashes
+  - so error is not seen in "make check".
+* TODO compare performance and code size to chicken
 * work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values has two words.
 * TODO test file:copy.scm
-* TODO upload files
-  - file:index.html, file:MANUAL.html, file:manual.css
+* release
+  - make dist
+  - upload files
+    - file:index.html, file:MANUAL.html, file:manual.css
+  - announce
 * add f64vectors
    - FLOATVECTOR_TYPE (#x12)
    - would need proper alignment on 32-bit systems.
    - put API into file:fastmath.scm
    - adapt printer + reader.
-* TODO file:dynamic.scm fails with 'nolibc config
-  - gives error message while reading input.
 * use fastmath in file:forth.scm
 * start with ARM port
 * add bytevectors
@@ -61,9 +66,9 @@ BONES                                                                     -*- Or
   - could start with a simplification from grass.
   - keep it simply, without environments.
   - install signal-handlers for SIGSEGV/SIGBUS/SIGILL/SIGFPE.
-* pre-allocated chars in the range 0-255
+* TODO [#C] pre-allocated chars in the range 0-255
   - means: all chars are preallocated, unless we allow chars with arbitrary code.
-* we need FP num/str conversion
+* TODO we need FP num/str conversion
   - atof: http://pastebin.com/prYRrseH
     #+BEGIN_SRC asm
 ; atof implementation using SSE
@@ -203,7 +208,9 @@ mainCRTStartup:
 ** precision of 16 in num2str produces sometimes garbage digits
    - see file:r5rs_pitfalls.scm, where test 8.1 is printed as "8.1..."
    - but precision 15 does not match result of =integer?=, which
-     might be inaccurate or needs to be less accurate.
+     might be inaccurate or needs to be less accurate. This shows
+     up when num->str generates a string with ".", but the =integer?=
+     test returns true (thus appending another ".0")
 * Referencess
   - X86_64:
     - x87: http://www.website.masmforum.com/tutorials/fptute/index.html
