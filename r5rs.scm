@@ -666,10 +666,10 @@
   (nolibc
 
    (define (string->number str . base)
-     (let ((base (optional base 10))
-	   (len (string-length str))
-	   (s 1)
-	   (p 0))
+     (let* ((base (optional base 10))
+	    (len (string-length str))
+	    (s 1)
+	    (p 0))
        (cond ((eq? 0 len) #f)
 	     (else
 	      (case (string-ref str 0)
@@ -678,15 +678,14 @@
 		 (set! p 1))
 		((#\+)
 		 (set! p 1)))
-	      (%fx* s
-		    (let loop ((p p) (n 0))
-		      (if (%fx>=? p len) 
-			  n
-			  (let ((c (char-downcase (string-ref str p))))
-			    (loop (%fx+ p 1)
-				  (%fx+ (%fx* n base)
-					(%fx- (char->integer c)
-					      (if (char>=? c #\a) 87 48))))))))))))
+	      (and (%fx>? len p)
+		   (let loop ((p p) (n 0))
+		     (if (%fx>=? p len) 
+			 (%fx* s n)
+			 (let* ((c (char-downcase (string-ref str p)))
+				(r (%fx- (char->integer c) (if (char>=? c #\a) 87 48))))
+			   (and (%fx>=? r 0) (%fx<? r base)
+				(loop (%fx+ p 1) (%fx+ (%fx* n base) r)))))))))))
 
    (let-syntax ((buflen 100))
      (define number->string
