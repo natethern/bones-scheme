@@ -1,7 +1,7 @@
 ;;;; bare bones scheme compiler
 
 
-(define basic-implementation-features '(bones srfi-0 srfi-7 srfi-46))
+(define basic-implementation-features '(bones srfi-0 srfi-7 srfi-16 srfi-46))
 
 (define argument-register-count 0)     ; set later
 (define primitives '())
