@@ -34,8 +34,8 @@
    (files "x86_64/windows/syscalls.scm"))
   (else (error "no operating system selected")))
 
-;; some SRFI-features that are always available
-(provide srfi-6 srfi-16)
+;; some SRFI-features that are provided via libraries
+(provide srfi-6)
 
 ;; add primitives
 (files "r5rs.scm"
