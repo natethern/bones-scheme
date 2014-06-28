@@ -225,8 +225,11 @@
   (run (wc -l ,@compiler-sources)))
 
 (define (manual)
-  (run (emacs --script makehtml.el))
-  (run (emacs --script makeascii.el)))
+  (make (("MANUAL.html" ("MANUAL.org")
+	  (run (emacs --script makehtml.el)))
+	 ("MANUAL.txt" ("MANUAL.org")
+	  (run (emacs --script makeascii.el))))
+    '("MANUAL.html" "MANUAL.txt")))
 
 (define (-n)
   (run-dry-run #t))
