@@ -84,9 +84,12 @@
       (print (padl (string-append " " title) 60 #\=) ": " fname)
       (and (zero? (run* (,cmplr ,(string-append fname ".scm") -o ,sname ,@bopts)))
 	   (zero? (run* (nasm -f elf64 -g -F dwarf ,sname -o ,oname)))
-	   (zero? (if (memq 'nolibc bopts)
-		      (run* (ld ,oname -o ,xname))
-		      (run* (bin/musl-gcc ,oname -o ,xname))))
+	   (zero? (cond ((memq 'nolibc bopts)
+			 (run* (ld ,oname -o ,xname)))
+			((memq 'glibc bopts)
+			 (run* (gcc ,oname -o ,xname)))
+			(else 
+			 (run* (bin/musl-gcc ,oname -o ,xname))))
 	   (zero? (run* (memtime ,xname ,@runargs)))))))
 
 (define (check)
@@ -111,6 +114,12 @@
 	(unless (compile+run "linux/nolibc" prg "./bones" '() '(-feature nolibc))
 	  (set! ok #f)))
       '("fac" "tak" #;"r4rstest" #;"dynamic" "forth"))
+     (for-each
+      (lambda (prg)
+	(let ((bopts (if (member prg '("r4rstest")) '(-case-insensitive) '())))
+	  (unless (compile+run "linux/glibc" prg "./bones" '() `(-feature glibc ,@bopts))
+	    (set! ok #f))))
+      '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth"))
      (unless (compile+run "self-compile" "bones" "./bones"
 			  '(bones.scm -o tmp/bones.s -feature linux)
 			  '(-feature linux))
@@ -191,6 +200,7 @@
     "x86_64/windows/syscalls.scm"))
 
 (define (dist)
+  (manual)
   (let* ((date (capture (date +%Y-%m-%d)))
 	 (arch (string-append "bones-" date)))
     (bones-x86_64-linux.s)
@@ -210,6 +220,10 @@
 
 (define (count)
   (run (wc -l ,@compiler-sources)))
+
+(define (manual)
+  (run (emacs --script makehtml.el))
+  (run (emacs --script makeascii.el)))
 
 (define (-n)
   (run-dry-run #t))

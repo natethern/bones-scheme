@@ -197,54 +197,53 @@
 
    The compiler accepts the following options in any order.
 
-   - =-case-insensitive= :: Compile source code in case-insensitive mode.
-	The default is to be case-sensitive.
+   - =-case-insensitive= :: Compile source code in case-insensitive
+       mode.  The default is to be case-sensitive.
 
    - =-comment= :: Emit source-code forms as comments in generated
-                 assembler code.
+       assembler code.
 
    - =-dump-features= :: Dump the set of enabled features after any
-                       program specification has been completely
-                       parsed.
+       program specification has been completely parsed.
 
    - =-dump-unused= :: Dump unused global variables, including library
-		       definitions and 
+       definitions and
 
    - =-expand= :: Dump source code to stdout after syntax-expansion and
-                stop.
+       stop.
 
    - =-feature FEATURE= :: Define =FEATURE=, for use in
-        program-specifications or =cond-expand= clauses.
+       program-specifications or =cond-expand= clauses.
 
    - =-L LIBRARYPATH= :: Tells the compiler where to look for files to
-        include directly or indirectly from program
-        specifications. This option may be given multiple times where
-        every occurence of a library-path is prepended to the search
-        path.
+       include directly or indirectly from program
+       specifications. This option may be given multiple times where
+       every occurence of a library-path is prepended to the search
+       path.
 
    - =-nostdlib= :: Do not wrap the source code into a default program
-                  specification as described above. This is mainly
-                  useful when you have pre-expanded code that was
-                  earlier produced by using =-expand=.
+       specification as described above. This is mainly useful when
+       you have pre-expanded code that was earlier produced by using
+       =-expand=.
 
    - =-o FILENAME= :: Write generated code to =FILENAME= instead of
-                    stdout.
+       stdout.
 
 ** Configuration Macros for Generated Assembler Code
 
   - =DISABLE_WRITE_BARRIER= :: When mutating data-structures that are
-       not stored in the heap, the program normally aborts with an
-       error message. Define this macro to disable this check.
+      not stored in the heap, the program normally aborts with an
+      error message. Define this macro to disable this check.
 
   - =ENABLE_GC_LOGGING= :: Write some informational output to stderr
-       every time a garbage collection is triggered.
+      every time a garbage collection is triggered.
 
   - =PREFIX= :: Defines a custom entry-point prefix for embedding. By
-     passing =-DPREFIX=my= to NASM, the Scheme toplevel can be run by
-     calling =my_bones=.
+      passing =-DPREFIX=my= to NASM, the Scheme toplevel can be run by
+      calling =my_bones=.
 
   - =TOTAL_HEAP_SIZE= :: Total size of the heap. Half of this space can be
-       in use at any time. Defaults to 100MB.
+      in use at any time. Defaults to 100MB.
 
 ** Configurations
 
@@ -303,16 +302,17 @@
     Program specifications follow mostly the format as defined in the
      [[http://srfi.schemers.org/srfi-7/srfi-7.html][SRFI-7 specification]], with the following extensions:
 
-    - =(cond-expand ...)= :: Can be used interchangebly with =feature-cond=.
+    - =(cond-expand ...)= :: Can be used interchangebly with
+        =feature-cond=.
 
     - =(error STRING)= :: Report error and abort compilation.
 
     - =(include FILENAME ...)= :: Includes more program-specification
-         clauses from =FILENAME=.
+        clauses from =FILENAME=.
 
-    - =(provide FEATURE ...)= :: Adds additional features to the set of
-         currently active features visible by =cond-expand= and
-         =feature-cond= clauses. =FEATURE= should be a symbol.
+    - =(provide FEATURE ...)= :: Adds additional features to the set
+        of currently active features visible by =cond-expand= and
+        =feature-cond= clauses. =FEATURE= should be a symbol.
 
 *** Builtin Features
 
@@ -581,51 +581,53 @@
 *** Section 6.6.1
 
     =current-input-port= and =current-output-port= accept a single
-      argument, a /port/, which changes the current default input- and
-      output port.
+    argument, a /port/, which changes the current default input- and
+    output port.
 
 *** Syntax Extensions
 
     The following non-standard syntax is available:
 
     - =(assert EXP [MSG ARGUMENT ...])= :: signals an error if =EXP=
-         evaluates to =#f=, passing =MSG= and =ARGUMENTS ...= to
-         =error= in that case.
+        evaluates to =#f=, passing =MSG= and =ARGUMENTS ...= to
+        =error= in that case.
 
     - =(begin0 EXP1 EXP ...)= :: evaluates the expressions and returns the
-	 result value(s) of the first expression.
+	result value(s) of the first expression.
 
     - =(cond-expand CLAUSE ...)= :: The [[http://srfi.schemers.org/srfi-0/][SRFI-0]] expansion-time conditional.
 
     - =(cut EXP ...)= :: Notation for specializing parameters without
-	 currying - see [[http://srfi.schemers.org/srfi-26/][SRFI-26]] for more information.
+	currying - see [[http://srfi.schemers.org/srfi-26/][SRFI-26]] for more information.
 
     - =(define-inline (NAME ARGUMENTS ...) BODY ...)= :: Defines a
-         procedure that should be in-lined at the call-site. This is
-         implemented by defining an /identifier-macro/ for =NAME=,
-         which the syntax-expander will replace with a =lambda= form
-         containing the procedure body , when used in the
-         operator-position of a procedure-call. Any use of an inline
-         procedure must appear textually after its definition.
+        procedure that should be in-lined at the call-site. This is
+        implemented by defining an /identifier-macro/ for =NAME=,
+        which the syntax-expander will replace with a =lambda= form
+        containing the procedure body , when used in the
+        operator-position of a procedure-call. Any use of an inline
+        procedure must appear textually after its definition.
 
     - =(define-syntax-rule (NAME ARGUMENTS ...) BODY)= :: A more concise
         way of defining single-rule syntax.
 
     - =(define-values (VAR ...) EXP)= :: Evaluates =EXP= and binds =VAR= ...
-	 to the values returned by it.
+	to the values returned by it.
 
     - =(fluid-let ((VAR EXP) ...) BODY ...)= :: Syntax for dynamic scoping,
-	 see [[http://srfi.schemers.org/srfi-15/][SRFI-15]] for more information.
+	see [[http://srfi.schemers.org/srfi-15/][SRFI-15]] for more information.
 
-    - =(let-optionals VAR1 ((VAR EXP) ... [RVAR]) BODY ...)= :: Destructures
-	 the list in =VAR1=, binding the optional arguments =VAR= ... with
-	 defaults taken from =EXP= ... Any remaining list elements can be
-	 bound in the optional final variable =RVAR=.
+    - =(let-optionals VAR1 ((VAR EXP) ... [RVAR]) BODY ...)= ::
+        Destructures the list in =VAR1=, binding the optional
+        arguments =VAR= ... with defaults taken from =EXP= ... Any
+        remaining list elements can be bound in the optional final
+        variable =RVAR=.
 
-    - =(letrec* ((VAR VAL) ...) BODY ...)= :: Binds =VAR= ... to the results of
-	 evaluating =VAL= ... and evaluates =BODY=, with the variables being
-	 in scope during the evaluation of their values. Mostly equivalent
-	 to =letrec= but binds the variables sequentially.
+    - =(letrec* ((VAR VAL) ...) BODY ...)= :: Binds =VAR= ... to the
+        results of evaluating =VAL= ... and evaluates =BODY=, with the
+        variables being in scope during the evaluation of their
+        values. Mostly equivalent to =letrec= but binds the variables
+        sequentially.
 
     - =(when EXP BODY ...)= :: Equivalent to =(if EXP (begin BODY ...))=.
 
@@ -636,7 +638,7 @@
 **** Fixnum Arithmetic
 
     - =(arithmetic-shift N M)= :: Shifts =N= =M= bits to the left, if
-      =M= is positive, or to the right, if negative.
+        =M= is positive, or to the right, if negative.
 
     - =(bitwise-and N M)= :: Binary AND.
 
@@ -648,38 +650,39 @@
 
 **** Input/Output
 
-    - =(case-sensitive [BOOL])= :: If set to true, =read= will preserver case
-      when reading symbols (this is the default).
+    - =(case-sensitive [BOOL])= :: If set to true, =read= will
+        preserve case when reading symbols (this is the default).
  
     - =(current-error-port [PORT])= :: Returns or sets the port where
-      error-messages are written to.
+        error-messages are written to.
 
     - =(eof-object)= :: Returns the /end-of-file/ object.
 
-    - =(get-output-string PORT)= :: Returns the currently accumulated output
-      from the string-port =PORT=. 
+    - =(get-output-string PORT)= :: Returns the currently accumulated
+        output from the string-port =PORT=.
 
     - =(open-append-output-file STRING)= :: Opens the file =STRING= in
-      /append/ mode, and returns an output port.
+        /append/ mode, and returns an output port.
 
-    - =(open-input-string STRING)= :: Returns an input-port oin =STRING=
-      from which data can be read.
+    - =(open-input-string STRING)= :: Returns an input-port oin
+        =STRING= from which data can be read.
 
-    - =(open-output-string)= :: Returns an output-port accumulating all
-      output written to into a string.
+    - =(open-output-string)= :: Returns an output-port accumulating
+        all output written to into a string.
 
-    - =(port? OBJECT)= :: Returns =#t= if =OBJECT= is an input- or output-port
-      or =#f= otherwise.
+    - =(port? OBJECT)= :: Returns =#t= if =OBJECT= is an input- or
+        output-port or =#f= otherwise.
 
-    - =(print OBJECT ...)= :: Writes the arguments to the current output port
-      (using =display=) followed by a newline.
+    - =(print OBJECT ...)= :: Writes the arguments to the current
+        output port (using =display=) followed by a newline.
 
-    - =(read-string COUNT [PORT])= :: Reads =COUNT= characters from =PORT= and
-      returns a string. If no input is available from =PORT=, the /end-of-file/
-      object is returned. =PORT= defaults to the value of =(current-input-port)=.
+    - =(read-string COUNT [PORT])= :: Reads =COUNT= characters from
+        =PORT= and returns a string. If no input is available from
+        =PORT=, the /end-of-file/ object is returned. =PORT= defaults
+        to the value of =(current-input-port)=.
 
     - =(write-string STRING [PORT])= :: Writes the characters in =STRING= to =PORT=,
-      which defaults to the current output port.
+        which defaults to the current output port.
 
     On Windows, all files are opened in binary mode, so no
     line-terminator translations take place.
@@ -687,150 +690,148 @@
 **** Process Environment
 
     - =(command-line)= :: Returns the name of the running program and
-      all arguments given on the command-line as a list of
-      strings. When the program is running in /embedded/ mode, then
-      this procedure returns the empty list.
+        all arguments given on the command-line as a list of
+        strings. When the program is running in /embedded/ mode, then
+        this procedure returns the empty list.
 
-    - =(current-process-id)= :: Returns the /ID/ of the current process
-      as an exact integer.
+    - =(current-process-id)= :: Returns the /ID/ of the current
+        process as an exact integer.
 
     - =(get-environment-variable STRING)= :: Returns the value of the
-      /environment variable/ named by =STRING= as a string, or =#f= if
-      such an environment variable is not defined.
+        /environment variable/ named by =STRING= as a string, or =#f=
+        if such an environment variable is not defined.
 
     - =(system STRING)= :: Passes =STRING= as a shell-command to be
-      executed and returns the exit-status of the invoked command as
-      an exact integer.
+        executed and returns the exit-status of the invoked command as
+        an exact integer.
 
 **** File System
 
     - =(current-directory [STRING])= :: When called without arguments,
-      this procedure returns the name of the current working
-      directory.  When given an argument, the current working
-      directory is changed to =STRING=.
+        this procedure returns the name of the current working
+        directory.  When given an argument, the current working
+        directory is changed to =STRING=.
 
     - =(delete-file STRING)= :: Deletes the file designated by =STRING=.
 
-    - =(file-exists? STRING)= :: Returns =STRING= if the file designated by
-      =STRING= exists or =#f= otherwise.
+    - =(file-exists? STRING)= :: Returns =STRING= if the file
+        designated by =STRING= exists or =#f= otherwise.
 
 **** Time
 
     - =(current-jiffy)= :: Returns the time since process startup, in
-      some internal unit. Use =jiffies-per-second= to obtain the number
-      of internal time units per second.
+        some internal unit. Use =jiffies-per-second= to obtain the
+        number of internal time units per second.
 
     - =(current-second)= :: Returns the current time, in seconds since
-      the start of the /epoch/.
+        the start of the /epoch/.
 
     - =(jiffies-per-second)= :: Returns the number of internal time
-     units per second as an exact integer.
+        units per second as an exact integer.
 
 **** Control Flow
 
     - =(call/cc PROC)= :: Identical to =call-with-current-continuation=.
 
     - =(emergency-exit [CODE])= :: Terminates the current program
-      immediately.  Still pending =dynamic-wind= thunks are not
-      invoked. =CODE= is the exit code of the process and defaults to
-      0.
+        immediately.  Still pending =dynamic-wind= thunks are not
+        invoked. =CODE= is the exit code of the process and defaults
+        to 0.
 
     - =(exit [CODE])= :: Terminates the process with the process
-     status =CODE= (or 0, if not given). Pending =dynamic-wind= after
-     thunks will be executed.
+       status =CODE= (or 0, if not given). Pending =dynamic-wind=
+       after thunks will be executed.
 
     - =(return-to-host RESULT)= :: suspends the currently running
-      program and returns =RESULT= to the caller. This procedure is
-      only available when the =embedded= feature is defined.
+        program and returns =RESULT= to the caller. This procedure is
+        only available when the =embedded= feature is defined.
 
 **** Error-handling and Exceptions
 
     - =(current-exception-handler [PROCEDURE])= :: Sets the current
-         /exception handler/, a procedure to be called when an error
-         is signalled. The procedure will be called with an object
-         that was used as an argument to =raise= or with an
-         /error-object/. The default exception handler writes the
-         exception object to the port that is the current value of
-         =current-error-port= and performs an immediate exit (as with
-         =emergency-exit=). In embedded mode, the default exception
-         handler invokes =return-to-host= with the exception object as
-         argument.  =current-exception-handler= is a parameter.
+        /exception handler/, a procedure to be called when an error is
+        signalled. The procedure will be called with an object that
+        was used as an argument to =raise= or with an
+        /error-object/. The default exception handler writes the
+        exception object to the port that is the current value of
+        =current-error-port= and performs an immediate exit (as with
+        =emergency-exit=). In embedded mode, the default exception
+        handler invokes =return-to-host= with the exception object as
+        argument.  =current-exception-handler= is a parameter.
 
     - =(error [LOCATION] [MESSAGE] ARGUMENTS ...)= :: Creates an
-      error-object from =LOCATION=, =MESSAGE= and =ARGUMENTS= and
-      invokes the current exception handler. =LOCATION= can be used to
-      mark where the error occurred and should be a symbol.
+        error-object from =LOCATION=, =MESSAGE= and =ARGUMENTS= and
+        invokes the current exception handler. =LOCATION= can be used
+        to mark where the error occurred and should be a symbol.
 
     - =(error-object? X)= :: Returns true if =X= is an error-object or
-	 false otherwise.
+	false otherwise.
 
     - =(error-object-irritants ERROROBJECT)= :: Returns the
-         error-arguments stored in =ERROROBJECT=.
+        error-arguments stored in =ERROROBJECT=.
 
-    - =(error-object-location ERROROBJECT)= :: Returns the
-	 location stored in an error object or =#f= if no location
-	 is available.
+    - =(error-object-location ERROROBJECT)= :: Returns the location
+        stored in an error object or =#f= if no location is available.
 
     - =(error-object-message ERROROBJECT)= :: Returns the
-         error-message stored in =ERROROBJECT=.
+        error-message stored in =ERROROBJECT=.
 
     - =(file-error? OBJECT)= :: Returns true if =OBJECT= is an error
-         object raised by an invalid file-operation or false
-         otherwise.
+        object raised by an invalid file-operation or false otherwise.
 
     - =(raise OBJECT)= :: Raises an exception by calling the current
-	 exception handler with =OBJECT=.
+        exception handler with =OBJECT=.
 
     - =(read-error? OBJECT)= :: Returns true if =OBJECT= is an error
-         object raised invalid syntax in an invocation of =read= or
-         false otherwise.
+        object raised invalid syntax in an invocation of =read= or
+        false otherwise.
 
 **** Numeric Operations
 
-    - =(finite? NUMBER)= :: Returns =#t= if =NUMBER= is not positive or
-     negative /infinity/.
+    - =(finite? NUMBER)= :: Returns =#t= if =NUMBER= is not positive
+        or negative /infinity/.
 
     - =(nan? NUMBER)= :: Returns =#t= if =NUMBER= is the IEEE754 /nan/
-     object or =#f= otherwise.
+        object or =#f= otherwise.
 
 **** Parameters
 
     - =(make-parameter VALUE [GUARD])= :: Returns a /parameter/
-      procedure that accepts a single optional argument. If that
-      procedure is called without arguments, it returns =VALUE=. If it
-      is called with an argument, the current value of the parameter
-      is changed to this argument and subsequent 0-argument
-      invocations if the procedure will return the new value. If
-      =GUARD= is given, then it should be a procedure of one argument
-      that checks or converts any values given to the parameter
-      procedure.
+        procedure that accepts a single optional argument. If that
+        procedure is called without arguments, it returns =VALUE=. If
+        it is called with an argument, the current value of the
+        parameter is changed to this argument and subsequent
+        0-argument invocations if the procedure will return the new
+        value. If =GUARD= is given, then it should be a procedure of
+        one argument that checks or converts any values given to the
+        parameter procedure.
 
-    - =(parameterize ((PARAM VALUE) ...) BODY ...)= :: Dynamically binds
-      parameters to the given values and executes =BODY= ... Note that
-      the =PARAM= arguments are evaluated. After =BODY= ... is
-      executed, the parameters are restored to their old values, with
-      any guard-procedures temporarily disabled.
+    - =(parameterize ((PARAM VALUE) ...) BODY ...)= :: Dynamically
+        binds parameters to the given values and executes =BODY=
+        ... Note that the =PARAM= arguments are evaluated. After
+        =BODY= ... is executed, the parameters are restored to their
+        old values, with any guard-procedures temporarily disabled.
 
 **** Miscellaneous
 
     - =(free)= :: Returns the currently available memory in heap as an
-      exact integer.
+        exact integer.
 
     - =(make-disjoint-type [NAME])= :: Creates a new record type T and
-         returns three values: a constructor procedure that takes a
-         data object and returns a new record of type T, a predicate
-         that returns true if given a record of type T and an accessor
-         procedure receiving a record and returning the associated
-         data object.
+        returns three values: a constructor procedure that takes a
+        data object and returns a new record of type T, a predicate
+        that returns true if given a record of type T and an accessor
+        procedure receiving a record and returning the associated data
+        object.
 
     - =(reclaim)= :: Reclaims unused memory in the heap and returns an
-      undefined value. Garbage collection is done automatically, but
-      in certain cases, for example if time-critical code is to be
-      executed, it may be useful to delay the next garbage collection
-      as much as possible.
+        undefined value. Garbage collection is done automatically, but
+        in certain cases, for example if time-critical code is to be
+        executed, it may be useful to delay the next garbage
+        collection as much as possible.
 
     - =(void ARGUMENT ...)= :: Ignores its arguments and returns an
-      undefined result.
+        undefined result.
 
 *** Additional Library Code
 
@@ -838,26 +839,25 @@
     syntactic extensions. Use these with "
 
     - =records.scm= :: A record-definition-facility compatible to
-                       [[http://srfi.schemers.org/srfi-9/][SRFI-9]].
+        [[http://srfi.schemers.org/srfi-9/][SRFI-9]].
 
     - =match.scm= :: Alex Shinn's pattern matching facility, also
-                     available at
-                     http://synthcode.com/scheme/match.scm.
+        available at http://synthcode.com/scheme/match.scm.
 
-    - =megalet.scm= :: The [[http://srfi.schemers.org/srfi-71/][SRFI-71]] reference implementation, extending =let=
-		       for convenient binding of multiple values. This also
-		       adds "curried" =define= syntax.
+    - =megalet.scm= :: The [[http://srfi.schemers.org/srfi-71/][SRFI-71]] reference implementation, extending
+        =let= for convenient binding of multiple values. This also
+        adds "curried" =define= syntax.
 
     - =fastmath.scm= :: Provides numeric operations, specific for
-                        fixnums (exact integers) and floating-point
-                        numbers.  Note that this is an "include" file, i.e.
-			it is intended to by used by adding
+        fixnums (exact integers) and floating-point numbers.  Note
+        that this is an "include" file, i.e.  it is intended to by
+        used by adding
 
-			#+BEGIN_SRC scheme
-			(include "fastmath.scm")
-			#+END_SRC
+	#+BEGIN_SRC scheme
+	(include "fastmath.scm")
+	#+END_SRC
 
-			in a program-specification.
+	in a program-specification.
 
 * Compiler Details
 
@@ -1049,44 +1049,45 @@
    The compiler has a very simple structure and basically consists of
    the following files:
 
-   - =bones.scm= :: A program-specification file referencing all modules
-		    of the compiler.
+   - =bones.scm= :: A program-specification file referencing all
+       modules of the compiler.
 
    - =main.scm= :: The /driver/, parsing command-line arguments and
-                 invoking the translation process.
+       invoking the translation process.
 
    - =cmplr.scm= :: The core compiler, that runs the different stages
-		  and control the translation of the simplified program
-		  into assembler code.
+       and control the translation of the simplified program into
+       assembler code.
 
    - =program.scm= :: Parses program specifications, returning a
-                      single toplevel-expression.
+       single toplevel-expression.
 
-   - =alexpand.scm= :: The syntax-expander. It takes a single unexpanded
-                     toplevel expression and expands all macros in a
-                     single pass.
+   - =alexpand.scm= :: The syntax-expander. It takes a single
+       unexpanded toplevel expression and expands all macros in a
+       single pass.
 
    - =cps.scm= :: The CPS-transformation pass.
 
    - =cc.scm= :: The closure-conversion pass.
 
    - =mangle.scm= :: Does name-mangling of string-constants and
-                   variable-names.
+       variable-names.
 
    - =source.scm= :: Some operations on source expressions.
 
    - =support.scm= :: Miscellaneous non-standard helper procedures for
-                    all sorts of things.
+       all sorts of things.
 
-   - =pp.scm= :: The pretty-printer, used for dumping source code,
-	       for example as the result of the =-expand= option.
+   - =pp.scm= :: The pretty-printer, used for dumping source code, for
+       example as the result of the =-expand= option.
 
-   - =megalet.scm=, =match.scm= :: Convenience macros with more concise binding forms
-	for multiple values and for pattern matching.
+   - =megalet.scm=, =match.scm= :: Convenience macros with more
+       concise binding forms for multiple values and for pattern
+       matching.
 
    - =x86_64.scm= :: The /backend/ for generating X86_64 code. This
-                   file is the only part of the compiler that is
-                   architecture specific.
+       file is the only part of the compiler that is architecture
+       specific.
 
    Building the compiler is straightforward:
 
@@ -1198,6 +1199,11 @@
   =#t=, =#f= and the undefined (void) value are unique and never
   allocated.
 
+  Strings use a single-byte encoding, unicode is not
+  supported. Characters-codes are not limited to 8-bit, though, but
+  when assigned or extracted to/from strings, only the least
+  significant 8 bits are used.
+
   For information about the use of the slots in port and record
   objects, you should study the source code, in particular =r5rs.scm=.
 
@@ -1275,20 +1281,20 @@
      directly with Scheme code, where =$inline= is defined as
 
      - =($inline STRING ARGUMENT ...)= :: Executes the assembler
-          instructions in =STRING=, given the results of evaluating
-          the arguments in =ARGUMENTS=, specifically in the =rax=,
-          =r11= and =r15= registers. At most three arguments may be
-          passed. Multiple instructions inside =STRING= can be given,
-          when separated by =;= (semicolon). Note that changing other
-          registers than the ones used for passing arguments may
-          change local variables and thus should be avoided, unless
-          you really know what you are doing.
+         instructions in =STRING=, given the results of evaluating the
+         arguments in =ARGUMENTS=, specifically in the =rax=, =r11=
+         and =r15= registers. At most three arguments may be
+         passed. Multiple instructions inside =STRING= can be given,
+         when separated by =;= (semicolon). Note that changing other
+         registers than the ones used for passing arguments may change
+         local variables and thus should be avoided, unless you really
+         know what you are doing.
 
   4. Use the =$primitive= special form to refer to a primitive
      procedure written in assembler:
 
      - =($primitive STRING)= :: Returns a procedure refering to the
-	  primitive procedure named by the label =STRING=. 
+         primitive procedure named by the label =STRING=.
 
      The procedure must be written in assembler and takes its
      arguments in the argument registers described in the chapter
@@ -1520,36 +1526,39 @@
 
     The syntax-expander (=alexpand.scm=) is
 
-    Copyright 2002-2004 Al Petrofsky <alexpander@petrofsky.org>
+      Copyright 2002-2004 Al Petrofsky <alexpander@petrofsky.org>
 
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
+      Redistribution and use in source and binary forms, with or without
+      modification, are permitted provided that the following conditions
+      are met:
 
-     Redistributions of source code must retain the above copyright
-       notice, this list of conditions and the following disclaimer.
+       Redistributions of source code must retain the above copyright
+	 notice, this list of conditions and the following disclaimer.
 
-     Redistributions in binary form must reproduce the above copyright
-       notice, this list of conditions and the following disclaimer in
-       the documentation and/or other materials provided with the
-       distribution.
+       Redistributions in binary form must reproduce the above copyright
+	 notice, this list of conditions and the following disclaimer in
+	 the documentation and/or other materials provided with the
+	 distribution.
 
-     Neither the name of the author nor the names of its contributors
-       may be used to endorse or promote products derived from this
-       software without specific prior written permission.
+       Neither the name of the author nor the names of its contributors
+	 may be used to endorse or promote products derived from this
+	 software without specific prior written permission.
 
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-    HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-    INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-    BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
-    OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
-    AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-    LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
-    WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    POSSIBILITY OF SUCH DAMAGE.
+      THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+      "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+      LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+      A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+      HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+      INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+      BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+      OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+      AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+      LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
+      WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+      POSSIBILITY OF SUCH DAMAGE.
+
+    The topological sorting routine in =tsort.scm= was written by
+    Moritz Heidkamp and is in the public domain.
 
   Everything else was written by Felix Winkelmann and is put into the
   public domain.
@@ -1592,6 +1601,7 @@
 #+KEYWORDS: 
 #+LANGUAGE:  en
 #+OPTIONS:   H:3 num:t toc:2 \n:nil @:t ::t |:t ^:{} -:t f:t *:t <:t
+#+OPTIONS:   author:nil timestamp:nil
 #+OPTIONS:   TeX:nil LaTeX:nil skip:nil d:nil todo:t pri:nil tags:not-in-toc
 #+INFOJS_OPT: view:nil toc:nil ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
 #+EXPORT_SELECT_TAGS: export
