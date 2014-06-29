@@ -40,6 +40,7 @@
 
 %define FROMSPACE_RESERVE (TOTAL_HEAP_SIZE / 10)
 %define MARK_BIT	0x8000000000000000
+%define BITS_MASK       0xff00000000000000
 %define SIZE_MASK       0x00ffffffffffffff
 %define BYTEBLOCK_BIT   0x1000000000000000
 %define SPECIAL_BIT     0x2000000000000000
@@ -433,6 +434,32 @@
   syscall
   RESTORE_STACK
   RESTORE
+%endmacro
+
+
+;; vector/bytevector access check: %1 = block, %2 = index (fixnum)
+%macro CHECK_SLOT_ACCESS 2
+%ifdef FEATURE_CHECK
+  push rax
+  push r11
+  mov rax, %1
+  mov r11, %2
+  call check_slot_access
+  pop r11
+  pop rax
+%endif
+%endmacro
+
+%macro CHECK_BYTE_ACCESS 2
+%ifdef FEATURE_CHECK
+  push rax
+  push r11
+  mov rax, %1
+  mov r11, %2
+  call check_byte_access
+  pop r11
+  pop rax
+%endif
 %endmacro
 
 
@@ -2369,6 +2396,45 @@ get_last_error:
 %endif
 
 
+;; check slot-access: rax = block, r11 = index (fixnum), clobbers r11
+check_slot_access:
+  push r15
+  mov r15, [rax]
+  and r15, [byteblock_bit]
+  if z
+    mov r15, [rax]
+    and r15, [size_mask]
+    FIX2INT r11
+    cmp r11, r15
+    if be
+      pop r15
+      ret
+    endif
+  endif
+  mov rax, error_msg_3
+  mov r11, error_msg_4 - error_msg_3  
+  jmp write_error_and_exit
+
+
+;; check byte-access: rax = block, r11 = index (fixnum), clobbers r11
+check_byte_access:
+  push r15
+  mov r15, [rax]
+  test r15, [byteblock_bit]
+  if nz
+    and r15, [size_mask]
+    FIX2INT r11
+    cmp r11, r15
+    if be
+      pop r15
+      ret
+    endif
+  endif
+  mov rax, error_msg_4
+  mov r11, error_msg_5 - error_msg_4
+  jmp write_error_and_exit    
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -2409,7 +2475,9 @@ saved_k: dq 0
 
 error_msg_1: db `store to non-heap data detected\n`
 error_msg_2: db `out of memory\n`
-error_msg_3:
+error_msg_3: db `invalid slot access\n`
+error_msg_4: db `invalid byte access\n`
+error_msg_5:
 
 gc_log_format: db `[GC #%d, reserve: %d bytes ...`, 0
 gc_log_format2: db ` remaining: %d bytes]\n`, 0
@@ -2446,6 +2514,7 @@ gcvt: db "%.16g", 0
 
 rsp_alignment_mask: dq ~(CELLS(2) - 1)
 size_mask: dq SIZE_MASK
+byteblock_bit: dq BYTEBLOCK_BIT
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
