@@ -208,6 +208,7 @@
 		   (inc! locals-counter))
 		  (else
 		   ;; evaluate into target register
+		   ;;XXX could eval directly into reg, if reg is not used in the val
 		   (let ((reg (car available-registers)))
 		     (translate val arg-register)
 		     (generate-comment var " = " reg)
