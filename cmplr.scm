@@ -12,6 +12,7 @@
 (define label-counter 0)
 (define allocating #f)
 (define emit-expr-comments #f)
+(define emit-access-checks #f)
 
 (define environment '())
 (define locals-counter 0)
@@ -19,6 +20,7 @@
 (define unused-global-variables '())
 
 (define (cells n) (* word-size n))
+(define (bytes n) (quotient n word-size))
 
 (define default-configuration
   (cond-expand 
@@ -85,6 +87,7 @@
 			(stop))))
 	      (ccode (cc code '())))
 	 (set! emit-expr-comments (option 'comment: options))
+	 (set! emit-access-checks (option 'check: options))
 	 (when dumpcc
 	   (dump-expressions ccode dumpserial)
 	   (stop))
@@ -181,7 +184,7 @@
 	  (off 2 (add1 off)))
 	 ((null? lst))
        (translate (car lst) arg-register)
-       (generate-slot-store alloc-register (cells off) arg-register))
+       (generate-slot-store alloc-register (cells off) arg-register #f))
      (generate-move t alloc-register)
      (generate-add alloc-register (cells (+ 2 (length cap))))
      #t)
@@ -269,19 +272,19 @@
        #t))
     (('$box val)
      (translate val t)
-     (generate-slot-store alloc-register (cells 1) t)
+     (generate-slot-store alloc-register (cells 1) t #f)
      (generate-immediate-ref t "VECTOR | 1")
-     (generate-slot-store alloc-register 0 t)
+     (generate-slot-store alloc-register 0 t #f)
      (generate-move t alloc-register)
      (generate-add alloc-register (cells 2))
      #t)
     (('$box-ref val)
      (translate val t)
-     (generate-slot-ref t t (cells 1))
+     (generate-slot-ref t t (cells 1) #t)
      #t)
     (('$box-set! box val)
      (match-let (((r1 r2) (translate-inline-arguments (list box val))))
-       (generate-slot-store r1 (cells 1) r2)
+       (generate-slot-store r1 (cells 1) r2 #t)
        (generate-move t r2)
        #t))
     (('$inline (or ('quote opr) opr) args ...)
@@ -304,12 +307,12 @@
        (do ((regs regs (cdr regs))
 	    (off 1 (add1 off)))
 	   ((null? regs))
-	 (generate-slot-store alloc-register (cells off) (car regs)))
+	 (generate-slot-store alloc-register (cells off) (car regs) #f))
        (generate-immediate-ref
 	t
 	(bitwise-ior (arithmetic-shift type (* (sub1 word-size) 8)) size)
 	type "/" size)
-       (generate-slot-store alloc-register 0 t)
+       (generate-slot-store alloc-register 0 t #f)
        (generate-move t alloc-register)
        (generate-add 
 	alloc-register
@@ -321,7 +324,7 @@
      (generate-immediate-ref t "undefined")
      #t)
     (('$closure-ref i)
-     (generate-slot-ref t self-register (cells (+ i 2)))
+     (generate-slot-ref t self-register (cells (+ i 2)) #t)
      #t)
     (('quote c)
      (cond ((fixnum? c)
@@ -382,10 +385,10 @@
 	      ((null? rargs))
 	    (match-let ((((_ arg _) . _) rargs))
 	      (let ((reg (argument-register arg)))
-		(cond (reg (generate-slot-store stack-register (cells i) reg))
+		(cond (reg (generate-slot-store stack-register (cells i) reg #f))
 		      (else
 		       (translate arg arg-register)
-		       (generate-slot-store stack-register (cells i) arg-register)))))))
+		       (generate-slot-store stack-register (cells i) arg-register #f)))))))
 	(let* ((dag (map (match-lambda
 			   ((tr _ deps) (cons tr deps)))
 			 unspilled))
@@ -408,9 +411,9 @@
 	      ((null? rargs))
 	    (match-let ((((tr arg _) . _) rargs))
 	      (cond ((symbol? tr)
-		     (generate-slot-ref tr stack-register (cells i)))
+		     (generate-slot-ref tr stack-register (cells i) #f))
 		    (else
-		     (generate-slot-ref arg-register stack-register (cells i))
+		     (generate-slot-ref arg-register stack-register (cells i) #f)
 		     (generate-move-to-local (cells tr) arg-register)))))
 	  (generate-pop-stack reserve))))
     ;;(pp `(RARGS: ,@rargs))				;XXX
@@ -513,8 +516,8 @@
 
 (define (translate-call x)
   (let ((n (length x)))
-    (translate/registers x argument-registers)
-    (generate-slot-ref arg-register self-register (cells 1))
+    (translate/registers x argument-registers #f)
+    (generate-slot-ref arg-register self-register (cells 1) #t)
     (generate-immediate-ref count-register n)
     (if allocating
 	(generate-alloc-check-and-call)

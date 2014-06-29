@@ -117,10 +117,14 @@
   (for-each emit comment)
   (emit "\n"))
 
-(define (generate-slot-ref dest src off)
+(define (generate-slot-ref dest src off check?)
+  (when (and emit-access-checks check?)
+    (emit " CHECK_SLOT_ACCESS " src ", FIX(" (bytes off)  ")\n"))
   (emit " mov " dest ", [" src " + " off "]\n"))
 
-(define (generate-slot-store dest off src)
+(define (generate-slot-store dest off src check?)
+  (when (and emit-access-checks check?)
+    (emit " CHECK_SLOT_ACCESS " src ", FIX(" (bytes off)  ")\n"))
   (emit " mov [" dest " + " off "], " src "\n"))
 
 (define (generate-true-ref r)
