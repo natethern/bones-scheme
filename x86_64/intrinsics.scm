@@ -19,21 +19,27 @@
 
 ;; slot accessors
 (define-syntax-rule (%slot-ref x i)
-  ($inline "shl r11, 2; mov rax, [rax + r11 + 4]" x i))
+  ($inline "CHECK_SLOT_ACCESS rax, r11; shl r11, 2; mov rax, [rax + r11 + 4]" x i))
 
 (define-syntax-rule (%slot-set! x i y)
-  ($inline "shl r11, 2; WRITE_BARRIER [rax + r11 + 4], r15; mov rax, r15" x i y))
+  ($inline "CHECK_SLOT_ACCESS rax, r11; shl r11, 2; WRITE_BARRIER [rax + r11 + 4], r15; mov rax, r15" x i y))
 
 ;; byte-accessors
 (define-syntax-rule (%byte-ref x i)
-  ($inline "FIX2INT r11; add rax, r11; mov al, [rax + CELLS(1)]; and rax, 0xff; INT2FIX rax" x i))
+  ($inline
+   "CHECK_BYTE_ACCESS rax, r11; FIX2INT r11; add rax, r11; mov al, [rax + CELLS(1)]; and rax, 0xff; INT2FIX rax" 
+   x i))
 
 (define-syntax-rule (%byte-set! x i y)
-  ($inline "FIX2INT r11; add rax, r11; xchg rax, r15; FIX2INT rax; mov [r15 + CELLS(1)], al; mov rax, r15" x i y))
+  ($inline
+   "CHECK_BYTE_ACCESS rax, r11; FIX2INT r11; add rax, r11; xchg rax, r15; FIX2INT rax; mov [r15 + CELLS(1)], al; mov rax, r15" 
+   x i y))
 
 ;; extract block-type, with a special case for immediate fixnums
 (define-syntax-rule (%type-of x)
-  ($inline "test rax, 1; if z; mov rax, [rax]; shr rax, HEADER_SHIFT; and rax, 0x7f; INT2FIX rax; else; mov rax, (TYPENUMBER(FIXNUM) << 1) | 1; endif" x))
+  ($inline
+   "test rax, 1; if z; mov rax, [rax]; shr rax, HEADER_SHIFT; and rax, 0x7f; INT2FIX rax; else; mov rax, (TYPENUMBER(FIXNUM) << 1) | 1; endif" 
+   x))
 
 ;; extract block-type, requires a block
 (define-syntax-rule (%bits-of x)
