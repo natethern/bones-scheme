@@ -2307,9 +2307,16 @@ return_to_host:
 ;; convert string to number: rax = string, r11 = base -> rax (number)
 %ifndef FEATURE_NOLIBC
 str2num:
-  call copy_to_buffer
   push rdx
   push rbx
+  call copy_to_buffer
+  ;; check whether the string has length zero
+  mov dl, [buffer]
+  test dl, dl
+  if z
+    mov rax, FALSE
+    jmp .done
+  endif
   push rax			; endptr
   mov rdx, buffer
   mov r15, rsp
