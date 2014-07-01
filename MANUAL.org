@@ -287,6 +287,7 @@
    | process-environment | Access to the process-environment and subprocesses are available |
    | time                | Access to the system time is available                           |
    | jiffy-clock         | Access to the internal real-time clock is available              |
+   | check               | Enable some internal sanity checks for slot- and byte-access     |
    | srfi-0              | Specify availability of SRFI functionality                       |
    | srfi-6              |                                                                  |
    | srfi-7              |                                                                  |
