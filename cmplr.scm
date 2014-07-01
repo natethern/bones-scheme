@@ -235,14 +235,14 @@
      (let ((ref (lookup-variable var)))
        (if (symbol? ref)
 	   (generate-move t ref)
-	   (generate-local-ref t var ref)))
+	   (generate-local-ref t var (cells ref))))
      #t)
     (('$local-set! var val)
      (translate val t)
      (let ((ref (lookup-variable var)))
        (if (symbol? ref)
 	   (generate-move ref t)
-	   (generate-local-store var ref t)))
+	   (generate-local-store var (cells ref) t)))
      #t)
     (('if x y z)
      (cond ((and (simple-expression? y)
@@ -348,12 +348,12 @@
 
 ;;; order argument-evaluation to minimize spills
 ;
-; - compute registers used for each argument.
+; - compute registers and locals used for each argument.
 ; - identify circular dependencies between target registers and target-registers
 ;   of dependant arguments, and spill these cases to stack.
 ; - finally, topologically sort arguments by dependencies and evaluate in reverse
 ;   order.
-; - returns list of argument registers associated with given arguments.
+; - returns list of argument registers / locals associated with given arguments.
 
 (define (translate/registers args regs)
   (let* ((argc (length args))
@@ -386,7 +386,8 @@
 	      ((null? rargs))
 	    (match-let ((((_ arg _) . _) rargs))
 	      (let ((reg (argument-register arg)))
-		(cond (reg (generate-slot-store stack-register (cells i) reg #f))
+		(cond ((symbol? reg)
+		       (generate-slot-store stack-register (cells i) reg #f))
 		      (else
 		       (translate arg arg-register)
 		       (generate-slot-store stack-register (cells i) arg-register #f)))))))
@@ -454,7 +455,10 @@
 		    ((null? available-registers)
 		     (push! (cons var locals-counter) newenv)
 		     (inc! locals-counter)
-		     (cons arg-register (used-registers val)))
+		     (cons* 
+		      arg-register
+		      (sub1 locals-counter)
+		      (used-registers val)))
 		    (else
 		     (let ((reg (car available-registers)))
 		       (push! (cons var reg) newenv)
@@ -466,17 +470,11 @@
 	    (used-registers body))))))
     (('$global-set! var val) (used-registers val))
     (('$global-ref var) '())
-    (('$local-ref var)
-     (let ((ref (lookup-variable var)))
-       (if (symbol? ref)
-	   (list ref)
-	   '())))
+    (('$local-ref var) (list (lookup-variable var)))
     (('$local-set! var val)
      (let ((ref (lookup-variable var)))
        (append
-	(if (symbol? ref)
-	    (list ref)
-	    '())
+	(list ref)
 	(used-registers val))))
     (('if x y z)
      (append
@@ -510,14 +508,12 @@
 ;; return register that holds this value of #f
 (define (argument-register arg)
   (match arg
-    (('$local-ref var)
-     (let ((reg (lookup-variable var)))
-       (and (symbol? reg) reg)))
+    (('$local-ref var) (lookup-variable var))
     (_ #f)))
 
 (define (translate-call x)
   (let ((n (length x)))
-    (translate/registers x argument-registers #f)
+    (translate/registers x argument-registers)
     (generate-slot-ref arg-register self-register (cells 1) #t)
     (generate-immediate-ref count-register n)
     (if allocating
@@ -626,10 +622,7 @@
 (define (lookup-variable var)
   (cond ((assq var environment) =>
 	 (match-lambda 
-	   ((_ . r)
-	    (if (symbol? r)
-		r
-		(cells r)))))
+	   ((_ . r) r)))
 	(else (error "unknown local variable" var))))
 
 
