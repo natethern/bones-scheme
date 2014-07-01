@@ -226,9 +226,9 @@
 
 (define (manual)
   (make (("MANUAL.html" ("MANUAL.org")
-	  (run (emacs --script makehtml.el)))
+	  (run (emacs --script scripts/makehtml.el)))
 	 ("MANUAL.txt" ("MANUAL.org")
-	  (run (emacs --script makeascii.el))))
+	  (run (emacs --script scripts/makeascii.el))))
     '("MANUAL.html" "MANUAL.txt")))
 
 (define (-n)
