@@ -40,13 +40,17 @@
       (list x)))
 
 (define (join xs . sep)
-  (let ((sep (optional sep "")))
-    (apply
-     string-append
-     (let loop ((xs xs))
-       (cond ((null? xs) '())
-	     ((null? (cdr xs)) xs)
-	     (else (cons (car xs) (cons sep (loop (cdr xs))))))))))
+  (let ((sep (optional sep ""))
+	(out (open-output-string)))
+    (let loop ((xs xs))
+      (cond ((null? xs) "")
+	    ((null? (cdr xs))
+	     (display (car xs) out)
+	     (get-output-string out))
+	    (else 
+	     (display (car xs) out)
+	     (display sep out)
+	     (loop (cdr xs)))))))
 
 (define (every pred lst)
   (let loop ((lst lst))
