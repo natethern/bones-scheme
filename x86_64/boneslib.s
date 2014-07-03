@@ -83,6 +83,11 @@
 %define FIXNUM  TYPECODE(11)
 
 
+%ifdef FEATURE_CHECK
+ %define ENABLE_WRITE_BARRIER
+%endif
+
+
 ;; get type-number from value pointed to by %1
 %define TYPENUMBER_REF(x) [x + CELLS(1) - 1]
 
@@ -187,10 +192,7 @@
 
 ;; write barrier: %1 = destination, %2 = value (may not be rax), clobbers rax
 %macro WRITE_BARRIER 2
-%ifdef DISABLE_WRITE_BARRIER
-  lea rax, %1
-  mov [rax], %2
-%else  
+%ifdef ENABLE_WRITE_BARRIER
   push r11
   lea rax, %1
   mov r11, %2
@@ -203,6 +205,9 @@
 %%ok:
   mov [rax], r11
   pop r11
+%else
+  lea rax, %1
+  mov [rax], %2
 %endif
 %endmacro
 

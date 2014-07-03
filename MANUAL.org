@@ -237,9 +237,11 @@
 
 ** Configuration Macros for Generated Assembler Code
 
-  - =DISABLE_WRITE_BARRIER= :: When mutating data-structures that are
-      not stored in the heap, the program normally aborts with an
-      error message. Define this macro to disable this check.
+  - =ENABLE_WRITE_BARRIER= :: When mutating data-structures that are
+      not stored in the heap, the assigned value may be lost for
+      tracing during garbage collection, leading to errors that are
+      very hard to detect. When enabling this macro, program aborts in
+      such cases with an error message.
 
   - =ENABLE_GC_LOGGING= :: Write some informational output to stderr
       every time a garbage collection is triggered.
@@ -1265,9 +1267,9 @@
   live, if no other pointer to that object exists. Since the GC moves
   data in the heap on every collection (because it is copied from the
   old heap-space to the new one), the old pointer will be invalid
-  after the collection finishes. This check can be disabled by passing
-  =-DDISABLE_WRITE_BARRIER= to NASM, which gives better performance,
-  but may lead to very hard to find bugs.
+  after the collection finishes. A check for this can be enabled by
+  passing =-DENABLE_WRITE_BARRIER= to NASM, which may slightly
+  deteriorate performance.
 
   The heap can not be resized dynamically and has a fixed size.  Use
   the =TOTAL_HEAP_SIZE= macro to specify a heap-size different from
@@ -1378,8 +1380,8 @@
   in non-heap memory. In that case it will be ignored by the garbage
   collector, but may not be modified to hold pointer to heap-data
   (this will be detected and result in an error-message and
-  termination of the process, unless the program was assembled with
-  the =-DDISABLE_WRITE_BARRIER= argument.
+  termination of the process, when the program was assembled with the
+  =-DENABLE_WRITE_BARRIER= argument.
   
   If you want to copy the argument given to the entry-point into the
   Scheme heap, take a look at the file =copy.scm= in the BONES
@@ -1389,6 +1391,8 @@
   Note that =return-to-host= suspends the executing Scheme code and
   returns the argument given to the following invocation of the
   entry-point.
+
+* TODO Debugging
 
 * Bugs and Limitations
 
