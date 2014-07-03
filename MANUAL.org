@@ -1392,12 +1392,35 @@
   returns the argument given to the following invocation of the
   entry-point.
 
-* TODO Debugging
+* Debugging
+
+  As already mentioned, there are practically no debugging facilities.
+  It is possible to enable some checks for lowlevel data access and
+  for exceeding basic argument-counts and -limits. To do so, use the
+  =-feature check= option (or use =provide= for enabling this in your
+  program specifications).
+
+  Currently, the =check= feture enables the following:
+
+  - Out-of-bounds slot-access of vector-like objects.
+
+  - Out-of-bounds access of byte-vectors objects.
+
+  - Checking whether a non-procedure was called.
+
+  - Checking the correct number of arguments in a procedure call.
+
+  - Checking the maximum number of arguments in =apply=.
+
+  - Checking attempts to modify immutable data (literals).
+
+  Access to undefined ("unbound") variables will produce linker
+  errors, where the variable name will be mangled, by prefixing it
+  with "___" (three underscores) and replacing non-alphanumeric
+  characters with "_XX" with "XX" being the hexadecimal character code
+  of the character.
 
 * Bugs and Limitations
-
-  =log= is currently not implemented, as I haven't found out yet how
-  to define it using SSE2/x87 operations.
 
   The heap has a fixed size and does not resize dynamically. You can
   change the default size of the heap setting the =TOTAL_HEAP_SIZE=
@@ -1411,16 +1434,21 @@
 
   =string->number= does not detect overflow when converting integers
   and return -1 if the result does not fit into a fixnum. Also,
-  "+/-nan.0" and "+/-inf.0" is not correctly detected (but "+/-nan
+  "+/-nan.0" and "+/-inf.0" is not correctly detected (but "+/-nan"
+  and "+/-inf" are).
 
   Library support for on Linux for "nolibc" mode is incomplete:
 
   - =number->string= and =string->number= do not support inexact
-    numbers
+    numbers.
   
   - The non-standard primitives =system= and =getenv= are currently
-    not implemented
-  
+    not implemented.
+
+  The maximum number of arguments that can be passed to a procedure is
+  currently 1024 + 9. You can change this by giving a different value
+  for the =NUMBER_OF_NON_REGISTER_ARGUMENTS= in the =boneslib.s= file.
+
 * Porting Guide
 
   The system should be relatively easy to port. The only
