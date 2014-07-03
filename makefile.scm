@@ -104,6 +104,12 @@
      (for-each
       (lambda (prg)
 	(let ((bopts (if (member prg '("r4rstest")) '(-case-insensitive) '())))
+	  (unless (compile+run "linux/checked" prg "./bones" '() `(-feature check ,@bopts))
+	    (set! ok #f))))
+      '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth"))
+     (for-each
+      (lambda (prg)
+	(let ((bopts (if (member prg '("r4rstest")) '(-case-insensitive) '())))
 	  (unless (compile+run "linux" prg "./bones" '() bopts)
 	    (set! ok #f))))
       '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth"))
