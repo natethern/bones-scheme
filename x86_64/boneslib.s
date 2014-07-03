@@ -61,7 +61,9 @@
 %define FALSE           r14
 %define LIMIT           r13
 
+%define NUMBER_OF_NON_REGISTER_ARGUMENTS 1024
 %define NUMBER_OF_ARGUMENT_REGISTERS 9
+%define MAXIMUM_NUMBER_OF_ARGUMENTS (NUMBER_OF_NON_REGISTER_ARGUMENTS + NUMBER_OF_ARGUMENT_REGISTERS)
 
 %define NULL    TYPECODE(0)
 %define SYMBOL	TYPECODE(1)
@@ -167,7 +169,7 @@
   mov SELF, rcx
   mov rcx, %1
   mov rax, [rbx + CELLS(1)]	; get function-ptr
-  mov r11, 1	  	; 1 arg (result)
+  mov r11, 2	  	; 2 args (closure + result)
   jmp rax
 %endmacro
 
@@ -442,7 +444,7 @@
 %endmacro
 
 
-;; vector/bytevector access check: %1 = block, %2 = index (fixnum)
+;; vector access check: %1 = block, %2 = index (fixnum)
 %macro CHECK_SLOT_ACCESS 2
 %ifdef FEATURE_CHECK
   push rax
@@ -455,6 +457,7 @@
 %endif
 %endmacro
 
+;; vector access check: %1 = block, %2 = index (fixnum)
 %macro CHECK_BYTE_ACCESS 2
 %ifdef FEATURE_CHECK
   push rax
@@ -465,6 +468,18 @@
   pop r11
   pop rax
 %endif
+%endmacro
+
+;; procedure check: SELF = block
+%macro CHECK_PROCEDURE 0
+%ifdef FEATURE_CHECK
+  call check_procedure
+%endif
+%endmacro
+
+;; argc check failed
+%macro CHECK_ARGC_FAILED 0
+  call check_argc_failed
 %endmacro
 
 
@@ -532,6 +547,7 @@ init:
   sub LIMIT, FROMSPACE_RESERVE
   mov rcx, terminate_closure
   mov [toplevel_rsp], rsp
+  mov r11, 2
   xor SELF, SELF	    ; current closure, empty here
   jmp toplevel
 
@@ -1234,7 +1250,15 @@ PRIMITIVE apply
   pop r11
   sub r11, 2
   repeat
-    cmp rsi, rdx
+%ifdef FEATURE_CHECK
+    cmp r11, MAXIMUM_NUMBER_OF_ARGUMENTS - 2
+    if a
+      mov rax, error_msg_6
+      mov r11, error_msg_7 - error_msg_6
+      call write_error_and_exit    
+    endif
+%endif
+    cmp rsi, rdx		; compare current list with '()
   while ne
     mov rax, [rsi + CELLS(1)]
     mov [rdi], rax
@@ -1375,7 +1399,7 @@ PRIMITIVE call_with_values
   ;; call producer
   mov SELF, rdx
   mov rax, [SELF + CELLS(1)]
-  mov r11, 1
+  mov r11, 2
   jmp rax
 
 values_continuation:
@@ -2411,6 +2435,8 @@ get_last_error:
 ;; check slot-access: rax = block, r11 = index (fixnum), clobbers r11
 check_slot_access:
   push r15
+  test rax, 1
+  jnz .fail
   mov r15, [rax]
   and r15, [byteblock_bit]
   if z
@@ -2423,6 +2449,7 @@ check_slot_access:
       ret
     endif
   endif
+.fail:
   mov rax, error_msg_3
   mov r11, error_msg_4 - error_msg_3  
   jmp write_error_and_exit
@@ -2431,6 +2458,8 @@ check_slot_access:
 ;; check byte-access: rax = block, r11 = index (fixnum), clobbers r11
 check_byte_access:
   push r15
+  test rax, 1
+  jnz .fail
   mov r15, [rax]
   test r15, [byteblock_bit]
   if nz
@@ -2442,9 +2471,35 @@ check_byte_access:
       ret
     endif
   endif
+.fail:
   mov rax, error_msg_4
   mov r11, error_msg_5 - error_msg_4
   jmp write_error_and_exit    
+
+
+;; check procedure: SELF = block
+check_procedure:
+  test SELF, 1
+  jnz .fail
+  push rax
+  mov rax, [SELF]
+  and rax, [bits_mask]
+  cmp rax, [closure_type]
+  if e
+    pop rax
+    ret
+  endif
+.fail:
+  mov rax, error_msg_5
+  mov r11, error_msg_6 - error_msg_5
+  jmp write_error_and_exit
+
+
+;; argc check failed
+check_argc_failed:
+  mov rax, error_msg_7
+  mov r11, error_msg_8 - error_msg_7
+  jmp write_error_and_exit
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2489,7 +2544,10 @@ error_msg_1: db `store to non-heap data detected\n`
 error_msg_2: db `out of memory\n`
 error_msg_3: db `invalid slot access\n`
 error_msg_4: db `invalid byte access\n`
-error_msg_5:
+error_msg_5: db `call of non procedure\n`
+error_msg_6: db `apply: too many arguments\n`
+error_msg_7: db `wrong number of arguments\n`
+error_msg_8:
 
 gc_log_format: db `[GC #%d, reserve: %d bytes ...`, 0
 gc_log_format2: db ` remaining: %d bytes]\n`, 0
@@ -2525,8 +2583,10 @@ xcvt: db "%lx", 0
 gcvt: db "%.16g", 0
 
 rsp_alignment_mask: dq ~(CELLS(2) - 1)
+bits_mask: dq BITS_MASK
 size_mask: dq SIZE_MASK
 byteblock_bit: dq BYTEBLOCK_BIT
+closure_type: dq CLOSURE
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2539,7 +2599,7 @@ gc_count: resq 1
 buffer: resb 2048
 gcsave: resq 2			; holds 2 additional registers to those in "tempregisters"
 tempregisters: resq 7		; must follow "gcsave"
-locals:	resq 1024		; must be right after "tempregisters"!
+locals:	resq NUMBER_OF_NON_REGISTER_ARGUMENTS ; must be right after "tempregisters"!
 area1: resb TOTAL_HEAP_SIZE / 2
 area2: resb TOTAL_HEAP_SIZE / 2
 argv: resq 1

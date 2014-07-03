@@ -118,7 +118,7 @@
   (emit "\n"))
 
 (define (generate-slot-ref dest src off check?)
-  (when (and emit-access-checks check?)
+  (when (and enable-checks check?)
     (emit " CHECK_SLOT_ACCESS " src ", FIX(" (bytes off)  ")\n"))
   (emit " mov " dest ", [" src " + " off "]\n"))
 
@@ -149,3 +149,6 @@
 (define (generate-alloc-alignment)
   ;; ALIGNMENT: on 32-bit platforms, we must align the data-area of a block if it is a flonum
   #f)
+
+(define (generate-procedure-check)
+  (emit " CHECK_PROCEDURE\n"))

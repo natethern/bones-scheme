@@ -12,7 +12,7 @@
 (define label-counter 0)
 (define allocating #f)
 (define emit-expr-comments #f)
-(define emit-access-checks #f)
+(define enable-checks #f)
 
 (define environment '())
 (define locals-counter 0)
@@ -87,7 +87,7 @@
 			(stop))))
 	      (ccode (cc code '())))
 	 (set! emit-expr-comments (option 'comment: options))
-	 (set! emit-access-checks (option 'check: options))
+	 (set! enable-checks (memq 'check implementation-features))
 	 (when dumpcc
 	   (dump-expressions ccode dumpserial)
 	   (stop))
@@ -514,6 +514,8 @@
 (define (translate-call x)
   (let ((n (length x)))
     (translate/registers x argument-registers)
+    (when enable-checks
+      (generate-procedure-check))
     (generate-slot-ref arg-register self-register (cells 1) #t)
     (generate-immediate-ref count-register n)
     (if allocating
@@ -530,13 +532,17 @@
 	 ((null? llists))
        (let ((vars argc rest (parse-lambda-list (car llists)))
 	     (next (string-append "f_c_" (number->string id) "_" (number->string (add1 i)))))
-	 (unless (null? (cdr llists))
-	   (generate-argc-check (add1 argc) rest next))
+	 (if (null? (cdr llists))
+	     (when enable-checks
+	       (generate-argc-check (add1 argc) rest next))
+	     (generate-argc-check (add1 argc) rest next))
 	 (translate-llist (car llists))
 	 (set! allocating #f)
 	 (translate (car bodies) arg-register)
-	 (unless (null? (cdr llists))
-	   (emit next ":\n")))))))
+	 (if (null? (cdr llists))
+	     (when enable-checks
+	       (emit next ":\n CHECK_ARGC_FAILED\n"))
+	     (emit next ":\n")))))))
 
 (define (translate-llist llist)
   (set! available-registers (cdr argument-registers))
