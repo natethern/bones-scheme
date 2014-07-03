@@ -124,7 +124,7 @@
 	  (unless (compile+run "linux/glibc" prg "./bones" '() `(-feature glibc ,@bopts))
 	    (set! ok #f))))
       '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth"))
-     (unless (compile+run "self-compile" "bones" "./bones"
+     (unless (compile+run "self-compile" "tests/bones" "./bones"
 			  '(bones.scm -o tmp/bones.s -feature linux)
 			  '(-feature linux))
        (set! ok #f))
