@@ -2,11 +2,6 @@ BONES                                                                     -*- Or
 =====
 
 
-* TODO [#C] add heap-stress test
-  - build and run executable with a heap of several gigabytes.
-  - measure GC time with empty + loaded heap.
-* DONE disable write-barrier by default
-  - benchmark.
 * TODO make dist and check on [sem15]
 * work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
@@ -16,13 +11,13 @@ BONES                                                                     -*- Or
   - make dist
   - upload files
     - file:index.html, file:MANUAL.html, file:manual.css
+  - update http://www.call-with-current-continuation.org/felix/
   - announce
 * add f64vectors
    - FLOATVECTOR_TYPE (#x12)
    - would need proper alignment on 32-bit systems.
    - put API into file:fastmath.scm
    - adapt printer + reader.
-* use fastmath in file:forth.scm
 * start with ARM port
 * add bytevectors
   - interchangable with strings.
@@ -30,10 +25,6 @@ BONES                                                                     -*- Or
     bytevector-length, bytevector-copy, bytevector-copy!
   - "u8(...)" read-syntax + printing.
 * go through r7rs and look for possibly useful primitives
-* DONE try compiling grond once more
-  - with 500MB heap, seems to die while generating large string literal
-    (possibly for file:~/grond/builtin-syntax.scm).
-  - likely to be an argc-limit overflow in =apply=.
 * potential optimizations
 ** we could coalesce allocations inside a lambda
   - but will probably gain very little.
@@ -191,12 +182,6 @@ mainCRTStartup:
     (if (if X FALSE TRUE) Y Z) -> (if X Z Y)
   - drop =let= with empty set of bindings.
 * TODO =string->number= does not parse "+/-nan.0"/"+/-inf.0"
-* secure inline-primitives against redefinition of internally used primitives
-  - like this:
-    (let-syntax ((PRIMITIVE PRIMITIVE))
-      (define-inline (OTHER-PRIMITIVE ...) ...))
-  - or redefinition of PRIMITIVE will change behaviour of OTHER-PRIMITIVE.
-  - need to go through every primitive and check it's dependencies.
 * Issues
 ** "inexact->exact" uses "fisttp", so needs SSE3
 ** i don't fully trust that "integer?" handles all cases correctly
