@@ -23,7 +23,7 @@
   ($inline "call copy_to_buffer; SYSCALL3 2, buffer, 1089, 420; INT2FIX rax" name))
 
 (define-syntax-rule (%getcwd)
-  ($inline "SYSCALL2 79, buffer, 1024; mov rax, buffer; call alloc_zstring"))
+  ($inline "SYSCALL2 79, buffer, 1024; test rax, rax; if z; mov rax, FALSE; else; mov rax, buffer; CALL alloc_zstring; endif"))
 
 (define-syntax-rule (%chdir dir)
   ($inline "call copy_to_buffer; SYSCALL1 80, buffer; INT2FIX rax" dir))

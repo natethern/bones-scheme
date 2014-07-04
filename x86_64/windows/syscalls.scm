@@ -34,7 +34,7 @@
   ($inline "LIBCALL0 clock; INT2FIX rax"))
 
 (define-syntax-rule (%getcwd)
-  ($inline "LIBCALL2 _getcwd, buffer, 1024; mov rax, buffer; CALL alloc_zstring"))
+  ($inline "LIBCALL2 _getcwd, buffer, 1024; test rax, rax; if z; mov rax, FALSE; else; mov rax, buffer; CALL alloc_zstring; endif"))
 
 (define-syntax-rule (%chdir dir)
   ($inline "CALL copy_to_buffer; LIBCALL1 _chdir, buffer; cdqe; INT2FIX rax" dir))

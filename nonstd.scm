@@ -206,11 +206,11 @@
 
    (define (current-directory . dir)
      (if (null? dir)
-	 (if (%fx<? (%getcwd) 0)
-	     (%file-error 'current-directory)
-	     (let ((r (%chdir (car dir))))
-	       (when (%fx<? r 0)
-		 (%file-error 'current-directory (car dir)))))))
+	 (or (%getcwd)
+	     (%file-error 'current-directory))
+	 (let ((r (%chdir (car dir))))
+	   (when (%fx<? r 0)
+	     (%file-error 'current-directory (car dir))))))
 
    (define-inline (delete-file str) 
      (when (%fx<? (%unlink str) 0)
