@@ -176,6 +176,17 @@
       (print "embedding check failed."))
     r))
 
+(define (check-grond)
+  (bigbones)
+  (run (mkdir -p tmp))
+  (let ((r (and (zero? (run* (./bigbones tests/grond.scm -feature check -o tmp/grond.s)))
+		(zero? (run* (nasm -f elf64 -g -F dwarf tmp/grond.s -o tmp/grond.o -DTOTAL_HEAP_SIZE=2_000_000_000)))
+		(zero? (run* (bin/musl-gcc tmp/grond.o -o tmp/grond)))
+		(zero? (run* (tmp/grond tests/fac.scm -verbose -o tmp/fac.cpp))))))
+    (unless r
+      (print "building and running grond failed."))
+    r))
+
 (define (bench)
   (bones)
   (run (echo >>benchmark.txt))
