@@ -391,6 +391,11 @@
     supported. Numerical overflow is not detected, so arithmetic
     operations on fixnums will silently wrap on overflow.
 
+*** Section 6.2.3
+
+    =/= always returns an inexact number. This is not a violation
+    of R5RS, but should be kept in mind.
+
 *** Section 6.2.4
     
     The =#= character is not allowed inside inexact numeric constants.
