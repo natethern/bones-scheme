@@ -1013,9 +1013,10 @@ divide_2:
   jz .l2
   FIX2INT rax			; rax, rbx = fixnum
   FIX2INT rbx
-  cqo
-  idiv rbx
-  INT2FIX rax
+  movq xmm0, rax
+  movq xmm1, rbx
+  divsd xmm0, xmm1
+  jmp .done
   ret
 .l1:
   test rbx, 1			; rax = !fixnum
