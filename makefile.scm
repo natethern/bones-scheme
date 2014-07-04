@@ -99,18 +99,18 @@
 	   (xname (string-append "tmp/" name)))
       (print (padl (string-append " " title) 60 #\=) ": " fname)
       (let ((ok (and (zero? (run* (,cmplr ,(string-append fname ".scm") -o ,sname ,@bopts)))
-		    (zero? (run* (nasm -f elf64 -g -F dwarf ,sname -o ,oname)))
-		    (zero? (cond ((memq 'nolibc bopts)
-				  (run* (ld ,oname -o ,xname)))
-				 ((memq 'glibc bopts)
-				  (run* (gcc ,oname -o ,xname)))
-				 (else 
-				  (run* (bin/musl-gcc ,oname -o ,xname)))))
-		    (zero? (run* (memtime ,xname ,@runargs))))))
+		     (zero? (run* (nasm -f elf64 -g -F dwarf ,sname -o ,oname)))
+		     (zero? (cond ((memq 'nolibc bopts)
+				   (run* (ld ,oname -o ,xname)))
+				  ((memq 'glibc bopts)
+				   (run* (gcc ,oname -o ,xname)))
+				  (else 
+				   (run* (bin/musl-gcc ,oname -o ,xname)))))
+		     (zero? (run* (memtime ,xname ,@runargs))))))
 	(unless ok
 	  (print "\n" fname " FAILED.\n"))
-	ok)))))
-	  
+	ok))))
+	 
 
 (define (check)
   (bones)
