@@ -67,18 +67,18 @@
 (define (bigbones)
   (bones)
   (make/proc
-   (list (list "bigbones.s"
+   (list (list "tmp/bigbones.s"
 	       (append compiler-sources compiler-sources-x86_64
 		       '("x86_64/linux/syscalls.scm"))
 	       (lambda ()
-		 (run (./bones bones.scm -feature check -o bigbones.s -feature linux))))))
-  (make (("bigbones" ("bigbones.o")
-	  (run (bin/musl-gcc bigbones.o -o bigbones)))
-	 ("bigbones.o" ("bones-x86_64-linux.s" 
-			"x86_64/boneslib.s" 
-			"x86_64/structured.s")
-	  (run (nasm -f elf64 -g -F dwarf -DTOTAL_HEAP_SIZE=500_000_000 bigbones.s
-		     -o bigbones.o))))))
+		 (run (./bones bones.scm -feature check -o tmp/bigbones.s -feature linux))))))
+  (make (("bigbones" ("tmp/bigbones.o")
+	  (run (bin/musl-gcc tmp/bigbones.o -o bigbones)))
+	 ("tmp/bigbones.o" ("bones-x86_64-linux.s" 
+			    "x86_64/boneslib.s" 
+			    "x86_64/structured.s")
+	  (run (nasm -f elf64 -g -F dwarf -DTOTAL_HEAP_SIZE=500_000_000 tmp/bigbones.s
+		     -o tmp/bigbones.o))))))
 
 (define (backup)
   (let* ((date (capture (date +%Y%m%d)))
