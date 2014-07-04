@@ -164,6 +164,7 @@
 	 "\n\nSOME CHECKS FAILED."))))
 
 (define (check-embedded)
+  (bones)
   (let ((r (and (zero? (run* (./bones tests/embedded.scm -o tmp/embedded.s -feature embedded)))
 		(zero? (run* (nasm -f elf64 -g -F dwarf tmp/embedded.s 
 				   -o tmp/embedded1.o -DPREFIX=my)))
