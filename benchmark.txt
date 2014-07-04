@@ -144,3 +144,28 @@ Exit [0]
 1.32 user, 0.04 system, 1.40 elapsed -- Max VSize = 98064KB, Max RSS = 78144KB
 -rwxr-xr-x 1 felix felix 256520 Jun 27 23:59 fft
 heap used: 3416
+
+2014-07-04: (disabled write-barrier)
+18c863bd522b722e486c35ba7cfc95ed9b154c51
+bones:
+Exit [0]
+2.81 user, 0.21 system, 3.10 elapsed -- Max VSize = 98480KB, Max RSS = 78668KB
+-rwxr-xr-x 1 felix felix 684560 Jul  4 14:28 bones
+dynamic:
+done
+Exit [0]
+0.45 user, 0.14 system, 0.60 elapsed -- Max VSize = 98080KB, Max RSS = 78144KB
+-rwxr-xr-x 1 felix felix 274744 Jul  4 14:28 tests/dynamic
+mandelbrot:
+Exit [0]
+5.70 user, 0.04 system, 5.81 elapsed -- Max VSize = 97896KB, Max RSS = 78144KB
+-rwxr-xr-x 1 felix felix 86312 Jul  4 14:28 tests/mandelbrot
+fft:
+Exit [0]
+1.30 user, 0.04 system, 1.40 elapsed -- Max VSize = 98024KB, Max RSS = 78140KB
+-rwxr-xr-x 1 felix felix 217488 Jul  4 14:28 tests/fft
+minimal heap usage: 2864
+large heap GC (full): 374 ms
+Exit [0]
+0.00 user, 0.00 system, 0.10 elapsed -- Max VSize = 4164KB, Max RSS = 84KB
+minimal program size: -rwxr-xr-x 1 felix felix 52736 Jul  4 14:28 tests/null
