@@ -2,17 +2,10 @@ BONES                                                                     -*- Or
 =====
 
 
-* TODO make dist and check on [sem15]
 * work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values has two words.
 * test file:copy.scm
-* release
-  - make dist
-  - upload files
-    - file:index.html, file:MANUAL.html, file:manual.css
-  - update http://www.call-with-current-continuation.org/felix/
-  - announce
 * add f64vectors
    - FLOATVECTOR_TYPE (#x12)
    - would need proper alignment on 32-bit systems.

@@ -2,12 +2,12 @@
 * Introduction
 
   This is BONES, a compiler for R5RS Scheme that generates x86_64
-  assembler code. BONES is designed to be simple and easy to
+  assembly code. BONES is designed to be simple and easy to
   understand, both to reduce the effort to learn and extend the system
   and to keep the complexity of the compiler at a minimum.
 
   BONES is a batch-compiler, it takes a Scheme source file and
-  produces an assembler file to be subsequently assembled into object
+  produces an assembler file to be subsequently translated into object
   code. It is also a whole-program compiler, which means it does not
   support separate compilation of multiple modules. The runtime system
   is by default added to your program before it is compiled, so there
@@ -27,7 +27,7 @@
   architectures and operating systems should be (relatively)
   straightforward, as the platform-specific parts of the compiler are
   small and the runtime-system is just a single file of about two
-  thousand lines of assembler code.
+  thousand lines of assembly code.
 
   The compiler is self-compiling and uses just a few functions from
   the C-library. Alternatively, programs can be compiled on Linux
@@ -37,11 +37,17 @@
   embedded into programs written in other languages as long as they
   allow calling C functions.
 
-  There are no debugging facilities. The compiler expects correct
-  code an no attempt is made to provide more than the most basic error
-  messages. It is recommended to develop and test code first in an
-  interactive Scheme implementation and use BONES only for generating
-  executables when the code can be assumed to work.
+  There are very little debugging facilities. The compiler expects
+  correct code and no attempt is made to provide more than the most
+  basic error messages. It is recommended to develop and test code
+  first in an interactive Scheme implementation and use BONES only for
+  generating executables when the code can be assumed to work.
+
+  The development files for BONES are hosted at [[https://bitbucket.org/bunny351/bones][bitbucket.org]], where
+  you will find example code (mostly tests). The compiler itself is
+  developed with a currently unreleased Scheme system, but as BONES
+  compiles itself, no additional implementation is needed to make
+  changes and extend the system.
 
 * Portability
 
@@ -49,6 +55,12 @@
   itself), an x86_64 system is required, with support for SSE2 and
   SSE3 instructions. Currently the the compiler only runs under the
   Linux and Windows operating systems.
+
+  BONES has been successfully tested on the following systems:
+
+  | Linux Mint 13 Maya Ubuntu/Linaro 4.6.3-1ubuntu4 Linux 3.2.0-23-generic x86_64 |
+  | openSUSE 13.1 (Bottle) Linux 3.15.1-2.g3289da4-default x86_64                 |
+  | Windows 7 Professional                                                        |
 
 * Requirements
 
@@ -67,12 +79,12 @@
 * Installation
 
   BONES is written in Scheme and translates Scheme to x86_64
-  assembler, specifically, in the syntax accepted by NASM, which will
+  assembler for the syntax accepted by NASM, which will
   have to be installed on your system. To link the assembled code you
   will need a linker and C runtime support files, including the C
   library, so a C compiler should be installed as well.
 
-  To build the system, you need the pre-compiled assembler code for
+  To build the system, you need the pre-compiled assembly code for
   the =bones= executable, which you can obtain by downloading
   a distribution tarball at this location:
 
@@ -143,7 +155,7 @@
 
    Compiling code is straightforward. The =bones= program will compile
    a single Scheme source file given on the command-line and write the
-   generated assembler code to stdout. You will have to assemble and
+   generated assembly code to stdout. You will have to assemble and
    link the generated code by hand, subprocesses to do this are not
    invoked automatically. The compiler accepts a few command-line
    options which are described below.
@@ -178,6 +190,13 @@
    which the object file should be linked. For Linux this is =elf64=,
    for Windows =win64=.
 
+   You can optionally add debug-information to have source-level
+   access when debugging the generated executable with (say)
+   =gdb=. This is done by adding =-g -F <DEBUGFORMAT>= to the =nasm=
+   command line, where =<DEBUGFORMAT>= should be the format suitable
+   for your particular platform, on Linux =dwarf= seems to work for
+   me.
+
    Linking is done by invoking the appropriate linker for the target
    platform. On Linux this is done by the "gcc" compiler driver, which
    also adds the necessary C runtime libraries needed:
@@ -207,13 +226,13 @@
        mode.  The default is to be case-sensitive.
 
    - =-comment= :: Emit source-code forms as comments in generated
-       assembler code.
+       assembly code.
 
    - =-dump-features= :: Dump the set of enabled features after any
-       program specification has been completely parsed.
+       program specification has been completely parsed and stop.
 
    - =-dump-unused= :: Dump unused global variables, including library
-       definitions and
+       definitions and stop.
 
    - =-expand= :: Dump source code to stdout after syntax-expansion and
        stop.
@@ -235,13 +254,13 @@
    - =-o FILENAME= :: Write generated code to =FILENAME= instead of
        stdout.
 
-** Configuration Macros for Generated Assembler Code
+** Configuration Macros for Generated Assembly Code
 
   - =ENABLE_WRITE_BARRIER= :: When mutating data-structures that are
       not stored in the heap, the assigned value may be lost for
       tracing during garbage collection, leading to errors that are
-      very hard to detect. When enabling this macro, program aborts in
-      such cases with an error message.
+      very hard to detect. When enabling this macro, the program
+      aborts in such cases with an error message.
 
   - =ENABLE_GC_LOGGING= :: Write some informational output to stderr
       every time a garbage collection is triggered.
@@ -257,16 +276,16 @@
 
    /Configurations/ are used for the composition of programs,
    depending on source files and /features/ that are used to perform
-   more fine-grained control over the characteristics of the generated
-   code.
+   more fine-grained control over the characteristics of the compiled
+   source and generated assembly code.
 
    The compiler will compile normal Scheme code with a default
    configuration, mentioned above, that includes further configuration
    options from the file =base.scm=, selecting the default target and
-   the primitives available, namely, most R5RS standard procedures and
-   some non-standard extensions. To exercise more control, one can use
-   the =program= form to specify source-files and enable or disable
-   code to be included in the program that will be generated.
+   the primitives available, that is, most R5RS standard procedures
+   and some non-standard extensions. To exercise more control, one can
+   use the =program= form to specify source-files and enable or
+   disable code to be included in the program that will be compiled.
 
    If you use your own =program= form, make sure to add a clause
    including the base components in =base.scm=, as it provides some
@@ -289,7 +308,6 @@
    | process-environment | Access to the process-environment and subprocesses are available |
    | time                | Access to the system time is available                           |
    | jiffy-clock         | Access to the internal real-time clock is available              |
-   | check               | Enable some internal sanity checks for slot- and byte-access     |
    | srfi-0              | Specify availability of SRFI functionality                       |
    | srfi-6              |                                                                  |
    | srfi-7              |                                                                  |
@@ -304,9 +322,10 @@
 
    | Feature  | Meaning                                                                          |
    |----------+----------------------------------------------------------------------------------|
-   | pic      | Generate position-independent code, always enabled on Windows, optional on Linux |
-   | nolibc   | Generate code that does not require linking with the C runtime library           |
+   | check    | Insert low-level type- and limit-checks into the generated code                  |
    | embedded | Generate code that can be embedded into an application                           |
+   | nolibc   | Generate code that does not require linking with the C runtime library           |
+   | pic      | Generate position-independent code, always enabled on Windows, optional on Linux |
 
 * Language Description
 
@@ -332,13 +351,7 @@
 *** Builtin Features
 
     Features available by default are: =bones=, =srfi-0=, =srfi-7=,
-    =srfi-46=.
-
-    By including =base.scm=, which contains the library of R5RS
-    standard definitions and some non-standard primitives, the
-    following addition features are available: =flonums=, =ieee-754=,
-    =linux=, =srfi-6=, =file-ports=, =jiffy-clock=, =file-system= and
-    =process-environment=.
+    =srfi-16=, =srfi-46=.
 
 ** Deviations from R5RS
 
@@ -346,8 +359,8 @@
 
     Argument types to primitive procedures are not checked. The only
     detected errors are errors related to port- and file-system
-    operations, mutating literal constants, when the heap is
-    exhausted, or explicit calls to the =error= procedure.
+    operations, when the heap is exhausted, or explicit calls to the
+    =error= procedure.
 
 *** Section 2
 
@@ -357,8 +370,11 @@
 *** Section 3.4
 
     Literal constants are immutable and destructively modifying such a
-    constant will result in an error message being printed and the
-    program will terminate.
+    constant will have an undefined effect.
+
+*** Section 4.2.1
+
+    Vectors are self-evaluating, as in R7RS.
 
 *** Section 6
 
@@ -369,16 +385,17 @@
 *** Section 6.1
 
     =eqv?= performs /structural/ comparison, which means it compares
-    the contents of its two arguments. That means it will will return
-    =#t= if both arguments have the same type and identical contents,
-    even if the arguments are not numbers or characters.
+    the contents of its two arguments, in case they are of equal
+    type. That means it will will return =#t= if both arguments have
+    the same type and identical contents, even if the arguments are
+    not numbers or characters.
 
     =eq?= will not necessarily return the expected result when
     comparing primitive procedures. Many of these will be compiled
-    in-line using /identifier macros/, a feature of the used
-    syntax-expander, which means that for example the two occurrences of 
-    =zero?= below will refer to two different occurrences of the
-    code for that primitive:
+    in-line using /identifier macros/, a feature of the
+    syntax-expander used, which means that for example the two
+    occurrences of =zero?= below will refer to two different
+    occurrences of the code for that primitive:
 
     #+BEGIN_SRC scheme
     (eq? zero? zero?)  ==> #f
@@ -386,9 +403,9 @@
 
 *** Section 6.2.1
 
-    Only exact integers with 63 bits of magnitude (/fixnums/) and
-    IEEE-754 extended precision floating point numbers (/flonums/) are
-    supported. Numerical overflow is not detected, so arithmetic
+    Only exact signed integers with 63 bits of magnitude (/fixnums/)
+    and IEEE-754 extended precision floating point numbers (/flonums/)
+    are supported. Numerical overflow is not detected, so arithmetic
     operations on fixnums will silently wrap on overflow.
 
 *** Section 6.2.3
@@ -410,8 +427,6 @@
 
     =numerator=, =denominator= and =rationalize= are not available.
 
-    =log= is currently not available.
-
     =make-rectangular=, =make-polar=, =real-part=, =imag-part=,
     =magnitude= and =angle= are not available.
 
@@ -428,11 +443,6 @@
     =string->number= and =number->string= only support the bases 8, 10
     and 16. Any other base is ignored and the conversion will be done
     using base 10.
-
-*** Section 6.3.5
-
-    The third argument to =substring= is optional and defaults to the
-    length of the argument string.
 
 *** Section 6.4
 
@@ -472,7 +482,7 @@
 *** Section 4.3.1
 
     BONES uses Al Petrofsky's "alexpander", which provides several
-    enhancements. Among these /transformer/ expressions in
+    enhancements. Among these, /transformer/ expressions in
     =let-syntax= and =letrec-syntax= forms are extended to allow
     arbitrary expressions.
 
@@ -480,10 +490,10 @@
     transformer-specification and the expression in operator
     position of another expression may be any type of expression or
     syntax.  The four forms of syntax allowed are: a transformer (as
-    allowed in the transformer-spec position in r5rs), a keyword (as
-    allowed in the operator position in r5rs), a macro use that
-    expands into a syntax, and a macro block (let-syntax or
-    letrec-syntax) whose body is a syntax.
+    allowed in the transformer-spec position in R5RS), a keyword (as
+    allowed in the operator position in R5RS), a macro use that
+    expands into a syntax, and a macro block (=let-syntax= or
+    =letrec-syntax=) whose body is a syntax.
 
     Some examples:
 
@@ -517,12 +527,12 @@
 
     Top-level macro blocks.
 
-    At top level, if a macro block (a let-syntax or letrec-syntax form)
-    has only one body element, that element need not be an expression
-    (as would be required in r5rs).  Instead, it may be anything
-    allowed at top level: an expression, a definition, a begin sequence
-    of top-level forms, or another macro block containing a top-level
-    form.
+    At top level, if a macro block (a =let-syntax= or =letrec-syntax=
+    form) has only one body element, that element need not be an
+    expression (as would be required in R5RS).  Instead, it may be
+    anything allowed at top level: an expression, a definition, a
+    begin sequence of top-level forms, or another macro block
+    containing a top-level form.
 
     #+BEGIN_SRC scheme
     (let-syntax ((- quote))
@@ -531,10 +541,10 @@
     #+END_SRC
 
     Note that, unlike the similar extension in Chez scheme 6.0, this is
-    still r5rs-compatible, because we only treat definitions within the
-    last body element as top-level definitions (and r5rs does not allow
+    still R5RS-compatible, because we only treat definitions within the
+    last body element as top-level definitions (and R5RS does not allow
     internal definitions within a body's last element, even if it is a
-    begin form):
+    =begin= form):
 
     #+BEGIN_SRC scheme
     (begin
@@ -543,7 +553,7 @@
 	  (define x 2)
 	  'blah)
 	x)
-    => 1, in r5rs and alexpander, but 2 in Chez scheme
+    => 1, in R5RS and alexpander, but 2 in Chez scheme
 
     (begin
 	(define x 1)
@@ -551,7 +561,7 @@
 	  (begin (define x 2)
 		 'blah))
 	x)
-    => 2, in alexpander and in Chez scheme, but an error in r5rs.
+    => 2, in alexpander and in Chez scheme, but an error in R5RS.
     #+END_SRC
 
 *** Section 4.3.2
@@ -562,8 +572,6 @@
 *** Section 5.2.2
 
     Internal definitions expand into =letrec*= forms, as in R7RS.
-
-    Expressions among internal definitions.
 
     A definition of the form =(define <expression>)= causes the
     expression to be evaluated at the conclusion of any enclosing set
@@ -598,6 +606,11 @@
     The /transformer spec/ of a =define-syntax= form may be any
     expression.
 
+*** Section 6.3.5
+
+    The third argument to =substring= is optional and defaults to the
+    length of the argument string.
+
 *** Section 6.6.1
 
     =current-input-port= and =current-output-port= accept a single
@@ -608,11 +621,11 @@
 
     The following non-standard syntax is available:
 
-    - =(assert EXP [MSG ARGUMENT ...])= :: signals an error if =EXP=
+    - =(assert EXP [MSG ARGUMENT ...])= :: Signals an error if =EXP=
         evaluates to =#f=, passing =MSG= and =ARGUMENTS ...= to
         =error= in that case.
 
-    - =(begin0 EXP1 EXP ...)= :: evaluates the expressions and returns the
+    - =(begin0 EXP1 EXP ...)= :: Evaluates the expressions and returns the
 	result value(s) of the first expression.
 
     - =(cond-expand CLAUSE ...)= :: The [[http://srfi.schemers.org/srfi-0/][SRFI-0]] expansion-time conditional.
@@ -628,8 +641,8 @@
         operator-position of a procedure-call. Any use of an inline
         procedure must appear textually after its definition.
 
-    - =(define-syntax-rule (NAME ARGUMENTS ...) BODY)= :: A more concise
-        way of defining single-rule syntax.
+    - =(define-syntax-rule (NAME ARGUMENTS ...) EXPRESSION)= :: A more
+        concise way of defining single-rule syntax.
 
     - =(define-values (VAR ...) EXP)= :: Evaluates =EXP= and binds =VAR= ...
 	to the values returned by it.
@@ -637,8 +650,8 @@
     - =(fluid-let ((VAR EXP) ...) BODY ...)= :: Syntax for dynamic scoping,
 	see [[http://srfi.schemers.org/srfi-15/][SRFI-15]] for more information.
 
-    - =(let-optionals VAR1 ((VAR EXP) ... [RVAR]) BODY ...)= ::
-        Destructures the list in =VAR1=, binding the optional
+    - =(let-optionals VAR1 ((VAR EXP) ... [RVAR]) BODY ...)= :: Destructures 
+	the list in =VAR1=, binding the optional
         arguments =VAR= ... with defaults taken from =EXP= ... Any
         remaining list elements can be bound in the optional final
         variable =RVAR=.
@@ -658,7 +671,7 @@
 **** Fixnum Arithmetic
 
     - =(arithmetic-shift N M)= :: Shifts =N= =M= bits to the left, if
-        =M= is positive, or to the right, if negative.
+        =M= is positive, or to the right, if =M= is negative.
 
     - =(bitwise-and N M)= :: Binary AND.
 
@@ -666,7 +679,7 @@
 
     - =(bitwise-xor N M)= :: Binary exclusive OR.
 
-    - =(bitwise-not N)= :: Binary invertion.
+    - =(bitwise-not N)= :: Binary inverse.
 
 **** Input/Output
 
@@ -684,7 +697,7 @@
     - =(open-append-output-file STRING)= :: Opens the file =STRING= in
         /append/ mode, and returns an output port.
 
-    - =(open-input-string STRING)= :: Returns an input-port oin
+    - =(open-input-string STRING)= :: Returns an input-port on
         =STRING= from which data can be read.
 
     - =(open-output-string)= :: Returns an output-port accumulating
@@ -694,12 +707,13 @@
         output-port or =#f= otherwise.
 
     - =(print OBJECT ...)= :: Writes the arguments to the current
-        output port (using =display=) followed by a newline.
+        output port (using =display=) followed by a newline and
+        returns an unspecified value.
 
-    - =(read-string COUNT [PORT])= :: Reads =COUNT= characters from
-        =PORT= and returns a string. If no input is available from
-        =PORT=, the /end-of-file/ object is returned. =PORT= defaults
-        to the value of =(current-input-port)=.
+    - =(read-string COUNT [PORT])= :: Reads =COUNT= or less characters
+        from =PORT= and returns a string. If no input is available
+        from =PORT=, the /end-of-file/ object is returned. =PORT=
+        defaults to the value of =(current-input-port)=.
 
     - =(write-string STRING [PORT])= :: Writes the characters in =STRING= to =PORT=,
         which defaults to the current output port.
@@ -721,7 +735,7 @@
         /environment variable/ named by =STRING= as a string, or =#f=
         if such an environment variable is not defined.
 
-    - =(system STRING)= :: Passes =STRING= as a shell-command to be
+    - =(system STRING)= :: Executes =STRING= as a shell-command to be
         executed and returns the exit-status of the invoked command as
         an exact integer.
 
@@ -740,8 +754,9 @@
 **** Time
 
     - =(current-jiffy)= :: Returns the time since process startup, in
-        some internal unit. Use =jiffies-per-second= to obtain the
-        number of internal time units per second.
+        some internal unit, as an exact integer. Use
+        =jiffies-per-second= to obtain the number of internal time
+        units per second.
 
     - =(current-second)= :: Returns the current time, in seconds since
         the start of the /epoch/.
@@ -760,9 +775,9 @@
 
     - =(exit [CODE])= :: Terminates the process with the process
        status =CODE= (or 0, if not given). Pending =dynamic-wind=
-       after thunks will be executed.
+       "after" thunks will be executed.
 
-    - =(return-to-host RESULT)= :: suspends the currently running
+    - =(return-to-host RESULT)= :: Suspends the currently running
         program and returns =RESULT= to the caller. This procedure is
         only available when the =embedded= feature is defined.
 
@@ -777,7 +792,7 @@
         =current-error-port= and performs an immediate exit (as with
         =emergency-exit=). In embedded mode, the default exception
         handler invokes =return-to-host= with the exception object as
-        argument.  =current-exception-handler= is a parameter.
+        argument.  =current-exception-handler= is a /parameter/.
 
     - =(error [LOCATION] [MESSAGE] ARGUMENTS ...)= :: Creates an
         error-object from =LOCATION=, =MESSAGE= and =ARGUMENTS= and
@@ -803,15 +818,15 @@
         exception handler with =OBJECT=.
 
     - =(read-error? OBJECT)= :: Returns true if =OBJECT= is an error
-        object raised invalid syntax in an invocation of =read= or
-        false otherwise.
+        object raised by encountering invalid syntax in an invocation
+        of =read= or false otherwise.
 
 **** Numeric Operations
 
     - =(finite? NUMBER)= :: Returns =#t= if =NUMBER= is not positive
         or negative /infinity/.
 
-    - =(nan? NUMBER)= :: Returns =#t= if =NUMBER= is the IEEE754 /nan/
+    - =(nan? NUMBER)= :: Returns =#t= if =NUMBER= is the IEEE754 /NaN/
         object or =#f= otherwise.
 
 **** Parameters
@@ -834,15 +849,16 @@
 
 **** Miscellaneous
 
-    - =(free)= :: Returns the currently available memory in heap as an
-        exact integer.
+    - =(free)= :: Returns the number of currently available unused
+        bytes in the heap as an exact integer.
 
     - =(make-disjoint-type [NAME])= :: Creates a new record type T and
         returns three values: a constructor procedure that takes a
         data object and returns a new record of type T, a predicate
         that returns true if given a record of type T and an accessor
         procedure receiving a record and returning the associated data
-        object.
+        object. =NAME= should be a symbol and is used for printing
+        record instances.
 
     - =(reclaim)= :: Reclaims unused memory in the heap and returns an
         undefined value. Garbage collection is done automatically, but
@@ -856,7 +872,8 @@
 *** Additional Library Code
 
     Some library files are available with additional procedures and
-    syntactic extensions. Use these with "
+    syntactic extensions. Use these with the =files= program
+    specification clause.
 
     - =records.scm= :: A record-definition-facility compatible to
         [[http://srfi.schemers.org/srfi-9/][SRFI-9]].
@@ -866,11 +883,12 @@
 
     - =megalet.scm= :: The [[http://srfi.schemers.org/srfi-71/][SRFI-71]] reference implementation, extending
         =let= for convenient binding of multiple values. This also
-        adds "curried" =define= syntax.
+        adds "curried" =define= syntax for toplevel definitions and
+        =let=/=letrec=.
 
     - =fastmath.scm= :: Provides numeric operations, specific for
         fixnums (exact integers) and floating-point numbers.  Note
-        that this is an "include" file, i.e.  it is intended to by
+        that this is an =include= file, i.e.  it is intended to by
         used by adding
 
 	#+BEGIN_SRC scheme
@@ -890,14 +908,14 @@
    optimizations are done.
 
    Procedures never return: an implicitly passed /continuation/
-   argument holds a closure the is to be called with the result(s) of
-   the current procedure and every call is a tail-call, and can be
-   done via a direct jump.
+   argument holds a closure that is to be called with the result(s) of
+   the current procedure, and every call is a tail-call, and can be
+   implemented via a direct jump.
 
-   The /closure conversion/ adds another implicit argument, the
-   current closure. This object contains a pointer to the actual code
-   of a procedure plus the values of any /free variables/, or, in the
-   case of free variables that are assigned, /cells/ holding the
+   /Closure conversion/ adds another implicit argument, the current
+   closure. This object contains a pointer to the actual code of a
+   procedure plus the values of any /free variables/, or, in the case
+   of free variables that are assigned, /cells/ holding the
    value. These cells can be shared between different closures that
    refer to the same free variable which ensures that assignments by
    one closure are seen in the other.
@@ -906,11 +924,11 @@
    The code includes one or more support libraries that provide core
    runtime routines and the garbage collector.
 
-   The compiler uses /flat/ closures. Combined with the CPS conversion
-   done, the generated code is /safe for space complexity/: unused
-   data (garbage) is retained for a minimal duration of time, usually
-   until the next CPS-procedure call is done. This means that data can
-   be released very early, reducing memory pressure.
+   The compiler uses /flat/ closures. Combined with CPS conversion,
+   the generated code is /safe for space complexity/: unused data
+   (garbage) is retained for a minimal duration of time, usually until
+   the next CPS-procedure call is done. This means that data can be
+   released very early, reducing memory pressure.
 
 ** Compiler Stages
 
@@ -924,20 +942,20 @@
 
    3. The code is /canonicalized/, which means that some superficial
       simplifications are performed. Additional certain special forms
-      are ocnverted into simpler internal forms. Variables are
+      are converted into simpler internal forms. Variables are
       consistently renamed (called /alpha conversion/), to that every
       variable is uniquely named.
 
    4. The program is CPS-transformed.
 
-   5. Next, unused local variables are identified and accordingly
-      marked. A later pass will remove these variables if they are
-      bound to expressions that are free of side-effects.
+   5. Next, unused local variables are identified and marked. A later
+      pass will remove these variables if they are bound to
+      expressions that are free of side-effects.
 
    6. The program is /closure converted/, that is, closure-allocations
       are made explicit.
 
-   7. Assembler code is generated from the results of the previous
+   7. Assembly code is generated from the results of the previous
       passes.
 
 ** Register Usage
@@ -959,8 +977,8 @@
    including the implicit arguments introduced by the CPS- and
    closure-conversion passes: the current continuation (=rcx=) and the
    current closure (=rbx=), respectively. Local variables (as created
-   by =let= or =letrec=) are also put into the remaining argument
-   registers as long as registers are still available.
+   by =let=, =letrec= or =letrec*=) are also put into the remaining
+   argument registers as long as registers are still available.
 
    =rax=, =r11= and =r15= are used throughout compiled code and the
    runtime-system as temporaries.
@@ -968,7 +986,7 @@
    =rbp= holds the /allocation pointer/, a pointer to the next
    available space in the /heap/. =r13= holds the heap-limit and once
    the allocation pointer is equal or higher than the limit, a garbage
-   collection will be triggered.
+   collection will be triggered on the next procedure call.
 
    =r14= holds the value of the =#f= (false) constant, to speed up
    boolean tests.
@@ -1008,17 +1026,17 @@
 
 ** Performance
 
-   BONES should deliver reasonably performant execution times. Only
-   very little error checking is done and machine-registers are
-   utilized as much as possibly, due to the CPS-nature of the compiled
-   code. Also due to CPS, continuation-closures are heap-allocated
-   which means that even during normal execution garbage will be
-   accumulated. The garbage collector is very efficient and allocation
-   is as well, as it can be done in-line. Still, GC must occur sooner
-   or later which results in small pauses during which all live data
-   must be traversed and compacted.
+   BONES should deliver reasonably good execution times. Only very
+   little error checking is done and machine-registers are utilized as
+   much as possibly, due to the CPS-nature of the compiled code. Also
+   due to CPS, continuation-closures are heap-allocated which means
+   that even during normal execution garbage will be accumulated and
+   thus needs to be reclaimed. Allocation is done inline for small
+   blocks of memory and the garbage collector is very efficient, with
+   very short collection times, if you take care to keep your datasets
+   small.
 
-   Numerically intensive code may be suboptimal - floating-point
+   Numerically intensive code may perform suboptimal - floating-point
    operations are "boxed", and thus require frequent allocating of
    inexact number objects.
 
@@ -1026,22 +1044,21 @@
    dependencies besides the C runtime library, and even that can be
    removed, if not all functionality is required. Startup times should
    be excellent, as no complex initialization is needed for the
-   runtime system and no memory is allocated dynamically.
-
-   Finally, continuations are very efficient and induce very little
+   runtime system and no memory is allocated dynamically.  Finally,
+   continuations are very efficient and induce very little or no
    performance penalty, regardless how heavily they are used, because
    CPS makes continuations "explicit" and an inherent part of normal
    execution.
 
    Still BONES is very simple and will be no match for programs coded
-   in C or high-performance Scheme systems. That is the price payed
-   for a simple system.
+   in C or high-performance Scheme systems. That is the price to be
+   payed for a simple system.
 
    Note that I/O is fully unbuffered, the =read(2)= and =write(2)=
    library function or system calls are directly invoked for every
    input or output operation. If you have a lot of operations on
    ports, consider using intermediate string-ports or strings for
-   accumulating data before writing or parsing it.
+   accumulating data before reading or writing it.
 
    Some tips for obtaining fast code:
 
@@ -1066,7 +1083,7 @@
 
 ** Hacking and Extending the Compiler
 
-   The compiler has a very simple structure and basically consists of
+   The compiler has a simple structure and basically consists of
    the following files:
 
    - =bones.scm= :: A program-specification file referencing all
@@ -1077,7 +1094,7 @@
 
    - =cmplr.scm= :: The core compiler, that runs the different stages
        and control the translation of the simplified program into
-       assembler code.
+       assembly code.
 
    - =program.scm= :: Parses program specifications, returning a
        single toplevel-expression.
@@ -1105,7 +1122,7 @@
        concise binding forms for multiple values and for pattern
        matching.
 
-   - =x86_64.scm= :: The /backend/ for generating X86_64 code. This
+   - =x86_64.scm= :: The /backend/ for generating x86_64 code. This
        file is the only part of the compiler that is architecture
        specific.
 
@@ -1122,7 +1139,7 @@
    #+END_SRC
 
    The compiler does not use an abstract syntax tree as an internal
-   code representation - s-expressions representing code are used
+   code representation - /S-expressions/ representing code are used
    throughout all stages of the compilation process, with added
    internal special forms to reflect information that can not be
    expression with standard Scheme forms. Additional forms may be
@@ -1133,7 +1150,7 @@
    that the syntax-expander doesn't know about these, so if you add
    special forms that may appear in source-programs, then parts of the
    form that are to be unevaluated need to be quoted or wrapped inside
-   a =lambda= forms. For an example to this, check out the
+   a =lambda= forms. For an example of this, check out the
    implementation of =case-lambda= in =r5rs.scm=.
 
    The compiler passes done are program-expansions, macro-expansion,
@@ -1145,7 +1162,8 @@
    Since the compiler is used to compile itself, the usual
    bootstrap-issues arise: it must always be possible to compile the
    compiler with the previous version of it. This is kind of obvious,
-   but I have fallen into this trap more than once, so be warned.
+   but it is easy to code oneself into a corner when this is not done
+   with care.
 
    The compiler assumes a closed-world model of the source program -
    once compiled, no external code is assumed to exist, which allows
@@ -1168,29 +1186,29 @@
   8-byte boundary and so automatically have their lowest 3 bits set
   to 0. This allows to distinguish between immediate and non-immediate
   data by just testing the lowest bit. This is necessary to implement
-  type-predicates and to allows the garbage collector (described
-  below) to handle them specifically.
+  type-predicates and to allow the garbage collector (described below)
+  to handle them specifically.
 
   Fixnums represent an integer value shifted one bit to the left, 
   with the lowest bit set.
 
   Non-immediate data (/blocks/) are preceded by a 64-bit /header/,
-  containing the size and the type of the block, in addition to some
-  bits used for house-keeping during garbage collections. The size is
-  encoded in the lowest 56 bits, the type in the upper 8 bits.
+  containing the size and the type of the block, in addition to one
+  bit used for house-keeping during garbage collections. The size is
+  encoded in the lowest 56 bits, the type in the upper 7 bits.
 
   Non-immediate data is again classified into normal blocks,
   containing other values (fixnums or pointers to blocks) and
   /byteblocks/, where the actual data-area after the header contains
-  raw bytes. Among these are strings and floating-point numbers.
+  raw bytes. Currently this are strings and floating-point numbers.
 
   The last class of blocks are /special/ blocks, which are like normal
-  blocks, but with the first /slot/ holds a native pointer value. This
-  is used for procedures - the pointer in that case points to the
-  actual machine code of the procedure. The remaining slots hold free
-  variables, in case the procedure is a closure, i.e.  needs to retain
-  references to variables defined in a scope lexically outside of the
-  procedure.
+  blocks, but with the first /slot/ holding a native pointer
+  value. This is used for procedures - the pointer in that case points
+  to the actual machine code of the procedure (and is not traced
+  during GC). The remaining slots hold free variables, in case the
+  procedure is a closure, i.e.  needs to retain references to
+  variables defined in a scope lexically outside of the procedure.
 
   BONES uses IEEE-754 floating-point numbers on all supported
   platforms.
@@ -1219,7 +1237,7 @@
   =#t=, =#f= and the undefined (void) value are unique and never
   allocated.
 
-  Strings use a single-byte encoding, unicode is not
+  Strings use a single-byte encoding, [[http://unicode.org][Unicode]] is not
   supported. Characters-codes are not limited to 8-bit, though, but
   when assigned or extracted to/from strings, only the least
   significant 8 bits are used.
@@ -1227,8 +1245,8 @@
   For information about the use of the slots in port and record
   objects, you should study the source code, in particular =r5rs.scm=.
 
-  Records are vector-like blocks where the two first slots contain
-  a record-tag (symbol) and a fixnum id, designating the exact type
+  Records are vector-like blocks where the two first slots contain a
+  record /tag/ (symbol) and a fixnum /id/, designating the exact type
   of the record. Id 1 is used for error-objects.
 
   As argument types are not checked, primitives are only sensitive to
@@ -1258,23 +1276,23 @@
   live data in every collection into the second half of the
   heap-space.  Once all live data has been copied, the halves of the
   heap-space are /flipped/ and program execution continues. The time
-  needed to a GC depends on the amount of live data. The fewer data is
-  allocated, the lower is the impact of the GC on the total run-time
-  of a program.
+  needed for a GC depends on the amount of live data. The fewer data
+  is allocated, the lower is the impact of the GC on the total
+  run-time of a program.
 
   Pointers that do not point into the garbage collected heap are
   ignored by GC, so it is allowed to store pointers to user-allocated
   blocks (in fact to any kind of data) into Scheme data-structures.
 
   Note that storing pointers to heap-allocated data in non-heap data
-  is disallowed and checked at runtime. Otherwise the garbage
-  collector will not be able to detect that the stored value is still
-  live, if no other pointer to that object exists. Since the GC moves
-  data in the heap on every collection (because it is copied from the
-  old heap-space to the new one), the old pointer will be invalid
-  after the collection finishes. A check for this can be enabled by
-  passing =-DENABLE_WRITE_BARRIER= to NASM, which may slightly
-  deteriorate performance.
+  is disallowed and optionally checked at runtime. Otherwise the
+  garbage collector will not be able to detect that the stored value
+  is still live, if no other pointer to that object exists. Since the
+  GC moves data in the heap on every collection (because it is copied
+  from the old heap-space to the new one), the old pointer will be
+  invalid after the collection finishes. A check for this can be
+  enabled by passing =-DENABLE_WRITE_BARRIER= to NASM, which may
+  slightly decrease runtime performance.
 
   The heap can not be resized dynamically and has a fixed size.  Use
   the =TOTAL_HEAP_SIZE= macro to specify a heap-size different from
@@ -1295,9 +1313,9 @@
   2. Embed a compiled program inside other code that can interface to
      C. For more information on this see below. This is also quite
      straightforward and very flexible, without the need to use
-     assembler.
+     assembly code.
 
-  3. Use the =$inline= special form to mix assembler instructions
+  3. Use the =$inline= special form to mix assembly code instructions
      directly with Scheme code, where =$inline= is defined as
 
      - =($inline STRING ARGUMENT ...)= :: Executes the assembler
@@ -1308,15 +1326,16 @@
          when separated by =;= (semicolon). Note that changing other
          registers than the ones used for passing arguments may change
          local variables and thus should be avoided, unless you really
-         know what you are doing.
+         know what you are doing. =STRING= is not evaluated.
 
   4. Use the =$primitive= special form to refer to a primitive
-     procedure written in assembler:
+     procedure written in assembly code:
 
      - =($primitive STRING)= :: Returns a procedure refering to the
-         primitive procedure named by the label =STRING=.
+         primitive procedure named by the label =STRING=. =STRING= is
+         not evaluated.
 
-     The procedure must be written in assembler and takes its
+     The procedure must be written in assembly code and takes its
      arguments in the argument registers described in the chapter
      describing the register usage. =rbx= holds the current procedure,
      =rcx= the current continuation (a procedure block), and =rdx= to
@@ -1326,7 +1345,7 @@
      primitive may not accept more than seven arguments.
 
      To return, invoke the continuation procedure with a single result
-     in =rcx=, like this (nasm syntax, assuming the result is in =rax=):
+     in =rcx=, like this (NASM syntax, assuming the result is in =rax=):
 
      #+BEGIN_SRC asm
      mov rbx, rcx            ; make continuation the current procedure
@@ -1363,7 +1382,7 @@
   The function is not reentrant, and so can not be used by multiple
   threads, because it refers to static data buffers and variables.  It
   is possible to combine multiple programs by using the
-  =-DPREFIX=<prefix>= option when assembling a compiled program. In
+  =-DPREFIX=<prefix>= option when assembling each compiled program. In
   this case the entry-point will be named =<prefix>_bones=. Every
   entry-point refers to a self-contained Scheme environment and thus
   can be run in a separate thread, if desired.
@@ -1401,11 +1420,11 @@
 
   As already mentioned, there are practically no debugging facilities.
   It is possible to enable some checks for lowlevel data access and
-  for exceeding basic argument-counts and -limits. To do so, use the
+  for exceeding argument-counts and -limits. To do so, use the
   =-feature check= option (or use =provide= for enabling this in your
   program specifications).
 
-  Currently, the =check= feture enables the following:
+  Currently, the =check= feature enables the following:
 
   - Out-of-bounds slot-access of vector-like objects.
 
@@ -1447,9 +1466,6 @@
   - =number->string= and =string->number= do not support inexact
     numbers.
   
-  - The non-standard primitives =system= and =getenv= are currently
-    not implemented.
-
   The maximum number of arguments that can be passed to a procedure is
   currently 1024 + 9. You can change this by giving a different value
   for the =NUMBER_OF_NON_REGISTER_ARGUMENTS= in the =boneslib.s= file.
@@ -1474,13 +1490,13 @@
   The default configuration file =base.scm= selects the appropriate
   files to be included for defining intrinsics and system-specific
   code, so extending this will be required. If no target feature is
-  given on the command-line (currently =linux= and =windows=), then a
-  /default-target/ is selected, which is the target, the compiler is
-  currently running on, or more specifically: the target for which the
-  currently executing compiler was configured. This feature will be
-  named =default-linux= or =default-windows=, depending on the OS.
-  Don't forget to add a case for the =default-configuration= variable
-  in =cmplr.scm=.
+  given on the command-line (currently supported are =linux= and
+  =windows=), then a /default-target/ is selected, which is the
+  target, the compiler is currently running on, or more specifically:
+  the target for which the currently executing compiler was
+  configured. This feature will be named =default-linux= or
+  =default-windows=, depending on the OS.  Don't forget to add a case
+  for the =default-configuration= variable in =cmplr.scm=.
 
   If you intend to provide a =nolibc= mode, that is, a compilation
   mode that generates code for use without the C library, then this
@@ -1509,18 +1525,19 @@
   All compile-time features, defined using the =-feature= option or
   the =provide= program-specification clause are also defined in
   compiled programs in the form of assembler macros (or symbols),
-  prefixed with =FEATURE_=, converted to uppercase and with hyphens
-  replaced by underscore characters. The generated code also should
-  perform an =include= of the =<ARCH>/boneslib.s= file appropriate for
-  the target platform.
+  prefixed with =FEATURE_=, converted to uppercase and with =-=
+  (hyphen) replaced by =_= (underscore) characters. The generated code
+  should also perform an =include= of the =<ARCH>/boneslib.s= file
+  appropriate for the target platform.
 
-  To reduce code size it may also be worthwhile to use a replacement
-  for the standard C library. =glibc= is relatively large and there
-  exist alternatives in the form of [[http://www.musl.org][MUSL]] or [[http://www.fefe.de/dietlibc/][dietlibc]], which are much
-  smaller, simpler and more than sufficient in most cases. By linking
-  these statically, the program is self-contained and has fast startup
-  times. Using MUSL, for example is straightforward: instead of linking
-  with =gcc=, use =musl-gcc= instead, like this:
+  To reduce code size in statically linked executables it may be
+  worthwhile to use a replacement for the standard C library. =glibc=
+  is relatively large and complex and there exist alternatives in the
+  form of [[http://www.musl.org][MUSL]] or [[http://www.fefe.de/dietlibc/][dietlibc]], which are much smaller, simpler and more
+  than sufficient in most cases. By linking these statically, the
+  program is self-contained and has fast startup times. Using MUSL,
+  for example is straightforward: instead of linking with =gcc=, use
+  =musl-gcc=, like this:
 
   #+BEGIN_SRC sh
   bones myprogram.scm -o myprogram.s
@@ -1538,7 +1555,7 @@
     the compilation process.
 
   - Compiling into memory directly, or, in other words a
-    "just-in-time" compiler. This is complicated by the fact that
+    /just-in-time/ (JIT) compiler. This is complicated by the fact that
     memory-pages needs to be made executable, but still must be
     reclaimable by the garbage collector.
 
@@ -1547,14 +1564,13 @@
     though, as the syntax-expander used ("alexpander") does not
     support this in the moment.
 
-  - Porting the system to other architectures and operating systems,
-    of course.
+  - Porting the system to other architectures and operating systems.
 
   - Generate code suitable for the GNU assembler (=as=). Since the GNU
     binutils are needed anyway on Linux, and because =as= is quite
-    fast, this would remove the need to NASM. On the other hand, NASM
-    is more featureful and supports an arguably nicer assembler
-    syntax.
+    fast, this would remove the need for NASM. On the other hand, NASM
+    is more featureful and supports a nicer and more consistent
+    assembler syntax.
 
   - Other backends, say, [[http://asm-js.org][asm.js]] or LLVM. This can be quite a
     challenge, as these languages do not support jumps to arbitrary
@@ -1618,7 +1634,7 @@
   [[https://en.wikipedia.org/wiki/Cheney%27s_algorithm][Cheney's Algorithm]] describes the garbage collection method used in
   BONES.
 
-  [[http://www.amazon.com/Compiling-Continuations-Andrew-W-Appel/dp/052103311X][Compiling with Continuations]] by Andrew Appel Covers CPS-based
+  [[http://www.amazon.com/Compiling-Continuations-Andrew-W-Appel/dp/052103311X][Compiling with Continuations]] by Andrew Appel covers CPS-based
   compilation of high-level languages in great detail.
 
   [[http://www.amazon.com/Essentials-Programming-Languages-Daniel-Friedman/dp/0262062798/ref=sr_1_1?s=books&ie=UTF8&qid=1403309494&sr=1-1&keywords=essentials+of+programming+languages][Essentials of Programming Languages]] describes the CPS-conversion
@@ -1641,7 +1657,7 @@
 
 * Contact
 
-  If you have questions, bug-reports or suggestions for improvemnts,
+  If you have questions, bug-reports or suggestions for improvements,
   please contact me at felix <at> call-with-current-continuation <dot>
   org.
 
