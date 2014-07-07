@@ -13,11 +13,13 @@
 (define allocating #f)
 (define emit-expr-comments #f)
 (define enable-checks #f)
+(define enable-pic #f)
 
 (define environment '())
 (define locals-counter 0)
 (define available-registers '())
 (define unused-global-variables '())
+
 
 (define (cells n) (* word-size n))
 (define (bytes n) (quotient n word-size))

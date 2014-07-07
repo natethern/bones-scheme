@@ -13,7 +13,6 @@
 (define false-register 'FALSE)
 (define count-register 'r11)
 (define stack-register 'rsp)
-(define enable-pic #f)
 
 
 (define (generate-header features)
