@@ -11,7 +11,6 @@ BONES                                                                     -*- Or
    - would need proper alignment on 32-bit systems.
    - put API into file:fastmath.scm
    - adapt printer + reader.
-* start with ARM port
 * add bytevectors
   - interchangable with strings.
   - make-bytevector, bytevector?, bytevector, bytevector-u8-ref, bytevector-u8-set!,
@@ -52,6 +51,9 @@ BONES                                                                     -*- Or
   - could start with a simplification from grass.
   - keep it simply, without environments.
   - install signal-handlers for SIGSEGV/SIGBUS/SIGILL/SIGFPE.
+* TODO port to arm
+  - needs some changes to the way IEEE754-mantissas are extracted,
+    since we can't pass them around in 32-bit registers.
 * TODO [#C] pre-allocated chars in the range 0-255
   - all chars are preallocated, unless we allow chars with arbitrary code.
   - =integer->char=: check range and alloc, ensure this is inlined.
@@ -164,8 +166,9 @@ mainCRTStartup:
 
 	ret
   #+END_SRC
-* implement peephole pass
-  - e.g. "mov rax, rsi; mov rsi, rax" happens a lot.
+* TODO handle redundant moves
+  - keep list of equivalences between registers, and avoid
+    move if dest is known to be equal to src.
 * implement sexpr-"peephole" pass?
   - match expressions for certain cases.
   - perhaps add "($comment COMMENT EXP)" special form to detect particular
@@ -204,6 +207,7 @@ mainCRTStartup:
     - General information: file:/archive/optimizing_assembly.pdf
     - x86-64 ABI: file:/archive/x86-64-abi.pdf
     - Syscalls: http://blog.rchapman.org/post/36801038863/linux-system-call-table-for-x86-64
+  - "long mode", bootloader: http://wiki.osdev.org/Entering_Long_Mode_Directly
 * Notes
 ** the write barrier can be disabled by defining DISABLE_WRITE_BARRIER
 ** enable GC logging with -DENABLE_GC_LOGGING
