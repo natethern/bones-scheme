@@ -149,6 +149,12 @@
 
   - "/usr/local/share/bones"
 
+  Additionally, when assembling generated code produced by BONES, you
+  will have to pass =-I<INSTALLDIR>/= to the =NASM= invocation, as the
+  code contains =%include= directives that refer to the
+  assembler-parts of the runtime system. Note that trailing slash - this
+  is required for =NASM=.
+
 * Usage
 
 ** Compiling Scheme code
