@@ -104,18 +104,6 @@
 (define (compile-file fname . options)
   (apply compile (read-forms fname) options))
 
-(define (generate-code defs code unused)
-  (set! label-counter 0)
-  (generate-header (map mangle-feature-name implementation-features))
-  (set! literals-to-be-translated '())
-  (set! primitives '())
-  (set! unused-global-variables unused)
-  (generate-closures code)
-  (generate-globals defs)
-  (generate-literals)
-  (generate-primitives)
-  (generate-trailer))
-
 (define (mangle-feature-name name)
   (string-append
    "FEATURE_"
@@ -636,6 +624,18 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+(define (generate-code defs code unused)
+  (set! label-counter 0)
+  (generate-header (map mangle-feature-name implementation-features))
+  (set! literals-to-be-translated '())
+  (set! primitives '())
+  (set! unused-global-variables unused)
+  (generate-closures code)
+  (generate-globals defs)
+  (generate-literals)
+  (generate-primitives)
+  (generate-trailer))
 
 (define (generate-globals defs)
   (generate-section ".data")
