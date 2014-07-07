@@ -2599,7 +2599,7 @@ toplevel_rsp: resq 1
 gc_count: resq 1
 buffer: resb 2048
 gcsave: resq 2			; holds 2 additional registers to those in "tempregisters"
-tempregisters: resq 7		; must follow "gcsave"
+tempregisters: resq NUMBER_OF_ARGUMENT_REGISTERS - 2		; must follow "gcsave"
 locals:	resq NUMBER_OF_NON_REGISTER_ARGUMENTS ; must be right after "tempregisters"!
 area1: resb TOTAL_HEAP_SIZE / 2
 area2: resb TOTAL_HEAP_SIZE / 2
