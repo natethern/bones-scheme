@@ -991,6 +991,9 @@
    =r14= holds the value of the =#f= (false) constant, to speed up
    boolean tests.
 
+   The XMM registers =xmm0= to =xmm2= are used throughout the runtime
+   system, but can be freely changed by user code.
+
 ** Optimizations Performed
 
    As already stated, not many optimizations are performed. Currently
@@ -1554,10 +1557,9 @@
     directly. This would remove the need for an assembler and speed up
     the compilation process.
 
-  - Compiling into memory directly, or, in other words a
-    /just-in-time/ (JIT) compiler. This is complicated by the fact that
-    memory-pages needs to be made executable, but still must be
-    reclaimable by the garbage collector.
+  - Compiling into memory directly, for later execution. This is
+    complicated by the fact that memory-pages need to be made
+    executable, but still be reclaimable by the garbage collector.
 
   - Extending the language, for example by adding support for [[http://www.scheme-reports.prg][R7RS]].
     Implementing the R7RS module system will be quite a challenge,
@@ -1575,6 +1577,10 @@
   - Other backends, say, [[http://asm-js.org][asm.js]] or LLVM. This can be quite a
     challenge, as these languages do not support jumps to arbitrary
     locations.
+
+  - With a little work code compiled with BONES should be able to run
+    without any library at all ("bare metal"), which would make it
+    possible to write, say, an OS Kernel in Scheme.
 
 * Terms of Use
 
