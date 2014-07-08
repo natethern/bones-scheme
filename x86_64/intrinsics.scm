@@ -119,7 +119,7 @@
     ($inline "FIX2INT r11; mov [rsp - CELLS(1)], r11; fild qword [rsp - CELLS(1)]; fstp qword [rax + CELLS(1)]" tmp x)))
 
 ;; trigonometric IEEE-754 operations
-(define-syntax-rule ($ieee754-sin x)
+(define-syntax-rule (%ieee754-sin x)
   (let ((r ($allocate #x10 1)))
     (if (%fixnum? x)
 	($inline "FIX2INT rax; mov [buffer], rax; fild qword [buffer]; fsin; fstp qword [r11 + CELLS(1)]" x r)
