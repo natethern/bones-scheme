@@ -55,8 +55,7 @@
 (define (bones-x86_64-linux.o)
   (bones-x86_64-linux.s)
   (make (("bones-x86_64-linux.o" ("bones-x86_64-linux.s" 
-				  "x86_64/boneslib.s" 
-				  "x86_64/structured.s")
+				  "x86_64/boneslib.s") 
 	  (run (nasm -f elf64 -g -F dwarf bones-x86_64-linux.s -o bones-x86_64-linux.o))))))
 
 (define (bones)
@@ -75,8 +74,7 @@
   (make (("bigbones" ("tmp/bigbones.o")
 	  (run (bin/musl-gcc tmp/bigbones.o -o bigbones)))
 	 ("tmp/bigbones.o" ("bones-x86_64-linux.s" 
-			    "x86_64/boneslib.s" 
-			    "x86_64/structured.s")
+			    "x86_64/boneslib.s")
 	  (run (nasm -f elf64 -g -F dwarf -DTOTAL_HEAP_SIZE=500_000_000 tmp/bigbones.s
 		     -o tmp/bigbones.o))))))
 
@@ -241,7 +239,6 @@
     "copy.scm"
     "support.scm"
     "x86_64/intrinsics.scm"
-    "x86_64/structured.s"
     "x86_64/boneslib.s"
     "x86_64/linux/syscalls.scm"
     "x86_64/linux/syscalls-nolibc.scm"
