@@ -30,9 +30,11 @@ BONES                                                                     -*- Or
     dropped llist-variables.
     - assignment must disable replacement.
 ** TODO [#C] implement simple copy-propagation
-   - variables (same scope), and atomic literals (chars, booleans, numbers, null).
+   - variables (same scope), atomic literals (chars, booleans, numbers, null),
+     and known lambdas (id).
    - would solve problems related to [[inlining manifest lambdas]]
    - need 2 passes: 1st to identify assigned vars, 2nd to propagate.
+   - can also identify direct calls
 ** unboxing
   - "($the TYPE EXP)" annotates with type.
   - "let" can check for "$the" and assign FP-register.
