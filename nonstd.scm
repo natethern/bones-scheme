@@ -269,7 +269,7 @@
 (define-inline (bytevector-length bv) (%size bv))
 
 (define (bytevector . ns)
-  (let* ((len (length lst))
+  (let* ((n (length ns))
 	 (bv (%allocate-block #x12 n #f n #f #f)))
     (do ((i 0 (%fx+ i 1))
 	 (ns ns (cdr ns)))
@@ -284,7 +284,7 @@
        bv))
     ((n) (%allocate-block #x12 n #f n #f #f))))
 
-(define-inline bytevector-copy!
+(define-syntax bytevector-copy!
   (case-lambda
     ((to at from start end)
      ($inline "CALL copy_bytes" (cons from start) (cons to at) (%fx- end start)))
