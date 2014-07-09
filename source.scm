@@ -31,27 +31,6 @@
     (walk exp 1)))
 
 
-(define (has-side-effects? form)
-  (let walk ((x form))
-    (match x
-      ((or ('quote _)
-	   (? symbol?)
-	   ('$lambda . _)
-	   ('$case-lambda . _)
-	   ('$undefined)
-	   ('$uninitialized)
-	   ('$primitive _))
-       #f)
-      (('let ((vars vals) ...) . body)
-       (any walk (append vals body)))
-      (((or 'if '$label '$label* '$variant) xs ...) 
-       (any walk xs))
-      (('$goto _ x) (walk x))
-      (('$dispatch x (_ xs) ...)
-       (or (walk x) (any walk xs)))
-      (_ #t))))
-
-
 ;; note: also returns #f for '$call, '$restart and '$call-leaf
 (define (procedure-call-expression? exp)
   (and (pair? exp) 
@@ -288,23 +267,6 @@
 			     (difference (cdr global) ulist))))
 		globals)
 	       (append ulist unused))))))))
-
-;; separate definitions and toplevel forms
-(define (extract-definitions form)
-  (let ((defs '())
-	(toplevel '()))
-    (define (walktop x)
-      (match x
-	(('define v val)
-	 (push! x defs))
-	(('begin x)
-	 (walktop x))
-	(('begin x1 xs ...)
-	 (walktop x1)
-	 (walktop `(begin ,@xs)))
-	(_ (push! x toplevel))))
-    (walktop form)
-    (values (reverse defs) `(begin ,@(reverse toplevel)))))
 
 
 ;; variable renaming
