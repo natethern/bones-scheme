@@ -19,6 +19,7 @@
 (define locals-counter 0)
 (define available-registers '())
 (define unused-global-variables '())
+(define known-lambda-variables '())
 
 
 (define (cells n) (* word-size n))
@@ -78,6 +79,7 @@
 	      (_ (when dumpcps
 		   (dump-expressions code dumpserial)
 		   (stop)))
+	      (code knownlambdas (cp code))
 	      (code unused (detect-unused-variables code))
 	      (_ (cond ((option 'dump-unused: options)
 			(for-each 
@@ -99,10 +101,75 @@
 	      (lambda (thunk)
 		(with-output-to-file outfile thunk))
 	      (lambda (thunk) (thunk)))
-	  (cut generate-code defs ccode unused)))))))
+	  (cut generate-code defs ccode unused knownlambdas)))))))
 
 (define (compile-file fname . options)
   (apply compile (read-forms fname) options))
+
+
+(define (generate-code defs code unused knownlambdas)
+  (set! label-counter 0)
+  (generate-header (map mangle-feature-name implementation-features))
+  (set! literals-to-be-translated '())
+  (set! primitives '())
+  (set! unused-global-variables unused)
+  (set! known-lambda-variables knownlambdas)
+  (generate-closures code)
+  (generate-globals defs)
+  (generate-literals)
+  (generate-primitives)
+  (generate-trailer))
+
+(define (generate-globals defs)
+  (generate-section ".data")
+  (emit "globals:\n")
+  (for-each 
+   (lambda (def)
+     (emit (mangle-identifier def) ": ")
+     (generate-defword "undefined"))
+   defs)
+  (emit "endglobals:\n"))
+
+(define (generate-closures top)
+  (set! closures-to-be-translated (list top))
+  (generate-section ".text")
+  (emit "toplevel:\n")
+  (do ()
+      ((null? closures-to-be-translated))
+    (translate-closure (pop! closures-to-be-translated))))
+
+(define (generate-literals)
+  (set! string-literals '())
+  (set! symbol-table '())
+  (generate-section ".data")
+  (do ()
+      ((null? literals-to-be-translated))
+    (match-let (((l . c) (pop! literals-to-be-translated)))
+      (translate-literal l c)))
+  (generate-strings)
+  (generate-symbol-table))
+
+(define (generate-strings)
+  (generate-section ".data")
+  (for-each
+   (match-lambda
+     ((l . str)
+      (generate-align word-size)
+      (emit l ": ")
+      (generate-defword "STRING | " (string-length str))
+      (when (positive? (string-length str))
+	(generate-defbyte 
+	 (join (map (o number->string char->integer) (string->list str)) ",")))))
+   string-literals))
+
+(define (generate-symbol-table)
+  (generate-section ".data")
+  (emit "symbol_literals:\n")
+  (for-each
+   (lambda (l)
+     (generate-defword (cdr l)))
+   symbol-table)
+  (generate-defword "false"))
 
 (define (mangle-feature-name name)
   (string-append
@@ -590,70 +657,3 @@
 	 (match-lambda 
 	   ((_ . r) r)))
 	(else (error "unknown local variable" var))))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(define (generate-code defs code unused)
-  (set! label-counter 0)
-  (generate-header (map mangle-feature-name implementation-features))
-  (set! literals-to-be-translated '())
-  (set! primitives '())
-  (set! unused-global-variables unused)
-  (generate-closures code)
-  (generate-globals defs)
-  (generate-literals)
-  (generate-primitives)
-  (generate-trailer))
-
-(define (generate-globals defs)
-  (generate-section ".data")
-  (emit "globals:\n")
-  (for-each 
-   (lambda (def)
-     (emit (mangle-identifier def) ": ")
-     (generate-defword "undefined"))
-   defs)
-  (emit "endglobals:\n"))
-
-(define (generate-closures top)
-  (set! closures-to-be-translated (list top))
-  (generate-section ".text")
-  (emit "toplevel:\n")
-  (do ()
-      ((null? closures-to-be-translated))
-    (translate-closure (pop! closures-to-be-translated))))
-
-(define (generate-literals)
-  (set! string-literals '())
-  (set! symbol-table '())
-  (generate-section ".data")
-  (do ()
-      ((null? literals-to-be-translated))
-    (match-let (((l . c) (pop! literals-to-be-translated)))
-      (translate-literal l c)))
-  (generate-strings)
-  (generate-symbol-table))
-
-(define (generate-strings)
-  (generate-section ".data")
-  (for-each
-   (match-lambda
-     ((l . str)
-      (generate-align word-size)
-      (emit l ": ")
-      (generate-defword "STRING | " (string-length str))
-      (when (positive? (string-length str))
-	(generate-defbyte 
-	 (join (map (o number->string char->integer) (string->list str)) ",")))))
-   string-literals))
-
-(define (generate-symbol-table)
-  (generate-section ".data")
-  (emit "symbol_literals:\n")
-  (for-each
-   (lambda (l)
-     (generate-defword (cdr l)))
-   symbol-table)
-  (generate-defword "false"))
