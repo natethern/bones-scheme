@@ -156,9 +156,8 @@
 	 (for-each
 	  (lambda (var val)
 	    (cond ((eq? var '$unused)
-		   ;; drop if simple or just evaluate but don't bind
-		   (unless (pure-expression? val)
-		     (translate val arg-register)))
+		   ;; just evaluate but don't bind
+		   (translate val arg-register))
 		  ((null? available-registers)
 		   ;; evaluate and move into local
 		   (translate val arg-register)
