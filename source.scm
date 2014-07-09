@@ -173,7 +173,11 @@
       (_ (error "invalid expression" x)))))
 
 
-;; detect unused local variables
+;;; detect unused local variables
+;
+; - also removes "let" bindings for unused variables bound to a "pure" (side-efect free) value.
+; - removes empty "let" expressions.
+
 (define (detect-unused-variables form) ; expects expanded + canonicalized form
   (let ((globals '()))
     (define (used var env where)
@@ -250,7 +254,7 @@
 	((op args ...) (map (cut walk <> env here #f) x))
 	(_ (error "invalid expression" x))))
     (let ((form (walk form '() #f #f)))
-      ;; now remove unused entries iteratively
+      ;; now remove unused global variables iteratively
       (let loop ((globals globals) (unused '()))
 	(let ((ulist 
 	       (filter-map
