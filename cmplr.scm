@@ -526,7 +526,7 @@
       (append-map used-registers args)))
     (((or '$undefined '$uninitialized)) '())
     (('$closure-ref i) (list self-register))
-    (('quote c) '())
+    (('quote _) '())
     ((op args ...)
      (error "CPS-call in non-tail position" x))
     (_ (error "bad expression" x))))
