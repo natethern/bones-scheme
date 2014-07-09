@@ -1685,5 +1685,5 @@
 #+EXPORT_SELECT_TAGS: export
 #+EXPORT_EXCLUDE_TAGS: noexport
 #+LINK_UP:   http://www.call-with-current-continuation.org/bones/
-#+LINK_HOME: http://www.call-with-current-continuation.org
+#+LINK_HOME: http://www.call-with-current-continuation.org/felix/
 #+STYLE: <link rel="stylesheet" type="text/css" href="manual.css" />
