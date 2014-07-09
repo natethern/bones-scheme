@@ -76,6 +76,7 @@
 ;; byteblock objects
 %define FLONUM	TYPECODE(0x10)
 %define STRING	TYPECODE(0x11)
+%define BYTEVECTOR TYPECODE(0x12)
 ;; special object
 %define CLOSURE	TYPECODE(0x20)
 ;; pesudo type

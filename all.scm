@@ -9,6 +9,8 @@
 	 (else (error "unknown host system")))
        (features)))
 
+(define bytevector? (const #f))
+
 (load "alexpand.scm")
 (load "source.scm")
 (load "cc.scm")
