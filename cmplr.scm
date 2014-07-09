@@ -125,36 +125,6 @@
 (define (label)
   (string-append "L" (number->string (inc! label-counter))))
 
-;; test if expression does not need any registers, mostly those
-;; that just need a single machine-instruction
-(define (simple-expression? exp)
-  (match exp
-    ;;XXX $allocate?
-    ((or ('quote _)
-	 '($undefined)
-	 '($uninitialized)
-	 ('$closure-ref _)
-	 ('$box-ref (? simple-expression?))
-	 ('$global-ref _)
-	 ('$local-ref _))
-     #t)
-    (_ #f)))
-
-;; test if expression is side-effect free
-(define (pure-expression? exp)
-  (match exp
-    ((or ('quote _)
-	 ('$closure _ ((? pure-expression?) ...) . _)
-	 ('$allocate _ _ (? pure-expression?) ...)
-	 '($undefined)
-	 '($uninitialized)
-	 ('$closure-ref _)
-	 ('$box-ref (? pure-expression?))
-	 ('$global-ref _)
-	 ('$local-ref _))
-     #t)
-    (_ #f)))
-
 (define (translate-inline-arguments args)
   (translate/registers args temporary-registers))
 
