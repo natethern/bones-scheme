@@ -879,6 +879,11 @@
         optionally filling it with =INIT=. If =INIT= is not given, the
         contents of the bytevector are unspecified.
 
+    The reader accepts bytevector literals in the form =#u8(...)=,
+    =display= and =write= output bytevectors in this form as well.
+
+    Bytevector-literals are self-evaluating and need not be quoted.
+
 **** Miscellaneous
 
     - =(free)= :: Returns the number of currently available unused
