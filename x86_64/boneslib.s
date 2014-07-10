@@ -78,7 +78,7 @@
 %define STRING	TYPECODE(0x11)
 ;; special object
 %define CLOSURE	TYPECODE(0x20)
-;; pesudo type
+;; pseudo type
 %define FIXNUM  TYPECODE(11)
 
 
