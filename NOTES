@@ -2,39 +2,39 @@ BONES                                                                     -*- Or
 =====
 
 
+* TODO [#A] GC crashes in compiled grond
+  - compiled without 'check, running with args "../grond/tests/fft.scm"
+  - "mark", called from boneslib.s:1768
+  - 'check makes no difference.
+* TODO create NEWS file
+  - put on website.
 * work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values has two words.
 * test file:copy.scm
+* TODO try mac once again
 * add f64vectors
    - FLOATVECTOR_TYPE (#x12)
    - would need proper alignment on 32-bit systems.
    - put API into file:fastmath.scm
    - adapt printer + reader.
-* add bytevectors
-  - interchangable with strings.
-  - make-bytevector, bytevector?, bytevector, bytevector-u8-ref, bytevector-u8-set!,
-    bytevector-length, bytevector-copy, bytevector-copy!
-  - "u8(...)" read-syntax + printing.
+* DONE add bytevectors						:bytevectors:
+  - test and merge /bytevectors/
+* TODO add more checks
+  - copying of slots and bytes (bounds, types).
+  - GC sanity checks
+    - invalid headers (null type and non-zero size)
 * go through r7rs and look for possibly useful primitives
 * potential optimizations
 ** we could coalesce allocations inside a lambda
   - but will probably gain very little.
 ** implement basic known procedure optimizations
   - beta-contraction (needs knowledge about FVs).
-  - direct-calls (implies loops).
-  - perhaps a bit of constant-propagation.
 ** TODO [#C] improve inlining manifest lambdas
   - don't bind temporaries for arguments that are variables or literals.
   - not that easy: we have to replace variable-references for the
     dropped llist-variables.
     - assignment must disable replacement.
-** TODO [#C] implement simple copy-propagation
-   - variables (same scope), atomic literals (chars, booleans, numbers, null),
-     and known lambdas (id).
-   - would solve problems related to [[inlining manifest lambdas]]
-   - need 2 passes: 1st to identify assigned vars, 2nd to propagate.
-   - can also identify direct calls
 ** unboxing
   - "($the TYPE EXP)" annotates with type.
   - "let" can check for "$the" and assign FP-register.
@@ -45,6 +45,14 @@ BONES                                                                     -*- Or
   - have local FA pass ("lfa") that expands $typed-case-lambda according to inferred
     types and convert "let"-bound flonum vars using a custom binding form
     - e.g. "($let-float ...)" or something like this.
+* DONE implement simple copy-propagation
+   - test and merge /cp/
+   - variables (same scope), atomic literals (chars, booleans, numbers, null),
+     and known lambdas (id).
+   - would solve problems related to [[inlining manifest lambdas]]
+* TODO identify direct calls						 :cp:
+  - if operator is symbol and in known-lambda-vars set, generate direct call
+    (also for alloc-check, that is, not via rax).
 * try using libgc as 2nd heap generation
   - needs write-barrier to record assignments of heap-data into non-heap objects.
     - then evict recursively.
@@ -54,8 +62,9 @@ BONES                                                                     -*- Or
   - keep it simply, without environments.
   - install signal-handlers for SIGSEGV/SIGBUS/SIGILL/SIGFPE.
 * TODO port to arm
-  - needs some changes to the way IEEE754-mantissas are extracted,
-    since we can't pass them around in 32-bit registers.
+** TODO [#C] port fastmath.scm
+** TODO port boneslib.s
+** TODO port syscalls.scm
 * TODO [#C] pre-allocated chars in the range 0-255
   - all chars are preallocated, unless we allow chars with arbitrary code.
   - =integer->char=: check range and alloc, ensure this is inlined.
