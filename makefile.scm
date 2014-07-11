@@ -52,6 +52,15 @@
 	       (lambda ()
 		 (run (./bones bones.scm -o bones-x86_64-windows.s -feature windows)))))))
 
+(define (bones-x86_64-mac.s)
+  (bones)
+  (make/proc
+   (list (list "bones-x86_64-mac.s"
+	       (append compiler-sources compiler-sources-x86_64
+		       '("x86_64/mac/syscalls.scm"))
+	       (lambda ()
+		 (run (./bones bones.scm -o bones-x86_64-mac.s -feature mac)))))))
+
 (define (bones-x86_64-linux.o)
   (bones-x86_64-linux.s)
   (make (("bones-x86_64-linux.o" ("bones-x86_64-linux.s" 
@@ -216,6 +225,7 @@
   '("MANUAL.txt"
     "bones-x86_64-linux.s"
     "bones-x86_64-windows.s"
+    "bones-x86_64-mac.s"
     "alexpand.scm"
     "all.scm"
     "base.scm"
@@ -250,6 +260,7 @@
 	 (arch (string-append "bones-" date)))
     (bones-x86_64-linux.s)
     (bones-x86_64-windows.s)
+    (bones-x86_64-mac.s)
     (run (rm -fr ,arch bones.tar.gz bones.zip))
     (run (mkdir -p
 		,(string-append arch "/x86_64")
