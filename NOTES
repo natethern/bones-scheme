@@ -13,7 +13,7 @@ BONES                                                                     -*- Or
     data by extracting the values has two words.
 * test file:copy.scm
 * TODO try mac once again						:mac:
-  - test and merge /mac/ branch.
+  - merge /mac/ branch.
   - update manual, readme, news.
   - note about gcc warning ("PIE disabled")
 * add f64vectors
