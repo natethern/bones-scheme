@@ -23,6 +23,7 @@
 
   bits 64
 
+
 %ifdef FEATURE_PIC
   default rel
 %endif
@@ -369,7 +370,12 @@
 
 ;; Library-specific name mangling
 %define UNDERSCORE(name)      _ %+ name
-%define MANGLE(name)          name
+
+%ifdef FEATURE_MAC
+ %define MANGLE(name)         UNDERSCORE(name)
+%else
+ %define MANGLE(name)         name
+%endif
 
 
 ;; call C function with 0-3 arguments
@@ -648,8 +654,8 @@ _start:
 .exit:
   SYSCALL1 60, rax		; sys_exit
 %else
-global main
-main:
+global MANGLE(main)
+MANGLE(main):
   SAVE
   push rbp
 %ifdef FEATURE_WINDOWS
@@ -2546,6 +2552,8 @@ num2str:
 %ifndef FEATURE_NOLIBC
  %ifdef  FEATURE_WINDOWS
   %define GET_ERRNO_LOCATION  _errno
+ %elifdef FEATURE_MAC
+  %define GET_ERRNO_LOCATION  __error
  %else
   %define GET_ERRNO_LOCATION __errno_location
  %endif
