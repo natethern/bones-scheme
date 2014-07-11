@@ -397,17 +397,17 @@
 (define-syntax current-input-port
   (case-lambda
    (() %standard-input-port)
-   ((p) (set! %standard-input-port p))))
+   ((p . r) (set! %standard-input-port p)))) ; hack for parameterize
 
 (define-syntax current-output-port
   (case-lambda 
    (() %standard-output-port)
-   ((p) (set! %standard-output-port p))))
+   ((p . r) (set! %standard-output-port p))))
 
 (define-syntax current-error-port
   (case-lambda
    (() %standard-error-port)
-   ((p) (set! %standard-error-port p))))
+   ((p . r) (set! %standard-error-port p))))
 
 (cond-expand
   (file-ports
@@ -1081,7 +1081,7 @@
 (define-syntax current-exception-handler
   (case-lambda
     (() %current-exception-handler)
-    ((xh . more) (set! %current-exception-handler xh)))) ; fake parameter
+    ((xh . r) (set! %current-exception-handler xh)))) ; fake parameter
 
 (define-inline (file-error? x)
   (and (error-object? x) (eq? 'file (%slot-ref x 5))))
