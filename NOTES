@@ -12,7 +12,10 @@ BONES                                                                     -*- Or
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values has two words.
 * test file:copy.scm
-* TODO try mac once again
+* TODO try mac once again						:mac:
+  - test and merge /mac/ branch.
+  - update manual, readme, news.
+  - note about gcc warning ("PIE disabled")
 * add f64vectors
    - FLOATVECTOR_TYPE (#x12)
    - would need proper alignment on 32-bit systems.
