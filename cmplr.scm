@@ -27,6 +27,7 @@
 (define default-configuration
   (cond-expand 
     (windows 'default-windows)
+    (mac 'default-mac)
     (linux 'default-linux)))
 
 
