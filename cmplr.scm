@@ -493,10 +493,11 @@
 	 ((null? llists))
        (let ((vars argc rest (parse-lambda-list (car llists)))
 	     (next (string-append "f_c_" (number->string id) "_" (number->string (add1 i)))))
-	 (if (null? (cdr llists))
-	     (when enable-checks
-	       (generate-argc-check (add1 argc) rest next))
-	     (generate-argc-check (add1 argc) rest next))
+	 (when (or (not rest) (positive? argc)) ; single rest arg doesn't need to be check
+	   (if (null? (cdr llists))
+	       (when enable-checks
+		 (generate-argc-check (add1 argc) rest next))
+	       (generate-argc-check (add1 argc) rest next)))
 	 (translate-llist (car llists))
 	 (set! allocating #f)
 	 (translate (car bodies) arg-register)
