@@ -155,6 +155,25 @@
   assembler-parts of the runtime system. Note that trailing slash - this
   is required for =NASM=.
 
+* Reporting Bugs and Upgrading
+
+  If you find any bugs in BONES (you probably will), please send them
+  to the author (see below under "Contact") so that the bug can be
+  fixed in future releases. You should also first check the [[http://www.git-scm.org][git(1)]]
+  development repository at [[http://bitbucket.org/bunny351/bones/]] -
+  perhaps the bug has already been fixed. The =master= branch should
+  always be in a usable state, just clone the repository and use the
+  contained sources to build a new =bones=:
+
+    #+BEGIN_SRC sh
+    git clone https://bitbucket.org/bunny351/bones.git
+    cd bones
+    bones bones.scm -o mynewbones.s
+    #+END_SRC
+
+  Consult the =NEWS= file for obtaining information about the latest
+  changes.
+
 * Usage
 
 ** Compiling Scheme code
