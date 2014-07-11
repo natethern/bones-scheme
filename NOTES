@@ -12,9 +12,7 @@ BONES                                                                     -*- Or
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values has two words.
 * test file:copy.scm
-* TODO try mac once again						:mac:
-  - merge /mac/ branch.
-  - update manual, readme, news.
+* TODO try mac once again				
   - note about gcc warning ("PIE disabled")
 * add f64vectors
    - FLOATVECTOR_TYPE (#x12)
@@ -28,6 +26,12 @@ BONES                                                                     -*- Or
   - GC sanity checks
     - invalid headers (null type and non-zero size)
 * go through r7rs and look for possibly useful primitives
+* grass hangs, when build with bones
+  - endless GC during startup.
+  - possibly problems with redefinitions of primitives, ending in some
+    sort of sicrularity.
+* TODO add exact Mac OS version of [m] to manual
+  - also add exact development system versions (xcode, gcc, msvc)
 * potential optimizations
 ** we could coalesce allocations inside a lambda
   - but will probably gain very little.
