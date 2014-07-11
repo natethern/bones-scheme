@@ -8,3 +8,5 @@ Release 2:
 
   The pass to remove unused variables now drops entire "let" forms if
   no bound variable is used.
+
+  Added support for Mac OS X.

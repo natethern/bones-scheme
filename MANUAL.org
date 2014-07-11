@@ -22,12 +22,12 @@
   available in addition to the primitives required for R5RS.
 
   Since BONES produces assembly-code, build-times are quite short. The
-  produced code is CPU- and OS-specific and currently supports only
-  x86_64 on Linux or Windows. Porting the system to other
-  architectures and operating systems should be (relatively)
-  straightforward, as the platform-specific parts of the compiler are
-  small and the runtime-system is just a single file of about two
-  thousand lines of assembly code.
+  produced code is CPU- and OS-specific and currently supports x86_64
+  on Linux, Mac or Windows. Porting the system to other architectures
+  and operating systems should be (relatively) straightforward, as the
+  platform-specific parts of the compiler are small and the
+  runtime-system is just a single file of about two thousand lines of
+  assembly code.
 
   The compiler is self-compiling and uses just a few functions from
   the C-library. Alternatively, programs can be compiled on Linux
@@ -53,14 +53,15 @@
 
   To run programs compiled with BONES (and to run the compiler
   itself), an x86_64 system is required, with support for SSE2 and
-  SSE3 instructions. Currently the the compiler only runs under the
-  Linux and Windows operating systems.
+  SSE3 instructions. Currently the the compiler runs under the Linux,
+  Mac OS X and Windows operating systems.
 
   BONES has been successfully tested on the following systems:
 
   | Linux Mint 13 Maya Ubuntu/Linaro 4.6.3-1ubuntu4 Linux 3.2.0-23-generic x86_64 |
   | openSUSE 13.1 (Bottle) Linux 3.15.1-2.g3289da4-default x86_64                 |
   | Windows 7 Professional                                                        |
+  | Mac OS 10.8                                                                   |
 
 * Requirements
 
@@ -75,6 +76,9 @@
   all you need is =ld=, the GNU linker.
 
   On Windows, [[http://www.visualstudio.com/en-us/downloads/download-visual-studio-vs.aspx][Microsoft Visual C]] and [[http://www.mingw.org][MINGW]] are supported.
+
+  On Mac OS, [[https://developer.apple.com/xcode/][Xcode]] needs to be installed, with =gcc= or =clang=
+  binaries in the =PATH=.
 
 * Installation
 
@@ -124,6 +128,15 @@
     #+BEGIN_SRC sh
     gcc bones.obj -o bones.exe
     #+END_SRC
+
+  - For Mac OS:
+
+    #+BEGIN_SRC sh
+    tar xfz bones.tar.gz
+    cd bones-<date>
+    nasm -f macho64 bones-x86_64-mac.s -o bones.o
+    gcc bones.o -o bones
+    #+END_SRC    
 
   Now you have a compiler, which you can test by entering 
 
@@ -213,7 +226,7 @@
 
    =<FORMAT>= specifies the output format suitable for the platform on
    which the object file should be linked. For Linux this is =elf64=,
-   for Windows =win64=.
+   for Windows =win64= and for Mac Os =macho64=.
 
    You can optionally add debug-information to have source-level
    access when debugging the generated executable with (say)
@@ -223,8 +236,8 @@
    me.
 
    Linking is done by invoking the appropriate linker for the target
-   platform. On Linux this is done by the "gcc" compiler driver, which
-   also adds the necessary C runtime libraries needed:
+   platform. On Linux or Mac OS this is done by the "gcc" compiler
+   driver, which also adds the necessary C runtime libraries needed:
 
    #+BEGIN_SRC sh
    gcc <OBJECTFILENAME> -o <PROGRAMFILENAME>
@@ -326,7 +339,8 @@
    | ieee754             | Floating point format used                                       |
    | linux               | Operating system                                                 |
    | windows             | Operating system                                                 |
-   | lp64                | 64-bit data model (Linux)                                        |
+   | mac                 | Operating system                                                 |
+   | lp64                | 64-bit data model (Linux + Mac)                                  |
    | ilp64               | 64-bit data model (Windows)                                      |
    | file-ports          | Primitives operating on file-ports are available                 |
    | file-system         | Primitives operating on file-system entitities are available     |
@@ -345,12 +359,12 @@
    The following features are by default available to enable language
    extensions or target-specific compilation modes:
 
-   | Feature  | Meaning                                                                          |
-   |----------+----------------------------------------------------------------------------------|
-   | check    | Insert low-level type- and limit-checks into the generated code                  |
-   | embedded | Generate code that can be embedded into an application                           |
-   | nolibc   | Generate code that does not require linking with the C runtime library           |
-   | pic      | Generate position-independent code, always enabled on Windows, optional on Linux |
+   | Feature  | Meaning                                                                                  |
+   |----------+------------------------------------------------------------------------------------------|
+   | check    | Insert low-level type- and limit-checks into the generated code                          |
+   | embedded | Generate code that can be embedded into an application                                   |
+   | nolibc   | Generate code that does not require linking with the C runtime library                   |
+   | pic      | Generate position-independent code, always enabled on Windows and Mac, optional on Linux |
 
 * Language Description
 
@@ -1166,6 +1180,12 @@
    bones bones.scm -o bones.s -feature windows
    #+END_SRC
 
+   Similar for Mac OS:
+
+   #+BEGIN_SRC sh
+   bones bones.scm -o bones.s -feature mac
+   #+END_SRC
+
    The compiler does not use an abstract syntax tree as an internal
    code representation - /S-expressions/ representing code are used
    throughout all stages of the compilation process, with added
@@ -1518,11 +1538,11 @@
   The default configuration file =base.scm= selects the appropriate
   files to be included for defining intrinsics and system-specific
   code, so extending this will be required. If no target feature is
-  given on the command-line (currently supported are =linux= and
-  =windows=), then a /default-target/ is selected, which is the
-  target, the compiler is currently running on, or more specifically:
-  the target for which the currently executing compiler was
-  configured. This feature will be named =default-linux= or
+  given on the command-line (currently =linux=, =mac= or =windows=),
+  then a /default-target/ is selected, which is the target, the
+  compiler is currently running on, or more specifically: the target
+  for which the currently executing compiler was configured. This
+  feature will be named =default-linux=, =default-mac= or
   =default-windows=, depending on the OS.  Don't forget to add a case
   for the =default-configuration= variable in =cmplr.scm=.
 
