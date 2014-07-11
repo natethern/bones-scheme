@@ -620,8 +620,8 @@
 section .text
 
 %ifdef FEATURE_EMBEDDED
-global ENTRYPOINT
-ENTRYPOINT:
+global MANGLE(ENTRYPOINT)
+MANGLE(ENTRYPOINT):
   SAVE
   push rbp
   mov rax, [saved_k]
