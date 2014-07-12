@@ -6,14 +6,10 @@ BONES                                                                     -*- Or
   - compiled without 'check, running with args "../grond/tests/fft.scm"
   - "mark", called from boneslib.s:1768
   - 'check makes no difference.
-* TODO create NEWS file
-  - put on website.
 * work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values has two words.
 * test file:copy.scm
-* TODO try mac once again				
-  - note about gcc warning ("PIE disabled")
 * add f64vectors
    - FLOATVECTOR_TYPE (#x12)
    - would need proper alignment on 32-bit systems.
@@ -25,8 +21,7 @@ BONES                                                                     -*- Or
   - copying of slots and bytes (bounds, types).
   - GC sanity checks
     - invalid headers (null type and non-zero size)
-* go through r7rs and look for possibly useful primitives
-* grass hangs, when build with bones
+* grass hangs, when built with bones
   - endless GC during startup.
   - possibly problems with redefinitions of primitives, ending in some
     sort of sicrularity.
@@ -71,7 +66,6 @@ BONES                                                                     -*- Or
 * TODO port to arm
 ** TODO [#C] port fastmath.scm
 ** TODO port boneslib.s
-** TODO port syscalls.scm
 * TODO [#C] pre-allocated chars in the range 0-255
   - all chars are preallocated, unless we allow chars with arbitrary code.
   - =integer->char=: check range and alloc, ensure this is inlined.
