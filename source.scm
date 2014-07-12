@@ -31,33 +31,44 @@
     (walk exp 1)))
 
 
-(define (has-side-effects? form)
-  (let walk ((x form))
-    (match x
-      ((or ('quote _)
-	   (? symbol?)
-	   ('$lambda . _)
-	   ('$case-lambda . _)
-	   ('$undefined)
-	   ('$uninitialized)
-	   ('$primitive _))
-       #f)
-      (('let ((vars vals) ...) . body)
-       (any walk (append vals body)))
-      (((or 'if '$label '$label* '$variant) xs ...) 
-       (any walk xs))
-      (('$goto _ x) (walk x))
-      (('$dispatch x (_ xs) ...)
-       (or (walk x) (any walk xs)))
-      (_ #t))))
-
-
 ;; note: also returns #f for '$call, '$restart and '$call-leaf
 (define (procedure-call-expression? exp)
   (and (pair? exp) 
        (not (memq (car exp)
 		  '($inline $allocate if begin $primitive quote letrec* let define set!
 			    $case-lambda $lambda $undefined $uninitialized)))))
+
+;; test if expression does not need any registers, mostly those
+;; that just need a single machine-instruction
+(define (simple-expression? exp)
+  (match exp
+    ;;XXX $allocate?
+    ((or (? symbol?)
+	 ('quote _)
+	 '($undefined)
+	 '($uninitialized)
+	 ('$closure-ref _)
+	 ('$box-ref (? simple-expression?))
+	 ('$global-ref _)
+	 ('$local-ref _))
+     #t)
+    (_ #f)))
+
+;; test if expression is side-effect free
+(define (pure-expression? exp)
+  (match exp
+    ((or (? symbol?)
+	 ('quote _)
+	 ('$closure _ ((? pure-expression?) ...) . _)
+	 ('$allocate _ _ (? pure-expression?) ...)
+	 '($undefined)
+	 '($uninitialized)
+	 ('$closure-ref _)
+	 ('$box-ref (? pure-expression?))
+	 ('$global-ref _)
+	 ('$local-ref _))
+     #t)
+    (_ #f)))
 
 
 ;; Convert to canonical form
@@ -162,7 +173,11 @@
       (_ (error "invalid expression" x)))))
 
 
-;; detect unused local variables
+;;; detect unused local variables
+;
+; - also removes "let" bindings for unused variables bound to a "pure" (side-efect free) value.
+; - removes empty "let" expressions.
+
 (define (detect-unused-variables form) ; expects expanded + canonicalized form
   (let ((globals '()))
     (define (used var env where)
@@ -189,11 +204,16 @@
 		(body (walk body env2 here dest))
 		(eenv (if (eq? 'letrec* (car x)) env2 env))
 		(vals (map (cut walk <> eenv here <>) vals vars)))
-	   (list (car x) 
-		 (map (lambda (var val)
-			(list (if (used? var env2) var '$unused) val))
-		      vars vals)
-		 body)))
+	   (let loop ((vars vars) (vals vals) (new '()))
+	     (cond ((null? vars)
+		    (if (null? new)
+			body		; drop "let" entirely
+			(list (car x) (reverse new) body)))
+		   ((used? (car vars) env2)
+		    (loop (cdr vars) (cdr vals) (cons (list (car vars) (car vals)) new)))
+		   ((pure-expression? (car vals))
+		    (loop (cdr vars) (cdr vals) new)) ; drop binding
+		   (else (loop (cdr vars) (cdr vals) (cons (list '$unused (car vals)) new)))))))
 	(('begin x) (walk x env here dest))
 	(('begin x1 xs ...)
 	 `(begin ,(walk x1 env here #f) ,(walk `(begin ,@xs) env here dest)))
@@ -239,7 +259,7 @@
 	((op args ...) (map (cut walk <> env here #f) x))
 	(_ (error "invalid expression" x))))
     (let ((form (walk form '() #f #f)))
-      ;; now remove unused entries iteratively
+      ;; now remove unused global variables iteratively
       (let loop ((globals globals) (unused '()))
 	(let ((ulist 
 	       (filter-map
@@ -256,23 +276,6 @@
 			     (difference (cdr global) ulist))))
 		globals)
 	       (append ulist unused))))))))
-
-;; separate definitions and toplevel forms
-(define (extract-definitions form)
-  (let ((defs '())
-	(toplevel '()))
-    (define (walktop x)
-      (match x
-	(('define v val)
-	 (push! x defs))
-	(('begin x)
-	 (walktop x))
-	(('begin x1 xs ...)
-	 (walktop x1)
-	 (walktop `(begin ,@xs)))
-	(_ (push! x toplevel))))
-    (walktop form)
-    (values (reverse defs) `(begin ,@(reverse toplevel)))))
 
 
 ;; variable renaming

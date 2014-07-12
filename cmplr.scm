@@ -13,11 +13,13 @@
 (define allocating #f)
 (define emit-expr-comments #f)
 (define enable-checks #f)
+(define enable-pic #f)
 
 (define environment '())
 (define locals-counter 0)
 (define available-registers '())
 (define unused-global-variables '())
+
 
 (define (cells n) (* word-size n))
 (define (bytes n) (quotient n word-size))
@@ -25,6 +27,7 @@
 (define default-configuration
   (cond-expand 
     (windows 'default-windows)
+    (mac 'default-mac)
     (linux 'default-linux)))
 
 
@@ -102,18 +105,6 @@
 (define (compile-file fname . options)
   (apply compile (read-forms fname) options))
 
-(define (generate-code defs code unused)
-  (set! label-counter 0)
-  (generate-header (map mangle-feature-name implementation-features))
-  (set! literals-to-be-translated '())
-  (set! primitives '())
-  (set! unused-global-variables unused)
-  (generate-closures code)
-  (generate-globals defs)
-  (generate-literals)
-  (generate-primitives)
-  (generate-trailer))
-
 (define (mangle-feature-name name)
   (string-append
    "FEATURE_"
@@ -134,36 +125,6 @@
 
 (define (label)
   (string-append "L" (number->string (inc! label-counter))))
-
-;; test if expression does not need any registers, mostly those
-;; that just need a single machine-instruction
-(define (simple-expression? exp)
-  (match exp
-    ;;XXX $allocate?
-    ((or ('quote _)
-	 '($undefined)
-	 '($uninitialized)
-	 ('$closure-ref _)
-	 ('$box-ref (? simple-expression?))
-	 ('$global-ref _)
-	 ('$local-ref _))
-     #t)
-    (_ #f)))
-
-;; test if expression is side-effect free
-(define (pure-expression? exp)
-  (match exp
-    ((or ('quote _)
-	 ('$closure _ ((? pure-expression?) ...) . _)
-	 ('$allocate _ _ (? pure-expression?) ...)
-	 '($undefined)
-	 '($uninitialized)
-	 ('$closure-ref _)
-	 ('$box-ref (? pure-expression?))
-	 ('$global-ref _)
-	 ('$local-ref _))
-     #t)
-    (_ #f)))
 
 (define (translate-inline-arguments args)
   (translate/registers args temporary-registers))
@@ -196,9 +157,8 @@
 	 (for-each
 	  (lambda (var val)
 	    (cond ((eq? var '$unused)
-		   ;; drop if simple or just evaluate but don't bind
-		   (unless (pure-expression? val)
-		     (translate val arg-register)))
+		   ;; just evaluate but don't bind
+		   (translate val arg-register))
 		  ((null? available-registers)
 		   ;; evaluate and move into local
 		   (translate val arg-register)
@@ -304,7 +264,8 @@
      (let ((regs (translate-inline-arguments args))
 	   (bytevec (not (zero? (bitwise-and type #x10)))))
        (set! allocating #t)
-       (generate-alloc-alignment)
+       (unless (zero? (bitwise-and type #x10))
+	 (generate-alloc-alignment))
        (do ((regs regs (cdr regs))
 	    (off 1 (add1 off)))
 	   ((null? regs))
@@ -532,10 +493,11 @@
 	 ((null? llists))
        (let ((vars argc rest (parse-lambda-list (car llists)))
 	     (next (string-append "f_c_" (number->string id) "_" (number->string (add1 i)))))
-	 (if (null? (cdr llists))
-	     (when enable-checks
-	       (generate-argc-check (add1 argc) rest next))
-	     (generate-argc-check (add1 argc) rest next))
+	 (when (or (not rest) (positive? argc)) ; single rest arg doesn't need to be check
+	   (if (null? (cdr llists))
+	       (when enable-checks
+		 (generate-argc-check (add1 argc) rest next))
+	       (generate-argc-check (add1 argc) rest next)))
 	 (translate-llist (car llists))
 	 (set! allocating #f)
 	 (translate (car bodies) arg-register)
@@ -634,6 +596,18 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+(define (generate-code defs code unused)
+  (set! label-counter 0)
+  (generate-header (map mangle-feature-name implementation-features))
+  (set! literals-to-be-translated '())
+  (set! primitives '())
+  (set! unused-global-variables unused)
+  (generate-closures code)
+  (generate-globals defs)
+  (generate-literals)
+  (generate-primitives)
+  (generate-trailer))
 
 (define (generate-globals defs)
   (generate-section ".data")

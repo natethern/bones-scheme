@@ -23,12 +23,10 @@
 
   bits 64
 
+
 %ifdef FEATURE_PIC
   default rel
 %endif
-
-
-%include "x86_64/structured.s"
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -81,7 +79,7 @@
 %define STRING	TYPECODE(0x11)
 ;; special object
 %define CLOSURE	TYPECODE(0x20)
-;; pesudo type
+;; pseudo type
 %define FIXNUM  TYPECODE(11)
 
 
@@ -100,6 +98,134 @@
   %define ENTRYPOINT bones
  %endif
 %endif
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; "structured" programming, taken mostly from the NASM documentation
+
+;; if CC
+;;   ...
+;; [else
+;;   ...]
+;; endif
+
+%macro if 1
+  %push if
+  j%-1 %$if_not
+%endmacro
+
+%macro else 0
+  %ifctx if
+    %repl else
+    jmp %$if_end
+    %$if_not:
+  %else
+    %error "expected `if' before `else'"
+  %endif
+%endmacro
+
+%macro endif 0
+  %ifctx if
+    %$if_not:
+    %pop
+  %elifctx else
+    %$if_end:
+    %pop
+  %else
+    %error "expected `if' or `else' before `endif'"
+  %endif
+%endmacro
+
+
+;; repeat
+;;   ...
+;; [while CC
+;;   ...]
+;; until CC [or: again]
+
+%macro repeat 0
+  %push repeat
+  %$begin:
+%endmacro
+
+%macro until 1
+  %ifctx repeat
+    j%-1 %$begin
+    %pop
+  %elifctx while
+    j%-1 %$begin
+    %$while_end:
+    %pop
+  %else
+    %error "`until' without `repeat'"
+  %endif
+%endmacro
+
+%macro while 1
+  %ifctx repeat
+    j%-1 %$while_end
+    %repl while
+  %elifctx while
+    j%-1 %$while_end
+  %else
+    %error "`while' without `repeat'"
+  %endif
+%endmacro
+
+%macro again 0
+  %ifctx repeat
+    jmp %$begin
+    %pop
+  %elifctx while
+    jmp %$begin
+    %$while_end:
+    %pop
+  %else
+    %error "`while' without `repeat'"
+  %endif
+%endmacro
+
+
+;; for COUNTER, START, END, [STEP = 1]
+;;   ...
+;; next
+
+%macro for 3-4 1
+  %push for
+  mov %1, %2
+  %define %$for_counter %1
+  %define %$for_limit %3
+  %define %$for_step %4
+  %$for_loop:
+%endmacro
+
+%macro next 0
+  %ifctx for
+    add %$for_counter, %$for_step
+    cmp %$for_counter, %$for_limit
+    jne %$for_loop
+    %$for_end:
+  %else
+    %error "`next' without `for`"
+  %endif
+%endmacro
+
+
+;; break (exits any loop construct)
+
+%macro break 0
+  %ifctx repeat
+    %repl while
+    jmp %$while_end
+  %elifctx while
+    jmp %$while_end
+  %elifctx for
+    jmp %$for_end
+  %else
+    %error "`break' outside of loop"
+  %endif
+%endmacro
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -244,7 +370,12 @@
 
 ;; Library-specific name mangling
 %define UNDERSCORE(name)      _ %+ name
-%define MANGLE(name)          name
+
+%ifdef FEATURE_MAC
+ %define MANGLE(name)         UNDERSCORE(name)
+%else
+ %define MANGLE(name)         name
+%endif
 
 
 ;; call C function with 0-3 arguments
@@ -489,8 +620,8 @@
 section .text
 
 %ifdef FEATURE_EMBEDDED
-global ENTRYPOINT
-ENTRYPOINT:
+global MANGLE(ENTRYPOINT)
+MANGLE(ENTRYPOINT):
   SAVE
   push rbp
   mov rax, [saved_k]
@@ -523,8 +654,8 @@ _start:
 .exit:
   SYSCALL1 60, rax		; sys_exit
 %else
-global main
-main:
+global MANGLE(main)
+MANGLE(main):
   SAVE
   push rbp
 %ifdef FEATURE_WINDOWS
@@ -2421,6 +2552,8 @@ num2str:
 %ifndef FEATURE_NOLIBC
  %ifdef  FEATURE_WINDOWS
   %define GET_ERRNO_LOCATION  _errno
+ %elifdef FEATURE_MAC
+  %define GET_ERRNO_LOCATION  __error
  %else
   %define GET_ERRNO_LOCATION __errno_location
  %endif
@@ -2599,7 +2732,7 @@ toplevel_rsp: resq 1
 gc_count: resq 1
 buffer: resb 2048
 gcsave: resq 2			; holds 2 additional registers to those in "tempregisters"
-tempregisters: resq 7		; must follow "gcsave"
+tempregisters: resq NUMBER_OF_ARGUMENT_REGISTERS - 2		; must follow "gcsave"
 locals:	resq NUMBER_OF_NON_REGISTER_ARGUMENTS ; must be right after "tempregisters"!
 area1: resb TOTAL_HEAP_SIZE / 2
 area2: resb TOTAL_HEAP_SIZE / 2

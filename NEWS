@@ -1,0 +1,15 @@
+Release 2:
+
+  Fixed typo in x86_64/intrinsics.scm, which would produce a linking error when
+  the "sin" primitive was used.
+
+  Added notes in MANUAL regarding the use of the "-I" option with nasm
+  and upgrading bones from the git repository.
+
+  The pass to remove unused variables now drops entire "let" forms if
+  no bound variable is used.
+
+  Added support for Mac OS X.
+
+  The standard-port accessors ("current-input-port", etc.) can now be
+  used with "parameterize".

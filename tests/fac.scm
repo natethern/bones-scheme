@@ -3,5 +3,5 @@
       1
       (* n (fac (- n 1)))))
 
-(write-string (number->string (fac 10)))
+(write (fac 10))
 (newline)
