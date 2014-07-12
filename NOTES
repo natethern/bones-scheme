@@ -32,7 +32,9 @@ BONES                                                                     -*- Or
   - but will probably gain very little.
 ** implement basic known procedure optimizations
   - beta-contraction (needs knowledge about FVs).
-** TODO [#C] improve inlining manifest lambdas
+** directly invoke case-lambda bodies
+   - known case-lambda target at call-site could jump to matching case
+** improve inlining manifest lambdas
   - don't bind temporaries for arguments that are variables or literals.
   - not that easy: we have to replace variable-references for the
     dropped llist-variables.
