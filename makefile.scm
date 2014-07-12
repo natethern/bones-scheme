@@ -295,6 +295,7 @@
     (run (mkdir -p
 		,(string-append arch "/x86_64")
 		,(string-append arch "/x86_64/linux")
+		,(string-append arch "/x86_64/mac")
 		,(string-append arch "/x86_64/windows")))
     (for-each
      (lambda (df)
