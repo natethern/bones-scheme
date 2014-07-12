@@ -10,3 +10,6 @@ Release 2:
   no bound variable is used.
 
   Added support for Mac OS X.
+
+  The standard-port accessors ("current-input-port", etc.) can now be
+  used with "parameterize".
