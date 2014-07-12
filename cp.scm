@@ -5,6 +5,7 @@
 ;
 ; - value = '<literal> | <lambda-id> | <symbol> (alias) | '$uninitialized | #f (asigned)
 ; - expects expression to be canonicalized.
+; - inserts "($call ID ...)" expressions
 
 (define (cp1 exp)
   (let ((vars '()))
@@ -161,9 +162,14 @@
 	 `($inline ,n ,@(map (cut walk <> lenv env) xs)))
 	(('$allocate t s xs ...)
 	 `($allocate ,t ,s ,@(map (cut walk <> lenv env) xs)))
-	((op args ...) (map (cut walk <> lenv env) x))
+	((op args ...) 
+	 (let ((x (map (cut walk <> lenv env) x)))
+	   (cond ((and (symbol? op) (assq op vars)) =>
+		  (lambda (a)
+		    (if (number? (cdr a))
+			`($call ,(cdr a) ,@x)
+			x)))
+		 (else x))))
 	(_ (error "invalid expression" x))))
-    (pp vars)
-    (values
-     (walk exp '() '())
-     (filter (lambda (var) (number? (cdr var))) vars))))
+    ;;(pp vars)
+    (walk exp '() '())))

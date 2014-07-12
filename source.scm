@@ -31,7 +31,7 @@
     (walk exp 1)))
 
 
-;; note: also returns #f for '$call, '$restart and '$call-leaf
+;; note: also returns #f for '$call
 (define (procedure-call-expression? exp)
   (and (pair? exp) 
        (not (memq (car exp)

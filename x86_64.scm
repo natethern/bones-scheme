@@ -129,11 +129,14 @@
 (define (generate-true-ref r)
   (emit " SET_T " r "\n"))
 
-(define (generate-alloc-check-and-call)
-  (emit " cmp ALLOC, LIMIT\n ja reclaim\n jmp rax\n"))
+(define (generate-alloc-check)
+  (emit " cmp ALLOC, LIMIT\n ja reclaim\n"))
 
 (define (generate-tail-call r)
   (emit " jmp " r "\n"))
+
+(define (generate-direct-tail-call lbl)
+  (emit " jmp " lbl "\n"))
 
 (define (generate-call name)
   (emit " call " name "\n"))

@@ -19,7 +19,6 @@
 (define locals-counter 0)
 (define available-registers '())
 (define unused-global-variables '())
-(define known-lambda-variables '())
 
 
 (define (cells n) (* word-size n))
@@ -79,7 +78,7 @@
 	      (_ (when dumpcps
 		   (dump-expressions code dumpserial)
 		   (stop)))
-	      (code knownlambdas (cp code))
+	      (code (cp code))
 	      (code unused (detect-unused-variables code))
 	      (_ (cond ((option 'dump-unused: options)
 			(for-each 
@@ -101,19 +100,18 @@
 	      (lambda (thunk)
 		(with-output-to-file outfile thunk))
 	      (lambda (thunk) (thunk)))
-	  (cut generate-code defs ccode unused knownlambdas)))))))
+	  (cut generate-code defs ccode unused)))))))
 
 (define (compile-file fname . options)
   (apply compile (read-forms fname) options))
 
 
-(define (generate-code defs code unused knownlambdas)
+(define (generate-code defs code unused)
   (set! label-counter 0)
   (generate-header (map mangle-feature-name implementation-features))
   (set! literals-to-be-translated '())
   (set! primitives '())
   (set! unused-global-variables unused)
-  (set! known-lambda-variables knownlambdas)
   (generate-closures code)
   (generate-globals defs)
   (generate-literals)
@@ -367,6 +365,9 @@
 	    (let ((l1 (register-literal c)))
 	      (generate-immediate-ref t l1))))
      #t)
+    (('$call id args ...)
+     (translate-call-to-known-target id args)
+     #f)
     ((op args ...)
      (translate-call x)
      #f)
@@ -527,7 +528,9 @@
     (((or '$undefined '$uninitialized)) '())
     (('$closure-ref i) (list self-register))
     (('quote _) '())
-    ((op args ...)
+    (('$call _ ...)
+     (error "CPS-call in non-tail position" x))
+    ((op _ ...)
      (error "CPS-call in non-tail position" x))
     (_ (error "bad expression" x))))
 
@@ -545,9 +548,24 @@
       (generate-procedure-check))
     (generate-slot-ref arg-register self-register (cells 1) #t)
     (generate-immediate-ref count-register n)
-    (if allocating
-	(generate-alloc-check-and-call)
-	(generate-tail-call arg-register))))
+    (cond (allocating
+	   (generate-alloc-check)
+	   (generate-tail-call arg-register))
+	  (else
+	   (generate-tail-call arg-register)))))
+
+(define (translate-call-to-known-target id x)
+  (let ((n (length x))
+	(lbl (string-append "f_" (number->string id))))
+    (translate/registers x argument-registers)
+    (cond (allocating
+	   (generate-slot-ref arg-register self-register (cells 1) #t)
+	   (generate-immediate-ref count-register n)
+	   (generate-alloc-check)
+	   (generate-direct-tail-call lbl))
+	  (else
+	   (generate-immediate-ref count-register n)
+	   (generate-direct-tail-call lbl)))))
 
 (define (translate-closure exp)
   (match exp
