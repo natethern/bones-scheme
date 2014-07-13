@@ -42,12 +42,13 @@
 ;;; send corrections or additions to agj @ alum.mit.edu
 
 (define cur-section '())(define errs '())
+
+(case-sensitive #f)
+
 (define SECTION (lambda args
 		  (display "SECTION") (write args) (newline)
 		  (set! cur-section args) #t))
 (define record-error (lambda (e) (set! errs (cons (list cur-section e) errs))))
-
-(case-sensitive #f)
 
 (define test
   (lambda (expect fun . args)
