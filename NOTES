@@ -2,7 +2,7 @@ BONES                                                                     -*- Or
 =====
 
 
-* TODO [#A] GC crashes in compiled grond
+* TODO GC crashes in compiled grond
   - compiled without 'check, running with args "../grond/tests/fft.scm"
   - "mark", called from boneslib.s:1768
   - 'check makes no difference.
@@ -26,7 +26,7 @@ BONES                                                                     -*- Or
   - possibly problems with redefinitions of primitives, ending in some
     sort of sicrularity.
 * TODO add exact Mac OS version of [m] to manual
-  - also add exact development system versions (xcode, gcc, msvc)
+* TODO add exact development system versions (xcode, mingw64, msvc)
 * potential optimizations
 ** we could coalesce allocations inside a lambda
   - but will probably gain very little.
@@ -54,21 +54,19 @@ BONES                                                                     -*- Or
    - variables (same scope), atomic literals (chars, booleans, numbers, null),
      and known lambdas (id).
    - would solve problems related to [[inlining manifest lambdas]]
-* TODO identify direct calls						 :cp:
-  - if operator is symbol and in known-lambda-vars set, generate direct call
-    (also for alloc-check, that is, not via rax).
+* DONE identify direct calls						 :cp:
+  - test.
+  - add removal of =letrec*= forms with empty set of bindings.
 * try using libgc as 2nd heap generation
   - needs write-barrier to record assignments of heap-data into non-heap objects.
     - then evict recursively.
   - also, keep GC-count in block header.
-* implement eval/repl
-  - could start with a simplification from grass.
-  - keep it simply, without environments.
-  - install signal-handlers for SIGSEGV/SIGBUS/SIGILL/SIGFPE.
-* TODO port to arm
-** TODO [#C] port fastmath.scm
-** TODO port boneslib.s
-* TODO [#C] pre-allocated chars in the range 0-255
+* option "-export VAR"
+  - makes global externally visible (+ PREFIX)
+* port to arm								:arm:
+** port fastmath.scm
+** port boneslib.s
+* TODO pre-allocated chars in the range 0-255
   - all chars are preallocated, unless we allow chars with arbitrary code.
   - =integer->char=: check range and alloc, ensure this is inlined.
   - benchmark. 
@@ -183,14 +181,13 @@ mainCRTStartup:
 * TODO handle redundant moves
   - keep list of equivalences between registers, and avoid
     move if dest is known to be equal to src.
-* implement sexpr-"peephole" pass?
+* TODO implement sexpr-simplification pass
   - match expressions for certain cases.
   - perhaps add "($comment COMMENT EXP)" special form to detect particular
     primitive expansions (like "not").
   - examples:
     (if (if X TRUE FALSE) Y Z) -> (if X Y Z)
     (if (if X FALSE TRUE) Y Z) -> (if X Z Y)
-  - drop =let= with empty set of bindings.
 * TODO =string->number= does not parse "+/-nan.0"/"+/-inf.0"
 * Issues
 ** "inexact->exact" uses "fisttp", so needs SSE3
@@ -225,3 +222,13 @@ mainCRTStartup:
 * Notes
 ** the write barrier can be disabled by defining DISABLE_WRITE_BARRIER
 ** enable GC logging with -DENABLE_GC_LOGGING
+** release steps:
+   1. update file:NEWS
+   2. update version in file:version.scm and file:MANUAL.org
+   3. "make check"
+   4. "make dist"
+   5. tag
+   6. push, push tags
+   7. upload file:NEWS, file:MANUAL.html, file:bones.tar.gz, file:bones.zip, 
+      ev. file:index.html
+   8. (announce)
