@@ -27,7 +27,7 @@
        ;; can it get more crude?
        (when (string=? "scm" (suffix fname))
 	 (let ((fname2 (replace-suffix "s" fname)))
-	   (run (,compiler ,fname -o ,fname2
+	   (run (,compiler ,fname -o ,fname2 -comment
 			   ,@(append-map (cut list '-feature <>) features)))
 	   (set! fname fname2)))
        (when (string=? "s" (suffix fname))
