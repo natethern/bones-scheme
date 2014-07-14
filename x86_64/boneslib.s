@@ -2566,19 +2566,22 @@ get_last_error:
 %endif
 
 
+%ifdef FEATURE_CHECK
+
 ;; check slot-access: rax = block, r11 = index (fixnum), clobbers r11
 check_slot_access:
   push r15
   test rax, 1
   jnz .fail
+  test r11, 1
+  jz .fail
   mov r15, [rax]
-  and r15, [byteblock_bit]
+  test r15, [byteblock_bit]
   if z
-    mov r15, [rax]
     and r15, [size_mask]
     FIX2INT r11
     cmp r11, r15
-    if be
+    if b
       pop r15
       ret
     endif
@@ -2594,13 +2597,15 @@ check_byte_access:
   push r15
   test rax, 1
   jnz .fail
+  test r11, 1
+  jz .fail
   mov r15, [rax]
   test r15, [byteblock_bit]
   if nz
     and r15, [size_mask]
     FIX2INT r11
     cmp r11, r15
-    if be
+    if b
       pop r15
       ret
     endif
@@ -2634,6 +2639,8 @@ check_argc_failed:
   mov rax, error_msg_7
   mov r11, error_msg_8 - error_msg_7
   jmp write_error_and_exit
+
+%endif
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
