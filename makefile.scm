@@ -255,6 +255,7 @@
     "bones-x86_64-linux.s"
     "bones-x86_64-windows.s"
     "bones-x86_64-mac.s"
+    "version.scm"
     "alexpand.scm"
     "all.scm"
     "base.scm"

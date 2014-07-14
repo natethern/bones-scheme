@@ -9,6 +9,7 @@
 	 (else (error "unknown host system")))
        (features)))
 
+(load "version.scm")
 (load "alexpand.scm")
 (load "source.scm")
 (load "cc.scm")

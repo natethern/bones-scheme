@@ -6,7 +6,8 @@
  (code
   (define (features) '(bones))
   (define flush-output void))
- (files "match.scm"
+ (files "version.scm"
+	"match.scm"
 	"support.scm"
 	"pp.scm"
 	"alexpand.scm"
