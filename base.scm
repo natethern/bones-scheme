@@ -1,6 +1,16 @@
 ;; default base configurations
 
 
+ ;; convenience syntax, also used in the rest of the library
+(code
+ (define-syntax define-syntax-rule
+   (syntax-rules
+       ___ ()
+       ((_ (name args ___) rule)
+	(define-syntax name
+	  (syntax-rules ()
+	    ((_ args ___) rule)))))))
+
 ;; intrinsics - needed for standard and non-standard procedures
 (cond-expand
   (x86_64

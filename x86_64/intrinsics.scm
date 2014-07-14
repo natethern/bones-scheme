@@ -1,15 +1,6 @@
 ;;;; low-level intrinsic operations (x86_64)
 
 
-;; convenience syntax, also used in the rest of the library
-(define-syntax define-syntax-rule
-  (syntax-rules ___ ()
-    ((_ (name args ___) rule)
-     (define-syntax name
-       (syntax-rules ()
-	 ((_ args ___) rule))))))
-
-
 ;; shift-value for computing the number of bytes per "cell" (word)
 (define-syntax %cell-shift ($inline "mov rax, FIX(CELL_SHIFT)"))
 
