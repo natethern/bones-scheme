@@ -1,3 +1,10 @@
+Release 3:
+
+  Added evaluator and standalone-interpreter.
+
+  Fixed off-by-one error in slot- and byte-access checks enabled with
+  "-feature check".
+
 Release 2:
 
   Fixed typo in x86_64/intrinsics.scm, which would produce a linking
