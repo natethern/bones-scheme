@@ -1,3 +1,4 @@
+/Release 2/
 
 * Introduction
 
@@ -58,10 +59,12 @@
 
   BONES has been successfully tested on the following systems:
 
-  | Linux Mint 13 Maya Ubuntu/Linaro 4.6.3-1ubuntu4 Linux 3.2.0-23-generic x86_64 |
-  | openSUSE 13.1 (Bottle) Linux 3.15.1-2.g3289da4-default x86_64                 |
-  | Windows 7 Professional                                                        |
-  | Mac OS 10.8                                                                   |
+  | OS                                                                            |    nasm | C compiler |
+  |-------------------------------------------------------------------------------+---------+------------|
+  | Linux Mint 13 Maya Ubuntu/Linaro 4.6.3-1ubuntu4 Linux 3.2.0-23-generic x86_64 | 2.09.10 | gcc 4.6.3  |
+  | openSUSE 13.1 (Bottle) Linux 3.15.1-2.g3289da4-default x86_64                 | 2.09.10 | gcc 4.8.1  |
+  | Windows 7 Professional                                                        |         |            |
+  | Mac OS 10.8                                                                   |         |            |
 
 * Requirements
 
@@ -137,6 +140,12 @@
     nasm -f macho64 bones-x86_64-mac.s -o bones.o
     gcc bones.o -o bones
     #+END_SRC    
+
+    You may get a linker warning complaining that the object file
+    produced by NASM does not have "PIE" enabled. I'm not completely
+    sure why this happens and how this warning can be prevented. The
+    linked executables run fine as far as I can tell (it may be caused
+    by a bug in NASM or the Apple linker, but I'm not sure about it.)
 
   Now you have a compiler, which you can test by entering 
 
@@ -291,6 +300,8 @@
 
    - =-o FILENAME= :: Write generated code to =FILENAME= instead of
        stdout.
+
+   - =-v= :: Print the compiler version and exit.
 
 ** Configuration Macros for Generated Assembly Code
 
@@ -908,33 +919,79 @@
     - =(void ARGUMENT ...)= :: Ignores its arguments and returns an
         undefined result.
 
-*** Additional Library Code
+** Additional Library Code
 
     Some library files are available with additional procedures and
     syntactic extensions. Use these with the =files= program
-    specification clause.
-
-    - =records.scm= :: A record-definition-facility compatible to
-        [[http://srfi.schemers.org/srfi-9/][SRFI-9]].
+    specification clause:
 
     - =match.scm= :: Alex Shinn's pattern matching facility, also
-        available at http://synthcode.com/scheme/match.scm.
+        available at http://synthcode.com/scheme/match.scm. This file
+        can be used with the =files= program-specification form.
 
     - =megalet.scm= :: The [[http://srfi.schemers.org/srfi-71/][SRFI-71]] reference implementation, extending
         =let= for convenient binding of multiple values. This also
         adds "curried" =define= syntax for toplevel definitions and
         =let=/=letrec=.
 
+    - =records.scm= :: A record-definition-facility compatible to
+        [[http://srfi.schemers.org/srfi-9/][SRFI-9]].
+
+    The following library files are =include= files, i.e.  they are
+    intended to by used by adding
+
+      #+BEGIN_SRC scheme
+      (include "...FILENAME...")
+      #+END_SRC
+
+    to a program-specification:
+
+    - =eval.scm= :: An fast evaluator for Scheme expressions (see below).
+
     - =fastmath.scm= :: Provides numeric operations, specific for
-        fixnums (exact integers) and floating-point numbers.  Note
-        that this is an =include= file, i.e.  it is intended to by
-        used by adding
+        fixnums (exact integers) and floating-point numbers.
 
-	#+BEGIN_SRC scheme
-	(include "fastmath.scm")
-	#+END_SRC
+** The Evaluator
 
-	in a program-specification.
+   The library file =eval.scm= contains an evaluator for Scheme
+   expressions, that may be useful for adding an interactive
+   read-eval-print loop (REPL) to compiled code.  It has definitions
+   for all standard- and non-standard syntax and primitives available
+   in BONES.
+
+   Evaluated code does not have access to the global variables of the
+   containing compiled program, but can be extended to do so, for 
+   example by adding
+
+   #+BEGIN_SRC
+   (eval `(define hello ',(lambda () (print "hello!"))))
+   #+END_SRC
+
+   (Quoted literals may be of any data type.)
+
+   =eval.scm= provides the following procedures:
+
+   - =(eval FORM)= :: Evaluates =FORM= and returns its result(s).
+
+   - =(load FILENAME [EVALPROC])= :: Reads expressions from the file
+       given by =FILENAME= (a string) and evaluates them. If
+       =EVALPROC= is given then each expression is passed to this
+       procedure instead of =eval=.
+
+   - =(load-verbose FILENAME [EVALPROC])= :: Like =load=, but each
+       expression is printed to the current output port before it is
+       evaluated.
+
+   - =(repl)= :: Start an interactive read-eval-print loop until EOF is
+       read from the current input-port.
+
+   Note that error-checking is still minimal, even for evaluated code.
+
+   The evaluator is also available as a standalone interpreter, in the
+   file =bonesi.scm=, which can be compiled and linked like any other
+   Scheme program. When invoked without arguments, =bonesi= will start
+   a REPL, otherwise it will try to load the first argument given on
+   the command-line and exit.
 
 * Compiler Details
 
@@ -1128,26 +1185,33 @@
    The compiler has a simple structure and basically consists of
    the following files:
 
+   - =alexpand.scm= :: The syntax-expander. It takes a single
+       unexpanded toplevel expression and expands all macros in a
+       single pass.
+
    - =bones.scm= :: A program-specification file referencing all
        modules of the compiler.
 
-   - =main.scm= :: The /driver/, parsing command-line arguments and
-       invoking the translation process.
+   - =cc.scm= :: The closure-conversion pass.
 
    - =cmplr.scm= :: The core compiler, that runs the different stages
        and control the translation of the simplified program into
        assembly code.
 
-   - =program.scm= :: Parses program specifications, returning a
-       single toplevel-expression.
-
-   - =alexpand.scm= :: The syntax-expander. It takes a single
-       unexpanded toplevel expression and expands all macros in a
-       single pass.
-
    - =cps.scm= :: The CPS-transformation pass.
 
-   - =cc.scm= :: The closure-conversion pass.
+   - =main.scm= :: The /driver/, parsing command-line arguments and
+       invoking the translation process.
+
+   - =megalet.scm=, =match.scm= :: Convenience macros with more
+       concise binding forms for multiple values and for pattern
+       matching.
+
+   - =pp.scm= :: The pretty-printer, used for dumping source code, for
+       example as the result of the =-expand= option.
+
+   - =program.scm= :: Parses program specifications, returning a
+       single toplevel-expression.
 
    - =mangle.scm= :: Does name-mangling of string-constants and
        variable-names.
@@ -1157,12 +1221,8 @@
    - =support.scm= :: Miscellaneous non-standard helper procedures for
        all sorts of things.
 
-   - =pp.scm= :: The pretty-printer, used for dumping source code, for
-       example as the result of the =-expand= option.
-
-   - =megalet.scm=, =match.scm= :: Convenience macros with more
-       concise binding forms for multiple values and for pattern
-       matching.
+   - =version.scm= :: Contains a definition for the current compiler
+       version.
 
    - =x86_64.scm= :: The /backend/ for generating x86_64 code. This
        file is the only part of the compiler that is architecture
@@ -1463,6 +1523,11 @@
   Note that =return-to-host= suspends the executing Scheme code and
   returns the argument given to the following invocation of the
   entry-point.
+
+  When embedding code in a shared library on Linux, you should compile
+  your Scheme code with the =-feature pic= option to make sure the
+  generated code is position independent. On Windows and Mac, =pic= is
+  enabled by default.
 
 * Debugging
 
