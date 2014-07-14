@@ -6,6 +6,124 @@
 
 (code
 
+ (expand-syntax
+  '(begin
+     (define-syntax define-syntax-rule
+       (syntax-rules
+	   ___ ()
+	   ((_ (name args ___) rule)
+	    (define-syntax name
+	      (syntax-rules ()
+		((_ args ___) rule))))))
+     (define-syntax-rule (when x y z ...)
+       (if x (begin y z ...)))
+     (define-syntax-rule (unless x y z ...)
+       (if (not x) (begin y z ...)))
+     (define-syntax optional
+       (syntax-rules ()
+	 ((_ x y) (if (pair? x) (car x) y))
+	 ((_ x) (optional x #f))))
+     (define-syntax-rule (define-inline (name . llist) body ...)
+       (define-syntax name
+	 (lambda llist body ...)))
+     (define-syntax-rule (case-lambda (llist . body) ...)
+       ($case-lambda (lambda llist . body) ...))
+     (define-syntax cut
+       (syntax-rules (<> <...>)
+	 ;; construct fixed- or variable-arity procedure:
+	 ((_ "1" (slot-name ...) (proc arg ...))
+	  (lambda (slot-name ...) (proc arg ...)))
+	 ((_ "1" (slot-name ...) (proc arg ...) <...>)
+	  (lambda (slot-name ... . rest-slot) (apply proc arg ... rest-slot)))
+	 ;; process one slot-or-expr
+	 ((_ "1" (slot-name ...)   (position ...)      <>  . se)
+	  (cut "1" (slot-name ... x) (position ... x)        . se))
+	 ((_ "1" (slot-name ...)   (position ...)      nse . se)
+	  (cut "1" (slot-name ...)   (position ... nse)      . se))
+	 ((_ . slots-or-exprs)
+	  (cut "1" () () . slots-or-exprs))) )
+     (define-syntax fluid-let
+       (syntax-rules ()
+	 ((_ ((v1 e1) ...) b1 b2 ...)
+	  (fluid-let "temps" () ((v1 e1) ...) b1 b2 ...))
+	 ((_ "temps" (t ...) ((v1 e1) x ...) b1 b2 ...)
+	  (let ((temp e1))
+	    (fluid-let "temps" ((temp e1 v1) t ...) (x ...) b1 b2 ...)))
+	 ((_ "temps" ((t e v) ...) () b1 b2 ...)
+	  (let-syntax ((swap!
+			(syntax-rules ()
+			  ((swap! a b)
+			   (let ((tmp a))
+			     (set! a b)
+			     (set! b tmp))))))
+	    (dynamic-wind
+		(lambda () (swap! t v) ...)
+		(lambda () b1 b2 ...)
+		(lambda () (swap! t v) ...))))))
+     (define-syntax-rule (begin0 x1 x2 ...)
+       (call-with-values (lambda () x1)
+	 (lambda results
+	   x2 ...
+	   (apply values results))))
+     (define-syntax let-optionals
+       (syntax-rules ()
+	 ((_ rest () body ...) (let () body ...))
+	 ((_ rest ((var default) . more) body ...)
+	  (let* ((tmp rest)
+		 (var (if (null? tmp) default (car tmp)))
+		 (rest2 (if (null? tmp) '() (cdr tmp))) )
+	    (let-optionals rest2 more body ...) ) )
+	 ((_ rest (var) body ...) (let ((var rest)) body ...)) ) )
+     (define-syntax assert
+       (syntax-rules ()
+	 ((_ x) (assert x "assertion failed" 'x))
+	 ((_ x args ...) 
+	  (let ((tmp x))
+	    (unless tmp (error args ...))
+	    tmp))))
+     (define-syntax define-values
+       (syntax-rules ()
+	 ((_ "1" () exp ((var tmp) ...))
+	  (define
+	    (call-with-values (lambda () exp)
+	      (lambda (tmp ...)
+		(set! var tmp) ...))))
+	 ((_ "1" (var . more) exp (binding ...))
+	  (define-values "1" more exp (binding ... (var tmp))))
+	 ((_ () exp) 
+	  (define 
+	    (call-with-values (lambda () exp)
+	      (lambda _ (void)))))
+	 ((_ (var) exp) 
+	  (define var exp))
+	 ((_ (var ...) exp)
+	  (begin
+	    (define var #f) ...
+	    (define-values "1" (var ...) exp ())))))
+     (define-syntax parameterize
+       (letrec-syntax ((bind-param 
+			(syntax-rules ()
+			  ((_ () (param ...) (new ...) (old ...) body)
+			   (dynamic-wind
+			       (lambda () 
+				 (param new) ...)
+			       (lambda () body)
+			       (lambda ()
+				 (param old #t) ...)))
+			  ((_ ((name val) . more) (param ...) (new ...) (old ...) body)
+			   (let* ((newname name)
+				  (newval val)
+				  (oldval (newname)))
+			     (bind-param
+			      more
+			      (param ... newname)
+			      (new ... newval)
+			      (old ... oldval)
+			      body))))))
+	 (syntax-rules ()
+	   ((_ bindings body ...)
+	    (bind-param bindings () () () (begin body ...))))))))
+
 (define eval-unbound-value (list 'unbound))
 (define expand expand-syntax)
 
@@ -34,6 +152,7 @@
      sin cos tan asin acos atan log sqrt expt exp
      cons length 
      gcd lcm
+     max min
      list?
      string-length vector-length
      list-tail list-ref
@@ -87,11 +206,6 @@
      make-parameter make-disjoint-type
      expand)))
 
-(cond-expand
-  (embedded 
-   (set! eval-environment (cons 'return-to-host return-to-host) eval-environment))
-  (else))
-
 
 (define (eval x)
 
@@ -139,7 +253,8 @@
        (cond ((lookup x e) =>
 	      (match-lambda 
 		((i . j)
-		 (lambda (v) (vector-ref (list-ref v i) j)))))
+		 (lambda (v)
+		   (vector-ref (list-ref v i) j)))))
 	     (else
 	      (let ((cell (findcell x)))
 		;; no need to check bound-ness if already bound
@@ -222,7 +337,7 @@
       (('lambda llist body ...)
        (call-with-values (cut parse-lambda-list llist)
 	 (lambda (vars argc rest)
-	   (let* ((e (cons vars e))
+	   (let* ((e (if (null? vars) e (cons vars e)))
 		  (body (compile `(begin ,@body) e)))
 	     (case argc
 	       ((0) 
@@ -323,8 +438,52 @@
        ((filename) (load filename eval #t))))))
 
 
-(set! eval-environment
-  (append (list (cons 'load-verbose load-verbose) (cons 'load load))
-	  eval-environment))
+(cond-expand
+  (embedded (eval `(define return-to-host ',return-to-host)))
+  (else))
+
+(eval
+ `(begin
+    (define load-verbose ',load-verbose)
+    (define load ',load)
+    (define oblist ',(lambda () eval-environment))))
+
+(define (repl)
+  (define (eval-form x return)
+    (parameterize ((current-exception-handler
+		    (lambda (exn)
+		      (let ((out (current-error-port)))
+			(newline out)
+			(cond ((error-object? exn)
+			       (display "Error: " out)
+			       (display (error-object-message exn) out)
+			       (for-each
+				(lambda (x)
+				  (newline out)
+				  (write x out)
+				  (newline out))
+				(error-object-irritants exn)))
+			      (else
+			       (display "Unhandled excception: " out)
+			       (write exn out)
+			       (newline out)))
+			(return #f)))))
+      (eval x)))
+  (call/cc
+   (lambda (exit)
+     (do () (#f)
+       (display "> ")
+       (let ((x (read)))
+	 (when (eof-object? x) (exit #f))
+	 (call/cc
+	  (lambda (return)
+	    (call-with-values (cut eval-form x return)
+	      (lambda results
+		(for-each
+		 (lambda (x)
+		   (write x) 
+		   (newline))
+		 results)))))))
+     (newline))))
 
 )
