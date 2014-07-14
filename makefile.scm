@@ -180,13 +180,14 @@
             (unless (compile+run "nolibc" prg "./bones" '() '(-feature nolibc))
               (set! ok #f))))
         '("fac" "tak" #;"r4rstest" "dynamic" "forth"))
-       (for-each
-        (lambda (prg)
-          (let* ((bopts (if (member prg '("r4rstest")) '(-case-insensitive) '()))
-                 (prg (string-append "tests/" prg)))
-            (unless (compile+run "glibc" prg "./bones" '() `(-feature glibc ,@bopts))
-              (set! ok #f))))
-        '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth")))
+       (unless (string=? "gcc" gcc)
+	 (for-each
+	  (lambda (prg)
+	    (let* ((bopts (if (member prg '("r4rstest")) '(-case-insensitive) '()))
+		   (prg (string-append "tests/" prg)))
+	      (unless (compile+run "glibc" prg "./bones" '() `(-feature glibc ,@bopts))
+		(set! ok #f))))
+	  '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth"))))
      (unless (compile+run "self-compile" "bones" "./bones"
 			  `(bones.scm -o tmp/bones.s -feature ,target-feature)
 			  `(-feature ,target-feature))
