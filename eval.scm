@@ -273,7 +273,7 @@
 	   (? string?)
 	   (? char?)
 	   (? vector?)
-	   #;(? bytevector?)
+	   (? bytevector?)
 	   (? boolean?))
        (lambda (v) x))
 
