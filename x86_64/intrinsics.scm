@@ -23,7 +23,7 @@
 
 (define-syntax-rule (%byte-set! x i y)
   ($inline
-   "CHECK_BYTE_ACCESS rax, r11; FIX2INT r11; add rax, r11; xchg rax, r15; FIX2INT rax; mov [r15 + CELLS(1)], al; mov rax, r15" 
+   "CHECK_BYTE_ACCESS rax, r11; FIX2INT r11; add rax, r11; xchg rax, r15; FIX2INT rax; mov [r15 + CELLS(1)], al; mov rax, FALSE" 
    x i y))
 
 ;; extract block-type, with a special case for immediate fixnums
