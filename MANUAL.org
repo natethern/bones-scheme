@@ -994,7 +994,7 @@
    containing compiled program, but can be extended to do so, for 
    example by adding
 
-   #+BEGIN_SRC
+   #+BEGIN_SRC scheme
    (eval `(define hello ',(lambda () (print "hello!"))))
    #+END_SRC
 
