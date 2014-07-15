@@ -14,6 +14,7 @@
 
 (define compiler-sources
   '("bones.scm"
+    "version.scm"
     "r5rs.scm"
     "match.scm"
     "support.scm"
