@@ -17,6 +17,7 @@ BONES                                                                     -*- Or
    - adapt printer + reader.
 * DONE add bytevectors						:bytevectors:
   - test and merge /bytevectors/
+  - add bindings to file:eval.scm
 * TODO add more checks
   - copying of slots and bytes (bounds, types).
   - GC sanity checks
