@@ -6,7 +6,8 @@
 
 
 (define (all)
-  (bones))
+  (bones)
+  (bonesi))
 
 (define (clean)
   (run (rm -f *.o bones bones-x86_64-linux.s)))
@@ -99,6 +100,15 @@
      (bones-x86_64-mac.o)
      (make (("bones" ("bones-x86_64-mac.o")
              (run (,gcc bones-x86_64-mac.o -o bones))))))))
+
+(define (bonesi)
+  (bones)
+  (make (("bonesi" ("bonesi.o")
+	  (run (,gcc bonesi.o -o bonesi)))
+	 ("bonesi.o" ("bonesi.s")	;XXX boneslib?
+	  (run (nasm -f ,nasm-format bonesi.s -o bonesi.o)))
+	 ("bonesi.s" ("bonesi.scm" "eval.scm") ;XXX intrinsics, etc?
+	  (run (./bones bonesi.scm -o bonesi.s))))))
 
 (define (bigbones)
   (bones)
