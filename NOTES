@@ -226,10 +226,11 @@ mainCRTStartup:
 ** release steps:
    1. update file:NEWS
    2. update version in file:version.scm and file:MANUAL.org
-   3. "make check"
-   4. "make dist"
-   5. tag
-   6. push, push tags
-   7. upload file:NEWS, file:MANUAL.html, file:bones.tar.gz, file:bones.zip, 
+   3. merge /develop/ into /master/
+   4. "make check"
+   5. "make dist"
+   6. tag
+   7. push, push tags
+   8. upload file:NEWS, file:MANUAL.html, file:bones.tar.gz, file:bones.zip, 
       ev. file:index.html
-   8. (announce)
+   9. (announce)
