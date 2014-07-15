@@ -204,7 +204,9 @@
      reclaim free
      open-append-output-file
      make-parameter make-disjoint-type
-     expand)))
+     expand
+     bytevector bytevector? bytevector-length bytevector-u8-ref bytevector-u8-set!
+     make-bytevector bytevector-copy!)))
 
 
 (define (eval x)

@@ -897,6 +897,37 @@
         =BODY= ... is executed, the parameters are restored to their
         old values, with any guard-procedures temporarily disabled.
 
+*** Bytevectors
+
+    - =(bytevector NUM ...)= :: Creates a new bytevector with the
+        initial elements =NUM, ...=.
+
+    - =(bytevector? X)= :: Returns true, if =X= is a bytevector or
+	false otherwise.
+
+    - =(bytevector-copy! TO AT FROM [START END])= :: Copies the
+        elements of the bytevector =FROM=, between =START= and =END=
+        into the bytevector =TO=, at position =AT=. =START= defaults
+        to zero, =END= defaults to =(bytevector-length FROM)=.
+
+    - =(bytevector-length BYTEVECTOR)= :: Returns the length of
+        =BYTEVECTOR= as an exact integer.
+
+    - =(bytevector-u8-ref BYTEVECTOR INDEX)= :: Returns the element of
+        =BYTEVECTOR= at the given index.
+
+    - =(bytevector-u8-set! BYTEVECTOR INDEX N)= :: Modifies the
+        element of =BYTEVECTOR= at the given index to contain =N=.
+
+    - =(make-bytevector SIZE [INIT])= :: Creates a noew bytevector,
+        optionally filling it with =INIT=. If =INIT= is not given, the
+        contents of the bytevector are unspecified.
+
+    The reader accepts bytevector literals in the form =#u8(...)=,
+    =display= and =write= output bytevectors in this form as well.
+
+    Bytevector-literals are self-evaluating and need not be quoted.
+
 **** Miscellaneous
 
     - =(free)= :: Returns the number of currently available unused
