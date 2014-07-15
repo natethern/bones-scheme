@@ -280,7 +280,7 @@
   (case-lambda 
     ((n b) 
      (let ((bv (%allocate-block #x12 n #f n #f #f)))
-       ($inline "CALL file_bytes" bv b)
+       ($inline "CALL fill_bytes" bv b)
        bv))
     ((n) (%allocate-block #x12 n #f n #f #f))))
 
