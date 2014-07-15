@@ -15,9 +15,6 @@ BONES                                                                     -*- Or
    - would need proper alignment on 32-bit systems.
    - put API into file:fastmath.scm
    - adapt printer + reader.
-* DONE add bytevectors						:bytevectors:
-  - test and merge /bytevectors/
-  - add bindings to file:eval.scm
 * TODO add more checks
   - copying of slots and bytes (bounds, types).
   - GC sanity checks
@@ -52,8 +49,6 @@ BONES                                                                     -*- Or
     - e.g. "($let-float ...)" or something like this.
 * DONE implement simple copy-propagation
    - test and merge /cp/
-   - variables (same scope), atomic literals (chars, booleans, numbers, null),
-     and known lambdas (id).
    - would solve problems related to [[inlining manifest lambdas]]
 * DONE identify direct calls						 :cp:
   - test.
