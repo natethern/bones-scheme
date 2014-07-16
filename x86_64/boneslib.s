@@ -950,7 +950,8 @@ PRIMITIVE divide_numbers
   if be
     test rdx, 1    ; 1 argument - reciprocal, returns garbage with 0 arguments
     if nz
-      movsd xmm1, [rdx + CELLS(1)]
+      FIX2INT rdx
+      cvtsi2sd xmm1, rdx
 .l2:
       movsd xmm0, [flonum_1 + CELLS(1)]
       divsd xmm0, xmm1
