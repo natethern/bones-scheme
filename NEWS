@@ -1,3 +1,8 @@
+Release 4:
+
+  In the single-argument case "/" did not handle a fixnum argument
+  correctly.
+
 Release 3:
 
   Added evaluator and standalone-interpreter.
