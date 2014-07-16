@@ -285,14 +285,6 @@
 	  '()
 	  (cons i (loop (add1 i) (sub1 n)))))))
 
-(define (port? x) 
-  (or (input-port? x) (output-port? x)))
-
-(define (print . xs)
-  (apply emit xs)
-  (newline)
-  (flush-output))
-
 (define (print* . xs)
   (apply emit xs)
   (flush-output))
