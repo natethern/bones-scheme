@@ -2,10 +2,15 @@ BONES                                                                     -*- Or
 =====
 
 
+* TODO failed checks could invoke =%error=
+  - reset rsp?
+* TODO implement record-handling in file:match.scm
+  - =is-a?=, =slot-ref=, =slot-set!=
 * TODO GC crashes in compiled grond
   - compiled without 'check, running with args "../grond/tests/fft.scm"
   - "mark", called from boneslib.s:1768
-  - 'check makes no difference.
+  - 'check makes no difference
+    - but try again, since it didn't quite work
 * work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values has two words.
