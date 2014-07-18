@@ -622,14 +622,6 @@
 	  ((>= i count))
 	(vector-set! to (+ i start2) (vector-ref from (+ start1 i)))))))
 
-(define (vector-copy vec . range)
-  (let-optionals range ((from 0)
-			(to (vector-length vec)))
-    (assert (< from to) "(vector-copy) bad range")
-    (let ((v2 (make-vector (- to from))))
-      (vector-copy! vec v2)
-      v2)))
-
 (define (copy-list lst) (map id lst))
 
 (define HOME (get-environment-variable "HOME"))
