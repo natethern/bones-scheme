@@ -1439,6 +1439,7 @@ PRIMITIVE reclaim_garbage
 
 ;; allocate block: rcx = k, rdx = typenumber, rsi = bytes, rdi = flag (bool), r8 = size, r9 = fill?, r10 = fillvalue -> (k object)
 ;; if heap-space is insufficient, trigger GC, and check for full heap afterwards
+;; rdi holds flag set to #t when GC returns and re-enters this procedure
 PRIMITIVE alloc_block
   cmp rdi, FALSE
   if e
@@ -1754,7 +1755,7 @@ reclaim:
     test rax, rdx
     if nz
       add rcx, CELLS(1)		; binary block, just skip
-      add rcx, ALIGN_BASE		; align
+      add rcx, ALIGN_BASE	; align
       mov rdx, ~ALIGN_BASE
       and rcx, rdx
       add rsi, rcx
