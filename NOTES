@@ -2,15 +2,24 @@ BONES                                                                     -*- Or
 =====
 
 
+* TODO improve use of source registers
+  - there are various places where we do "mov rax, Rx; mov <slot>, rax".
+* TODO boneslib: use data words to avoid loading extra register
+  - MARK_BIT, [~]ALIGN_BASE, SPECIAL_BIT, BYTEBLOCK_BIT
+  - benchmark.
+* TODO win64: check.bat should also build "null" and show size
+* TODO check new file:index.html with IE, Safari
+* TODO the null program is too large
+  - there is still a lot of unused code retained.
+  - we should probably only use the outermost global "dest" as "here:
+    [[file:source.scm::body%20walk%20body%20env2%20dest%20f][file:source.scm::body walk body env2 dest f]]
+* TODO move register-assignment and uve into own files
+  - file:ra.scm, file:uve.scm
 * TODO failed checks could invoke =%error=
-  - reset rsp?
+  - just invoke "(%error MSG)" with an empty continuation.
+  - should probably reset rsp to =saved_rsp=.
 * TODO implement record-handling in file:match.scm
   - =is-a?=, =slot-ref=, =slot-set!=
-* TODO GC crashes in compiled grond
-  - compiled without 'check, running with args "../grond/tests/fft.scm"
-  - "mark", called from boneslib.s:1768
-  - 'check makes no difference
-    - but try again, since it didn't quite work
 * work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values has two words.
@@ -22,8 +31,6 @@ BONES                                                                     -*- Or
    - adapt printer + reader.
 * TODO add more checks
   - copying of slots and bytes (bounds, types).
-  - GC sanity checks
-    - invalid headers (null type and non-zero size)
 * grass hangs, when built with bones
   - endless GC during startup.
   - possibly problems with redefinitions of primitives, ending in some
@@ -182,6 +189,11 @@ mainCRTStartup:
 * TODO handle redundant moves
   - keep list of equivalences between registers, and avoid
     move if dest is known to be equal to src.
+* TODO handling of conditionals is very bad
+  - e.g. =eq?=:
+    cmp rax, r11; SET_T rax; cmovne rax, FALSE
+    cmp rax, FALSE
+    j...
 * TODO implement sexpr-simplification pass
   - match expressions for certain cases.
   - perhaps add "($comment COMMENT EXP)" special form to detect particular
