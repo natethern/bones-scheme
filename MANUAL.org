@@ -59,12 +59,13 @@
 
   BONES has been successfully tested on the following systems:
 
-  | OS                                                                            |    nasm | C compiler |
-  |-------------------------------------------------------------------------------+---------+------------|
-  | Linux Mint 13 Maya Ubuntu/Linaro 4.6.3-1ubuntu4 Linux 3.2.0-23-generic x86_64 | 2.09.10 | gcc 4.6.3  |
-  | openSUSE 13.1 (Bottle) Linux 3.15.1-2.g3289da4-default x86_64                 | 2.09.10 | gcc 4.8.1  |
-  | Windows 7 Professional                                                        |         |            |
-  | Mac OS 10.8                                                                   |         |            |
+  | OS                                                                            |    nasm | C compiler     | libc        |
+  |-------------------------------------------------------------------------------+---------+----------------+-------------|
+  | Linux Mint 13 Maya Ubuntu/Linaro 4.6.3-1ubuntu4 Linux 3.2.0-23-generic x86_64 | 2.09.10 | gcc 4.6.3      | EGLIBC 2.15 |
+  |                                                                               |         |                | musl 1.1.0  |
+  | openSUSE 13.1 (Bottle) Linux 3.15.1-2.g3289da4-default x86_64                 | 2.09.10 | gcc 4.8.1      | glibc 2.18  |
+  | Windows 7 Professional                                                        |         |                |             |
+  | Mac OS 10.8.5                                                                 | 2.11.05 | clang-503.0.38 |             |
 
 * Requirements
 
