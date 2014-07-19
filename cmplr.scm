@@ -623,7 +623,7 @@
 	(lbl (string-append "f_" (number->string id))))
     (translate/registers x argument-registers)
     (cond (allocating
-	   (generate-slot-ref arg-register self-register (cells 1) #t)
+	   (generate-slot-ref arg-register self-register (cells 1))
 	   (generate-immediate-ref count-register n)
 	   (generate-alloc-check)
 	   (generate-direct-tail-call lbl))
