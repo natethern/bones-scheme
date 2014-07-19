@@ -334,6 +334,7 @@
      (let ((ref (lookup-variable var)))
        (and (symbol? ref) ref)))
     (('quote #f) 'FALSE)
+    (_ #f)))
 
 
 ;; test if expression does not need any registers, mostly those
