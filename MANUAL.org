@@ -1253,6 +1253,10 @@
    - =support.scm= :: Miscellaneous non-standard helper procedures for
        all sorts of things.
 
+   - =uve.scm= :: Contains code to detect unused local and global
+       variables by recursively walking the program and collecting 
+       usage information.
+
    - =version.scm= :: Contains a definition for the current compiler
        version.
 
