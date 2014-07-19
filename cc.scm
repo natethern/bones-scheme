@@ -215,7 +215,9 @@
 					`(let ,ubs ,body)))))))
 		      llists bodies)))
 	   (values `($closure ,id ,total-fvrefs ,@ll+bd) total-fv)))
-	(('$call id args ...) `($call ,id ,@(mapwalk args e)))
+	(('$call id args ...)
+	 (let ((args fv (mapwalk args e)))
+	   (values `($call ,id ,@args) fv)))
 	((op args ...) (mapwalk x e))
 	(_ (error "bad expression" x))))
     ;; now walk cc'd code and convert closure-ref'd names to indices
