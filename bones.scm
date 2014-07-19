@@ -13,6 +13,7 @@
 	"alexpand.scm"
 	"megalet.scm"
 	"source.scm"
+	"uve.scm"
 	"cc.scm"
 	"cps.scm"
 	"mangle.scm"

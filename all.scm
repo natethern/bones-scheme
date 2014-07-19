@@ -14,6 +14,7 @@
 (load "version.scm")
 (load "alexpand.scm")
 (load "source.scm")
+(load "uve.scm")
 (load "cc.scm")
 (load "cps.scm")
 (load "mangle.scm")
