@@ -1820,7 +1820,8 @@ reclaim:
 mark:
   mov rbx, [r15]		; rbx = header
   ;; check if already marked
-  test rbx, [mark_bit]
+  mov rdx, MARK_BIT
+  test rbx, rdx
   if nz
     not rdx			; extract forwarding pointer
     and rbx, rdx
