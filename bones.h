@@ -68,6 +68,7 @@ typedef struct BONES_block {
 /* extract string-pointer and float-value */
 #define BONES_string(x)         ((char *)(((BONES_block *)(x))->slots))
 #define BONES_float(x)          (*((double *)(((BONES_block *)(x))->slots)))
+#define BONES_bytevector(x)     ((unsigned char *)((BONES_block *)(x))->slots)
 
 /* extract error-message fields */
 #define BONES_error_object_message(eo)    BONES_slot_ref(eo, 2)

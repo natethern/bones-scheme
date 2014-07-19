@@ -23,6 +23,7 @@
 
   bits 64
 
+
 %ifdef FEATURE_PIC
   default rel
 %endif
@@ -76,9 +77,10 @@
 ;; byteblock objects
 %define FLONUM	TYPECODE(0x10)
 %define STRING	TYPECODE(0x11)
+%define BYTEVECTOR TYPECODE(0x12)
 ;; special object
 %define CLOSURE	TYPECODE(0x20)
-;; pesudo type
+;; pseudo type
 %define FIXNUM  TYPECODE(11)
 
 
@@ -369,7 +371,12 @@
 
 ;; Library-specific name mangling
 %define UNDERSCORE(name)      _ %+ name
-%define MANGLE(name)          name
+
+%ifdef FEATURE_MAC
+ %define MANGLE(name)         UNDERSCORE(name)
+%else
+ %define MANGLE(name)         name
+%endif
 
 
 ;; call C function with 0-3 arguments
@@ -614,8 +621,8 @@
 section .text
 
 %ifdef FEATURE_EMBEDDED
-global ENTRYPOINT
-ENTRYPOINT:
+global MANGLE(ENTRYPOINT)
+MANGLE(ENTRYPOINT):
   SAVE
   push rbp
   mov rax, [saved_k]
@@ -648,8 +655,8 @@ _start:
 .exit:
   SYSCALL1 60, rax		; sys_exit
 %else
-global main
-main:
+global MANGLE(main)
+MANGLE(main):
   SAVE
   push rbp
 %ifdef FEATURE_WINDOWS
@@ -943,7 +950,8 @@ PRIMITIVE divide_numbers
   if be
     test rdx, 1    ; 1 argument - reciprocal, returns garbage with 0 arguments
     if nz
-      movsd xmm1, [rdx + CELLS(1)]
+      FIX2INT rdx
+      cvtsi2sd xmm1, rdx
 .l2:
       movsd xmm0, [flonum_1 + CELLS(1)]
       divsd xmm0, xmm1
@@ -1431,6 +1439,7 @@ PRIMITIVE reclaim_garbage
 
 ;; allocate block: rcx = k, rdx = typenumber, rsi = bytes, rdi = flag (bool), r8 = size, r9 = fill?, r10 = fillvalue -> (k object)
 ;; if heap-space is insufficient, trigger GC, and check for full heap afterwards
+;; rdi holds flag set to #t when GC returns and re-enters this procedure
 PRIMITIVE alloc_block
   cmp rdi, FALSE
   if e
@@ -1458,8 +1467,7 @@ PRIMITIVE alloc_block
     add ALLOC, rsi
     ;; align
     add ALLOC, ALIGN_BASE
-    mov rdx, ~ALIGN_BASE
-    and ALLOC, rdx
+    and ALLOC, [nalign_base]
     ;; now fill block, so that it doesn't contain garbage pointers
     cmp r9, FALSE
     if ne
@@ -1742,18 +1750,15 @@ reclaim:
     mov rax, [rsi]		; get header
     mov rcx, rax		; rcx = block size
     and rcx, [size_mask]
-    mov rdx, BYTEBLOCK_BIT
-    test rax, rdx
+    test rax, [byteblock_bit]
     if nz
       add rcx, CELLS(1)		; binary block, just skip
-      add rcx, ALIGN_BASE		; align
-      mov rdx, ~ALIGN_BASE
-      and rcx, rdx
+      add rcx, ALIGN_BASE	; align
+      and rcx, [nalign_base]
       add rsi, rcx
     else
       ;; if closure, skip codeptr
-      mov rdx, SPECIAL_BIT
-      test rax, rdx
+      test rax, [special_bit]
       if nz
         add rsi, CELLS(1)
 	dec rcx
@@ -1827,8 +1832,7 @@ mark:
   ;; compute size
   mov rcx, rbx
   and rcx, [size_mask]
-  mov rdx, BYTEBLOCK_BIT
-  test rbx, rdx
+  test rbx, [byteblock_bit]
   if nz
     add rcx, ALIGN_BASE			; align
     shr rcx, CELL_SHIFT			; bytes -> words
@@ -1836,8 +1840,8 @@ mark:
   ;; create forwarding ptr and copy object to tospace
   ;; ALIGNMENT: on 32-bit systems, insert alignment-hole marker, if value is a flonum
   mov [rdi], rbx		; write header to tospace
-  mov rdx, MARK_BIT		; mark header and install forwarding ptr
-  or rdx, rdi
+  mov rdx, rdi
+  or rdx, [mark_bit]		; mark header and install forwarding ptr
   mov [r15], rdx
   mov [rax], rdi		; modify original ptr to point to new object
   add rdi, CELLS(1)
@@ -2064,8 +2068,7 @@ structurally_equal:
     SET_T rax
     jmp .l1
   endif
-  mov rdi, BYTEBLOCK_BIT
-  test r15, rdi
+  test r15, [byteblock_bit]
   if z
     shl rcx, CELL_SHIFT			; words -> bytes
   endif
@@ -2114,8 +2117,7 @@ recursively_equal:
     SET_T rax
     jmp .done
   endif
-  mov rdi, BYTEBLOCK_BIT
-  test r15, rdi
+  test r15, [byteblock_bit]
   if z
     ;; non-byte block, compare elements
     add rax, CELLS(1)		; skip headers
@@ -2546,6 +2548,8 @@ num2str:
 %ifndef FEATURE_NOLIBC
  %ifdef  FEATURE_WINDOWS
   %define GET_ERRNO_LOCATION  _errno
+ %elifdef FEATURE_MAC
+  %define GET_ERRNO_LOCATION  __error
  %else
   %define GET_ERRNO_LOCATION __errno_location
  %endif
@@ -2558,19 +2562,22 @@ get_last_error:
 %endif
 
 
+%ifdef FEATURE_CHECK
+
 ;; check slot-access: rax = block, r11 = index (fixnum), clobbers r11
 check_slot_access:
   push r15
   test rax, 1
   jnz .fail
+  test r11, 1
+  jz .fail
   mov r15, [rax]
-  and r15, [byteblock_bit]
+  test r15, [byteblock_bit]
   if z
-    mov r15, [rax]
     and r15, [size_mask]
     FIX2INT r11
     cmp r11, r15
-    if be
+    if b
       pop r15
       ret
     endif
@@ -2586,13 +2593,15 @@ check_byte_access:
   push r15
   test rax, 1
   jnz .fail
+  test r11, 1
+  jz .fail
   mov r15, [rax]
   test r15, [byteblock_bit]
   if nz
     and r15, [size_mask]
     FIX2INT r11
     cmp r11, r15
-    if be
+    if b
       pop r15
       ret
     endif
@@ -2626,6 +2635,8 @@ check_argc_failed:
   mov rax, error_msg_7
   mov r11, error_msg_8 - error_msg_7
   jmp write_error_and_exit
+
+%endif
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2713,6 +2724,10 @@ bits_mask: dq BITS_MASK
 size_mask: dq SIZE_MASK
 byteblock_bit: dq BYTEBLOCK_BIT
 closure_type: dq CLOSURE
+mark_bit: dq MARK_BIT
+special_bit: dq SPECIAL_BIT
+align_base: dq ALIGN_BASE
+nalign_base: dq ~ALIGN_BASE
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

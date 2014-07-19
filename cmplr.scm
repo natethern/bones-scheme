@@ -27,6 +27,7 @@
 (define default-configuration
   (cond-expand 
     (windows 'default-windows)
+    (mac 'default-mac)
     (linux 'default-linux)))
 
 
@@ -208,8 +209,10 @@
      (do ((lst cap (cdr lst))
 	  (off 2 (add1 off)))
 	 ((null? lst))
-       (translate (car lst) arg-register)
-       (generate-slot-store alloc-register (cells off) arg-register #f))
+       (translate-store
+	(car lst)
+	(lambda (reg)
+	  (generate-slot-store alloc-register (cells off) reg))))
      (generate-move t alloc-register)
      (generate-add alloc-register (cells (+ 2 (length cap))))
      #t)
@@ -221,22 +224,27 @@
 	 (for-each
 	  (lambda (var val)
 	    (cond ((eq? var '$unused)
-		   ;; just evaluate but don't bind
+		   ;; just evaluate but don't bind - must be non-trivial or it would already
+		   ;; have been removed
 		   (translate val arg-register))
 		  ((null? available-registers)
 		   ;; evaluate and move into local
-		   (translate val arg-register)
-		   (generate-comment var " = local #" locals-counter)
-		   (generate-move-to-local (cells locals-counter) arg-register)
+		   (translate-store
+		    val
+		    (lambda (reg)
+		      (generate-comment var " = local #" locals-counter)
+		      (generate-move-to-local (cells locals-counter) reg)))
 		   (push! (cons var locals-counter) newenv)
 		   (inc! locals-counter))
 		  (else
 		   ;; evaluate into target register
 		   ;;XXX could eval directly into reg, if reg is not used in the val
 		   (let ((reg (car available-registers)))
-		     (translate val arg-register)
-		     (generate-comment var " = " reg)
-		     (generate-move reg arg-register)
+		     (translate-store
+		      val
+		      (lambda (reg2)
+			(generate-comment var " = " reg)
+			(generate-move reg reg2)))
 		     (push! (cons var reg) newenv)
 		     (pop! available-registers)))))
 	  vars vals)
@@ -296,20 +304,22 @@
        (generate-immediate-ref t l1 name)
        #t))
     (('$box val)
-     (translate val t)
-     (generate-slot-store alloc-register (cells 1) t #f)
+     (translate-store
+      val
+      (lambda (reg)
+	(generate-slot-store alloc-register (cells 1) reg)))
      (generate-immediate-ref t "VECTOR | 1")
-     (generate-slot-store alloc-register 0 t #f)
+     (generate-slot-store alloc-register 0 t)
      (generate-move t alloc-register)
      (generate-add alloc-register (cells 2))
      #t)
     (('$box-ref val)
      (translate val t)
-     (generate-slot-ref t t (cells 1) #t)
+     (generate-slot-ref t t (cells 1))
      #t)
     (('$box-set! box val)
      (match-let (((r1 r2) (translate-inline-arguments (list box val))))
-       (generate-slot-store r1 (cells 1) r2 #t)
+       (generate-slot-store r1 (cells 1) r2)
        (generate-move t r2)
        #t))
     (('$inline (or ('quote opr) opr) args ...)
@@ -333,12 +343,12 @@
        (do ((regs regs (cdr regs))
 	    (off 1 (add1 off)))
 	   ((null? regs))
-	 (generate-slot-store alloc-register (cells off) (car regs) #f))
+	 (generate-slot-store alloc-register (cells off) (car regs)))
        (generate-immediate-ref
 	t
 	(bitwise-ior (arithmetic-shift type (* (sub1 word-size) 8)) size)
 	type "/" size)
-       (generate-slot-store alloc-register 0 t #f)
+       (generate-slot-store alloc-register 0 t)
        (generate-move t alloc-register)
        (generate-add 
 	alloc-register
@@ -350,7 +360,7 @@
      (generate-immediate-ref t "undefined")
      #t)
     (('$closure-ref i)
-     (generate-slot-ref t self-register (cells (+ i 2)) #t)
+     (generate-slot-ref t self-register (cells (+ i 2)))
      #t)
     (('quote c)
      (cond ((fixnum? c)
@@ -372,6 +382,60 @@
      (translate-call x)
      #f)
     (_ (error "bad expression" x))))
+
+
+;; translate store operation on expression, possibly avoiding intermediate
+;; register
+(define (translate-store exp k)
+  (let ((reg (cond ((trivial-register-expression? exp) => id)
+		   (else
+		    (translate exp arg-register)
+		    arg-register))))
+    (k reg)))
+
+
+;; Return source register or #f, depending on whether the expression already
+;; resides in a register
+(define (trivial-register-expression? exp)
+  (match exp
+    (('$local-ref var)
+     (let ((ref (lookup-variable var)))
+       (and (symbol? ref) ref)))
+    (('quote #f) 'FALSE)
+    (_ #f)))
+
+
+;; test if expression does not need any registers, mostly those
+;; that just need a single machine-instruction
+(define (simple-expression? exp)
+  (match exp
+    ;;XXX $allocate?
+    ((or (? symbol?)
+	 ('quote _)
+	 '($undefined)
+	 '($uninitialized)
+	 ('$closure-ref _)
+	 ('$box-ref (? simple-expression?))
+	 ('$global-ref _)
+	 ('$local-ref _))
+     #t)
+    (_ #f)))
+
+;; test if expression is side-effect free
+(define (pure-expression? exp)
+  (match exp
+    ((or (? symbol?)
+	 ('quote _)
+	 ('$closure _ ((? pure-expression?) ...) . _)
+	 ('$allocate _ _ (? pure-expression?) ...)
+	 '($undefined)
+	 '($uninitialized)
+	 ('$closure-ref _)
+	 ('$box-ref (? pure-expression?))
+	 ('$global-ref _)
+	 ('$local-ref _))
+     #t)
+    (_ #f)))
 
 
 ;;; order argument-evaluation to minimize spills
@@ -415,10 +479,10 @@
 	    (match-let ((((_ arg _) . _) rargs))
 	      (let ((reg (argument-register arg)))
 		(cond ((symbol? reg)
-		       (generate-slot-store stack-register (cells i) reg #f))
+		       (generate-slot-store stack-register (cells i) reg))
 		      (else
 		       (translate arg arg-register)
-		       (generate-slot-store stack-register (cells i) arg-register #f)))))))
+		       (generate-slot-store stack-register (cells i) arg-register)))))))
 	(let* ((dag (map (match-lambda
 			   ((tr _ deps) (cons tr deps)))
 			 unspilled))
@@ -441,9 +505,9 @@
 	      ((null? rargs))
 	    (match-let ((((tr arg _) . _) rargs))
 	      (cond ((symbol? tr)
-		     (generate-slot-ref tr stack-register (cells i) #f))
+		     (generate-slot-ref tr stack-register (cells i)))
 		    (else
-		     (generate-slot-ref arg-register stack-register (cells i) #f)
+		     (generate-slot-ref arg-register stack-register (cells i))
 		     (generate-move-to-local (cells tr) arg-register)))))
 	  (generate-pop-stack reserve))))
     ;;(pp `(RARGS: ,@rargs))				;XXX
@@ -546,7 +610,7 @@
     (translate/registers x argument-registers)
     (when enable-checks
       (generate-procedure-check))
-    (generate-slot-ref arg-register self-register (cells 1) #t)
+    (generate-slot-ref arg-register self-register (cells 1))
     (generate-immediate-ref count-register n)
     (cond (allocating
 	   (generate-alloc-check)
@@ -577,10 +641,11 @@
 	 ((null? llists))
        (let ((vars argc rest (parse-lambda-list (car llists)))
 	     (next (string-append "f_c_" (number->string id) "_" (number->string (add1 i)))))
-	 (if (null? (cdr llists))
-	     (when enable-checks
-	       (generate-argc-check (add1 argc) rest next))
-	     (generate-argc-check (add1 argc) rest next))
+	 (when (or (not rest) (positive? argc)) ; single rest arg doesn't need to be check
+	   (if (null? (cdr llists))
+	       (when enable-checks
+		 (generate-argc-check (add1 argc) rest next))
+	       (generate-argc-check (add1 argc) rest next)))
 	 (translate-llist (car llists))
 	 (set! allocating #f)
 	 (translate (car bodies) arg-register)

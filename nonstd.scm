@@ -262,3 +262,33 @@
      (lambda (data) ($allocate 10 3 name id data))
      (lambda (x) (and (record? x) (eq? id (%slot-ref x 1))))
      (lambda (rec) (%slot-ref rec 2)))))
+
+
+(define-inline (bytevector-u8-ref bv i) (%byte-ref bv i))
+(define-inline (bytevector-u8-set! bv i n) (%byte-set! bv i n))
+(define-inline (bytevector-length bv) (%size bv))
+
+(define (bytevector . ns)
+  (let* ((n (length ns))
+	 (bv (%allocate-block #x12 n #f n #f #f)))
+    (do ((i 0 (%fx+ i 1))
+	 (ns ns (cdr ns)))
+	((null? ns) bv)
+      (%byte-set! bv i (car ns)))))
+
+(define-syntax make-bytevector
+  (case-lambda 
+    ((n b) 
+     (let ((bv (%allocate-block #x12 n #f n #f #f)))
+       ($inline "CALL fill_bytes" bv b)
+       bv))
+    ((n) (%allocate-block #x12 n #f n #f #f))))
+
+(define-syntax bytevector-copy!
+  (case-lambda
+    ((to at from start end)
+     ($inline "CALL copy_bytes" (cons from start) (cons to at) (%fx- end start)))
+    ((to at from start)
+     ($inline "CALL copy_bytes" (cons from start) (cons to at) (%fx- (bytevector-length from) start)))
+    ((to at from)
+     ($inline "CALL copy_bytes" (cons from 0) (cons to at) (bytevector-length from)))))

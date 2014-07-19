@@ -1,6 +1,16 @@
 ;; default base configurations
 
 
+ ;; convenience syntax, also used in the rest of the library
+(code
+ (define-syntax define-syntax-rule
+   (syntax-rules
+       ___ ()
+       ((_ (name args ___) rule)
+	(define-syntax name
+	  (syntax-rules ()
+	    ((_ args ___) rule)))))))
+
 ;; intrinsics - needed for standard and non-standard procedures
 (cond-expand
   (x86_64
@@ -10,24 +20,29 @@
 
 ;; select default target, if none is given on the command line
 (cond-expand
-  ((not (or linux windows))
+  ((not (or linux windows mac))
    ;; map default-configuration to actual, if no specific target is given
    (cond-expand
+     (default-linux (provide linux))
      (default-windows (provide windows))
-     (default-linux (provide linux))))
+     (default-mac (provide mac))))
   (else))
 
 ;; include OS-specific definitions and features
 (cond-expand
   (linux
-   (provide file-ports file-system process-environment time jiffy-clock
-	    lp64)
+   (provide file-ports file-system process-environment time jiffy-clock lp64)
    (cond-expand
      (x86_64
       (cond-expand
 	(nolibc (files "x86_64/linux/syscalls-nolibc.scm"))
 	(else (files "x86_64/linux/syscalls.scm"))))
      (else (error "unsupported architecture for linux"))))
+  (mac
+   (provide file-ports file-system process-environment time jiffy-clock lp64 pic)
+   (cond-expand
+     (x86_64 (files "x86_64/mac/syscalls.scm")) ; "mac" symlinks to "linux", BTW
+     (else (error "unsupported architecture for mac"))))
   (windows
    (provide file-ports file-system time jiffy-clock file-system
 	    process-environment pic llp64)

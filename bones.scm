@@ -6,13 +6,15 @@
  (code
   (define (features) '(bones))
   (define flush-output void))
- (files "match.scm"
+ (files "version.scm"
+	"match.scm"
 	"support.scm"
 	"pp.scm"
 	"alexpand.scm"
 	"megalet.scm"
 	"source.scm"
 	"cp.scm"
+	"uve.scm"
 	"cc.scm"
 	"cps.scm"
 	"mangle.scm"

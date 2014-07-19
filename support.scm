@@ -285,14 +285,6 @@
 	  '()
 	  (cons i (loop (add1 i) (sub1 n)))))))
 
-(define (port? x) 
-  (or (input-port? x) (output-port? x)))
-
-(define (print . xs)
-  (apply emit xs)
-  (newline)
-  (flush-output))
-
 (define (print* . xs)
   (apply emit xs)
   (flush-output))
@@ -629,14 +621,6 @@
       (do ((i 0 (add1 i)))
 	  ((>= i count))
 	(vector-set! to (+ i start2) (vector-ref from (+ start1 i)))))))
-
-(define (vector-copy vec . range)
-  (let-optionals range ((from 0)
-			(to (vector-length vec)))
-    (assert (< from to) "(vector-copy) bad range")
-    (let ((v2 (make-vector (- to from))))
-      (vector-copy! vec v2)
-      v2)))
 
 (define (copy-list lst) (map id lst))
 

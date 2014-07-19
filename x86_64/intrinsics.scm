@@ -1,15 +1,6 @@
 ;;;; low-level intrinsic operations (x86_64)
 
 
-;; convenience syntax, also used in the rest of the library
-(define-syntax define-syntax-rule
-  (syntax-rules ___ ()
-    ((_ (name args ___) rule)
-     (define-syntax name
-       (syntax-rules ()
-	 ((_ args ___) rule))))))
-
-
 ;; shift-value for computing the number of bytes per "cell" (word)
 (define-syntax %cell-shift ($inline "mov rax, FIX(CELL_SHIFT)"))
 
@@ -32,7 +23,7 @@
 
 (define-syntax-rule (%byte-set! x i y)
   ($inline
-   "CHECK_BYTE_ACCESS rax, r11; FIX2INT r11; add rax, r11; xchg rax, r15; FIX2INT rax; mov [r15 + CELLS(1)], al; mov rax, r15" 
+   "CHECK_BYTE_ACCESS rax, r11; FIX2INT r11; add rax, r11; xchg rax, r15; FIX2INT rax; mov [r15 + CELLS(1)], al; mov rax, FALSE" 
    x i y))
 
 ;; extract block-type, with a special case for immediate fixnums

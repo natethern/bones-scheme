@@ -1,3 +1,4 @@
+/Release 3/
 
 * Introduction
 
@@ -22,12 +23,12 @@
   available in addition to the primitives required for R5RS.
 
   Since BONES produces assembly-code, build-times are quite short. The
-  produced code is CPU- and OS-specific and currently supports only
-  x86_64 on Linux or Windows. Porting the system to other
-  architectures and operating systems should be (relatively)
-  straightforward, as the platform-specific parts of the compiler are
-  small and the runtime-system is just a single file of about two
-  thousand lines of assembly code.
+  produced code is CPU- and OS-specific and currently supports x86_64
+  on Linux, Mac or Windows. Porting the system to other architectures
+  and operating systems should be (relatively) straightforward, as the
+  platform-specific parts of the compiler are small and the
+  runtime-system is just a single file of about two thousand lines of
+  assembly code.
 
   The compiler is self-compiling and uses just a few functions from
   the C-library. Alternatively, programs can be compiled on Linux
@@ -53,14 +54,18 @@
 
   To run programs compiled with BONES (and to run the compiler
   itself), an x86_64 system is required, with support for SSE2 and
-  SSE3 instructions. Currently the the compiler only runs under the
-  Linux and Windows operating systems.
+  SSE3 instructions. Currently the the compiler runs under the Linux,
+  Mac OS X and Windows operating systems.
 
   BONES has been successfully tested on the following systems:
 
-  | Linux Mint 13 Maya Ubuntu/Linaro 4.6.3-1ubuntu4 Linux 3.2.0-23-generic x86_64 |
-  | openSUSE 13.1 (Bottle) Linux 3.15.1-2.g3289da4-default x86_64                 |
-  | Windows 7 Professional                                                        |
+  | OS                                                                            |    nasm | C compiler     | libc        |
+  |-------------------------------------------------------------------------------+---------+----------------+-------------|
+  | Linux Mint 13 Maya Ubuntu/Linaro 4.6.3-1ubuntu4 Linux 3.2.0-23-generic x86_64 | 2.09.10 | gcc 4.6.3      | EGLIBC 2.15 |
+  |                                                                               |         |                | musl 1.1.0  |
+  | openSUSE 13.1 (Bottle) Linux 3.15.1-2.g3289da4-default x86_64                 | 2.09.10 | gcc 4.8.1      | glibc 2.18  |
+  | Windows 7 Professional                                                        |         |                |             |
+  | Mac OS 10.8.5                                                                 | 2.11.05 | clang-503.0.38 |             |
 
 * Requirements
 
@@ -75,6 +80,9 @@
   all you need is =ld=, the GNU linker.
 
   On Windows, [[http://www.visualstudio.com/en-us/downloads/download-visual-studio-vs.aspx][Microsoft Visual C]] and [[http://www.mingw.org][MINGW]] are supported.
+
+  On Mac OS, [[https://developer.apple.com/xcode/][Xcode]] needs to be installed, with =gcc= or =clang=
+  binaries in the =PATH=.
 
 * Installation
 
@@ -125,6 +133,21 @@
     gcc bones.obj -o bones.exe
     #+END_SRC
 
+  - For Mac OS:
+
+    #+BEGIN_SRC sh
+    tar xfz bones.tar.gz
+    cd bones-<date>
+    nasm -f macho64 bones-x86_64-mac.s -o bones.o
+    gcc bones.o -o bones
+    #+END_SRC    
+
+    You may get a linker warning complaining that the object file
+    produced by NASM does not have "PIE" enabled. I'm not completely
+    sure why this happens and how this warning can be prevented. The
+    linked executables run fine as far as I can tell (it may be caused
+    by a bug in NASM or the Apple linker, but I'm not sure about it.)
+
   Now you have a compiler, which you can test by entering 
 
     #+BEGIN_SRC sh
@@ -154,6 +177,25 @@
   code contains =%include= directives that refer to the
   assembler-parts of the runtime system. Note that trailing slash - this
   is required for =NASM=.
+
+* Reporting Bugs and Upgrading
+
+  If you find any bugs in BONES (you probably will), please send them
+  to the author (see below under "Contact") so that the bug can be
+  fixed in future releases. You should also first check the [[http://www.git-scm.org][git(1)]]
+  development repository at [[http://bitbucket.org/bunny351/bones/]] -
+  perhaps the bug has already been fixed. The =master= branch should
+  always be in a usable state, just clone the repository and use the
+  contained sources to build a new =bones=:
+
+    #+BEGIN_SRC sh
+    git clone https://bitbucket.org/bunny351/bones.git
+    cd bones
+    bones bones.scm -o mynewbones.s
+    #+END_SRC
+
+  Consult the =NEWS= file for obtaining information about the latest
+  changes.
 
 * Usage
 
@@ -194,7 +236,7 @@
 
    =<FORMAT>= specifies the output format suitable for the platform on
    which the object file should be linked. For Linux this is =elf64=,
-   for Windows =win64=.
+   for Windows =win64= and for Mac Os =macho64=.
 
    You can optionally add debug-information to have source-level
    access when debugging the generated executable with (say)
@@ -204,8 +246,8 @@
    me.
 
    Linking is done by invoking the appropriate linker for the target
-   platform. On Linux this is done by the "gcc" compiler driver, which
-   also adds the necessary C runtime libraries needed:
+   platform. On Linux or Mac OS this is done by the "gcc" compiler
+   driver, which also adds the necessary C runtime libraries needed:
 
    #+BEGIN_SRC sh
    gcc <OBJECTFILENAME> -o <PROGRAMFILENAME>
@@ -260,6 +302,8 @@
    - =-o FILENAME= :: Write generated code to =FILENAME= instead of
        stdout.
 
+   - =-v= :: Print the compiler version and exit.
+
 ** Configuration Macros for Generated Assembly Code
 
   - =ENABLE_WRITE_BARRIER= :: When mutating data-structures that are
@@ -307,7 +351,8 @@
    | ieee754             | Floating point format used                                       |
    | linux               | Operating system                                                 |
    | windows             | Operating system                                                 |
-   | lp64                | 64-bit data model (Linux)                                        |
+   | mac                 | Operating system                                                 |
+   | lp64                | 64-bit data model (Linux + Mac)                                  |
    | ilp64               | 64-bit data model (Windows)                                      |
    | file-ports          | Primitives operating on file-ports are available                 |
    | file-system         | Primitives operating on file-system entitities are available     |
@@ -326,12 +371,12 @@
    The following features are by default available to enable language
    extensions or target-specific compilation modes:
 
-   | Feature  | Meaning                                                                          |
-   |----------+----------------------------------------------------------------------------------|
-   | check    | Insert low-level type- and limit-checks into the generated code                  |
-   | embedded | Generate code that can be embedded into an application                           |
-   | nolibc   | Generate code that does not require linking with the C runtime library           |
-   | pic      | Generate position-independent code, always enabled on Windows, optional on Linux |
+   | Feature  | Meaning                                                                                  |
+   |----------+------------------------------------------------------------------------------------------|
+   | check    | Insert low-level type- and limit-checks into the generated code                          |
+   | embedded | Generate code that can be embedded into an application                                   |
+   | nolibc   | Generate code that does not require linking with the C runtime library                   |
+   | pic      | Generate position-independent code, always enabled on Windows and Mac, optional on Linux |
 
 * Language Description
 
@@ -853,6 +898,37 @@
         =BODY= ... is executed, the parameters are restored to their
         old values, with any guard-procedures temporarily disabled.
 
+*** Bytevectors
+
+    - =(bytevector NUM ...)= :: Creates a new bytevector with the
+        initial elements =NUM, ...=.
+
+    - =(bytevector? X)= :: Returns true, if =X= is a bytevector or
+	false otherwise.
+
+    - =(bytevector-copy! TO AT FROM [START END])= :: Copies the
+        elements of the bytevector =FROM=, between =START= and =END=
+        into the bytevector =TO=, at position =AT=. =START= defaults
+        to zero, =END= defaults to =(bytevector-length FROM)=.
+
+    - =(bytevector-length BYTEVECTOR)= :: Returns the length of
+        =BYTEVECTOR= as an exact integer.
+
+    - =(bytevector-u8-ref BYTEVECTOR INDEX)= :: Returns the element of
+        =BYTEVECTOR= at the given index.
+
+    - =(bytevector-u8-set! BYTEVECTOR INDEX N)= :: Modifies the
+        element of =BYTEVECTOR= at the given index to contain =N=.
+
+    - =(make-bytevector SIZE [INIT])= :: Creates a noew bytevector,
+        optionally filling it with =INIT=. If =INIT= is not given, the
+        contents of the bytevector are unspecified.
+
+    The reader accepts bytevector literals in the form =#u8(...)=,
+    =display= and =write= output bytevectors in this form as well.
+
+    Bytevector-literals are self-evaluating and need not be quoted.
+
 **** Miscellaneous
 
     - =(free)= :: Returns the number of currently available unused
@@ -875,33 +951,79 @@
     - =(void ARGUMENT ...)= :: Ignores its arguments and returns an
         undefined result.
 
-*** Additional Library Code
+** Additional Library Code
 
     Some library files are available with additional procedures and
     syntactic extensions. Use these with the =files= program
-    specification clause.
-
-    - =records.scm= :: A record-definition-facility compatible to
-        [[http://srfi.schemers.org/srfi-9/][SRFI-9]].
+    specification clause:
 
     - =match.scm= :: Alex Shinn's pattern matching facility, also
-        available at http://synthcode.com/scheme/match.scm.
+        available at http://synthcode.com/scheme/match.scm. This file
+        can be used with the =files= program-specification form.
 
     - =megalet.scm= :: The [[http://srfi.schemers.org/srfi-71/][SRFI-71]] reference implementation, extending
         =let= for convenient binding of multiple values. This also
         adds "curried" =define= syntax for toplevel definitions and
         =let=/=letrec=.
 
+    - =records.scm= :: A record-definition-facility compatible to
+        [[http://srfi.schemers.org/srfi-9/][SRFI-9]].
+
+    The following library files are =include= files, i.e.  they are
+    intended to by used by adding
+
+      #+BEGIN_SRC scheme
+      (include "...FILENAME...")
+      #+END_SRC
+
+    to a program-specification:
+
+    - =eval.scm= :: An fast evaluator for Scheme expressions (see below).
+
     - =fastmath.scm= :: Provides numeric operations, specific for
-        fixnums (exact integers) and floating-point numbers.  Note
-        that this is an =include= file, i.e.  it is intended to by
-        used by adding
+        fixnums (exact integers) and floating-point numbers.
 
-	#+BEGIN_SRC scheme
-	(include "fastmath.scm")
-	#+END_SRC
+** The Evaluator
 
-	in a program-specification.
+   The library file =eval.scm= contains an evaluator for Scheme
+   expressions, that may be useful for adding an interactive
+   read-eval-print loop (REPL) to compiled code.  It has definitions
+   for all standard- and non-standard syntax and primitives available
+   in BONES.
+
+   Evaluated code does not have access to the global variables of the
+   containing compiled program, but can be extended to do so, for 
+   example by adding
+
+   #+BEGIN_SRC scheme
+   (eval `(define hello ',(lambda () (print "hello!"))))
+   #+END_SRC
+
+   (Quoted literals may be of any data type.)
+
+   =eval.scm= provides the following procedures:
+
+   - =(eval FORM)= :: Evaluates =FORM= and returns its result(s).
+
+   - =(load FILENAME [EVALPROC])= :: Reads expressions from the file
+       given by =FILENAME= (a string) and evaluates them. If
+       =EVALPROC= is given then each expression is passed to this
+       procedure instead of =eval=.
+
+   - =(load-verbose FILENAME [EVALPROC])= :: Like =load=, but each
+       expression is printed to the current output port before it is
+       evaluated.
+
+   - =(repl)= :: Start an interactive read-eval-print loop until EOF is
+       read from the current input-port.
+
+   Note that error-checking is still minimal, even for evaluated code.
+
+   The evaluator is also available as a standalone interpreter, in the
+   file =bonesi.scm=, which can be compiled and linked like any other
+   Scheme program. When invoked without arguments, =bonesi= will start
+   a REPL, otherwise it will try to load the first argument given on
+   the command-line and exit.
 
 * Compiler Details
 
@@ -1095,26 +1217,33 @@
    The compiler has a simple structure and basically consists of
    the following files:
 
+   - =alexpand.scm= :: The syntax-expander. It takes a single
+       unexpanded toplevel expression and expands all macros in a
+       single pass.
+
    - =bones.scm= :: A program-specification file referencing all
        modules of the compiler.
 
-   - =main.scm= :: The /driver/, parsing command-line arguments and
-       invoking the translation process.
+   - =cc.scm= :: The closure-conversion pass.
 
    - =cmplr.scm= :: The core compiler, that runs the different stages
        and control the translation of the simplified program into
        assembly code.
 
-   - =program.scm= :: Parses program specifications, returning a
-       single toplevel-expression.
-
-   - =alexpand.scm= :: The syntax-expander. It takes a single
-       unexpanded toplevel expression and expands all macros in a
-       single pass.
-
    - =cps.scm= :: The CPS-transformation pass.
 
-   - =cc.scm= :: The closure-conversion pass.
+   - =main.scm= :: The /driver/, parsing command-line arguments and
+       invoking the translation process.
+
+   - =megalet.scm=, =match.scm= :: Convenience macros with more
+       concise binding forms for multiple values and for pattern
+       matching.
+
+   - =pp.scm= :: The pretty-printer, used for dumping source code, for
+       example as the result of the =-expand= option.
+
+   - =program.scm= :: Parses program specifications, returning a
+       single toplevel-expression.
 
    - =mangle.scm= :: Does name-mangling of string-constants and
        variable-names.
@@ -1124,12 +1253,12 @@
    - =support.scm= :: Miscellaneous non-standard helper procedures for
        all sorts of things.
 
-   - =pp.scm= :: The pretty-printer, used for dumping source code, for
-       example as the result of the =-expand= option.
+   - =uve.scm= :: Contains code to detect unused local and global
+       variables by recursively walking the program and collecting 
+       usage information.
 
-   - =megalet.scm=, =match.scm= :: Convenience macros with more
-       concise binding forms for multiple values and for pattern
-       matching.
+   - =version.scm= :: Contains a definition for the current compiler
+       version.
 
    - =x86_64.scm= :: The /backend/ for generating x86_64 code. This
        file is the only part of the compiler that is architecture
@@ -1145,6 +1274,12 @@
 
    #+BEGIN_SRC sh
    bones bones.scm -o bones.s -feature windows
+   #+END_SRC
+
+   Similar for Mac OS:
+
+   #+BEGIN_SRC sh
+   bones bones.scm -o bones.s -feature mac
    #+END_SRC
 
    The compiler does not use an abstract syntax tree as an internal
@@ -1425,6 +1560,11 @@
   returns the argument given to the following invocation of the
   entry-point.
 
+  When embedding code in a shared library on Linux, you should compile
+  your Scheme code with the =-feature pic= option to make sure the
+  generated code is position independent. On Windows and Mac, =pic= is
+  enabled by default.
+
 * Debugging
 
   As already mentioned, there are practically no debugging facilities.
@@ -1499,11 +1639,11 @@
   The default configuration file =base.scm= selects the appropriate
   files to be included for defining intrinsics and system-specific
   code, so extending this will be required. If no target feature is
-  given on the command-line (currently supported are =linux= and
-  =windows=), then a /default-target/ is selected, which is the
-  target, the compiler is currently running on, or more specifically:
-  the target for which the currently executing compiler was
-  configured. This feature will be named =default-linux= or
+  given on the command-line (currently =linux=, =mac= or =windows=),
+  then a /default-target/ is selected, which is the target, the
+  compiler is currently running on, or more specifically: the target
+  for which the currently executing compiler was configured. This
+  feature will be named =default-linux=, =default-mac= or
   =default-windows=, depending on the OS.  Don't forget to add a case
   for the =default-configuration= variable in =cmplr.scm=.
 

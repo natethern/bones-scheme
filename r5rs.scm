@@ -72,6 +72,7 @@
 (define-inline (null? x) (eq? x '()))
 (define-inline (symbol? x) (eq? (%type-of x) 1))
 (define-inline (string? x) (eq? (%type-of x) #x11))
+(define-inline (bytevector? x) (eq? (%type-of x) #x12))
 (define-inline (procedure? x) (eq? (%type-of x) #x20))
 (define-inline (vector? x) (eq? (%type-of x) 3))
 (define-inline (char? x) (eq? (%type-of x) 4))
@@ -397,17 +398,17 @@
 (define-syntax current-input-port
   (case-lambda
    (() %standard-input-port)
-   ((p) (set! %standard-input-port p))))
+   ((p . r) (set! %standard-input-port p)))) ; hack for parameterize
 
 (define-syntax current-output-port
   (case-lambda 
    (() %standard-output-port)
-   ((p) (set! %standard-output-port p))))
+   ((p . r) (set! %standard-output-port p))))
 
 (define-syntax current-error-port
   (case-lambda
    (() %standard-error-port)
-   ((p) (set! %standard-error-port p))))
+   ((p . r) (set! %standard-error-port p))))
 
 (cond-expand
   (file-ports
@@ -743,7 +744,7 @@
 
 (define-syntax make-vector
   (case-lambda 
-   ((n) (%allocate-block 3 (arithmetic-shift n %cell-shift) #f n #f (%undefined)))
+   ((n) (%allocate-block 3 (arithmetic-shift n %cell-shift) #f n #t (%undefined)))
    ((n x) (%allocate-block 3 (arithmetic-shift n %cell-shift) #f n #t x))))
 
 (define (list->vector lst) ;XXX this can probably be done more efficiently
@@ -991,6 +992,16 @@
 		      "/"
 		      (number->string (%slot-ref x 1)) ; record-type id
 		      ">")))
+	      ((bytevector? x)
+	       (outs "#u8(")
+	       (let ((len (%size x)))
+		 (when (%fx>? len 0)
+		   (show (%byte-ref x 0))
+		   (do ((i 1 (%fx+ i 1)))
+		       ((%fx>=? i len))
+		     (out #\space)
+		     (show (%byte-ref x i))))
+		 (out #\))))
 	      ((input-port? x) (outs "#<input-port>"))
 	      ((output-port? x) (outs "#<output-port>"))
 	      ((procedure? x) (outs "#<procedure>"))
@@ -1081,7 +1092,7 @@
 (define-syntax current-exception-handler
   (case-lambda
     (() %current-exception-handler)
-    ((xh . more) (set! %current-exception-handler xh)))) ; fake parameter
+    ((xh . r) (set! %current-exception-handler xh)))) ; fake parameter
 
 (define-inline (file-error? x)
   (and (error-object? x) (eq? 'file (%slot-ref x 5))))
@@ -1167,6 +1178,23 @@
 		     (if (exact? n) 
 			 n
 			 (inexact->exact n)))))
+	      ((#\u #\U)
+	       (let ((tok (read-token '() #f)))
+		 (cond ((string=? tok "8")
+			(read-char port) ; skip initial "(" (must come directly after "u8"!)
+			(let* ((lst (read-list #\)))
+			       (len (length lst))
+			       (bv (%allocate-block #x12 len #f len #f #f)))
+			  (do ((i 0 (%fx+ i 1))
+			       (lst lst (cdr lst)))
+			      ((%fx>=? i len))
+			    (let ((elt (car lst)))
+			      (unless (and (exact? elt) (%fx>=? elt 0) (%fx<? elt 256))
+				(read-error "invalid element in bytevector" elt))
+			      (%byte-set! bv i (car lst))))
+			  bv))
+		       (else
+			(read-error "invalid read syntax" (string-append "#" (string c) tok))))))
 	      ((#\() (list->vector (read-list #\))))
 	      ((#\;) (read1) (read1))
 	      ((#\%) (string->symbol (read-token (%list (docase c) #\#) cs)))

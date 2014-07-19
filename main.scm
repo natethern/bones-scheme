@@ -9,7 +9,7 @@
 (define (usage)
   (for-each
    (cut display <> (current-error-port))
-   '("usage: bones [-o OUTFILE] [-L LIBRARY_PATH] [-feature FEATURE] [-expand]"
+   '("usage: bones [-v] [-o OUTFILE] [-L LIBRARY_PATH] [-feature FEATURE] [-expand]"
      " [-dump-features] [-comment] [-nostdlib] [-case-insensitive]"
      " [-dump-unused] FILENAME\n"))
   (exit 1))
@@ -23,6 +23,9 @@
 	 (if fname
 	     (apply compile-file fname opts)
 	     (usage)))
+	(("-v" . _)
+	 (print bones-version)
+	 (exit))
 	(("-o" out . more)
 	 (set! opts (cons* 'output-file: out opts))
 	 (loop more))
