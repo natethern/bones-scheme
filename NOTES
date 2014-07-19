@@ -4,10 +4,6 @@ BONES                                                                     -*- Or
 
 * TODO UVE doesn't handle self-reference
   - "(define (foo) (foo))"
-* DONE improve use of source registers				 :smartstore:
-  - merge /smart-store/
-* DONE boneslib: use data words to avoid loading extra register	 :avoidconst:
-  - check, benchmark, merge /avoidconst/
 * TODO win64: check.bat should also build "null" and show size
 * TODO check new file:index.html with IE, Safari
 * TODO move register-assignment into own file
