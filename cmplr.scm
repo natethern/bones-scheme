@@ -144,8 +144,10 @@
      (do ((lst cap (cdr lst))
 	  (off 2 (add1 off)))
 	 ((null? lst))
-       (translate (car lst) arg-register)
-       (generate-slot-store alloc-register (cells off) arg-register))
+       (translate-store
+	(car lst)
+	(lambda (reg)
+	  (generate-slot-store alloc-register (cells off) reg))))
      (generate-move t alloc-register)
      (generate-add alloc-register (cells (+ 2 (length cap))))
      #t)
@@ -157,22 +159,27 @@
 	 (for-each
 	  (lambda (var val)
 	    (cond ((eq? var '$unused)
-		   ;; just evaluate but don't bind
+		   ;; just evaluate but don't bind - must be non-trivial or it would already
+		   ;; have been removed
 		   (translate val arg-register))
 		  ((null? available-registers)
 		   ;; evaluate and move into local
-		   (translate val arg-register)
-		   (generate-comment var " = local #" locals-counter)
-		   (generate-move-to-local (cells locals-counter) arg-register)
+		   (translate-store
+		    val
+		    (lambda (reg)
+		      (generate-comment var " = local #" locals-counter)
+		      (generate-move-to-local (cells locals-counter) reg)))
 		   (push! (cons var locals-counter) newenv)
 		   (inc! locals-counter))
 		  (else
 		   ;; evaluate into target register
 		   ;;XXX could eval directly into reg, if reg is not used in the val
 		   (let ((reg (car available-registers)))
-		     (translate val arg-register)
-		     (generate-comment var " = " reg)
-		     (generate-move reg arg-register)
+		     (translate-store
+		      val
+		      (lambda (reg2)
+			(generate-comment var " = " reg)
+			(generate-move reg reg2)))
 		     (push! (cons var reg) newenv)
 		     (pop! available-registers)))))
 	  vars vals)
@@ -232,8 +239,10 @@
        (generate-immediate-ref t l1 name)
        #t))
     (('$box val)
-     (translate val t)
-     (generate-slot-store alloc-register (cells 1) t)
+     (translate-store
+      val
+      (lambda (reg)
+	(generate-slot-store alloc-register (cells 1) reg)))
      (generate-immediate-ref t "VECTOR | 1")
      (generate-slot-store alloc-register 0 t)
      (generate-move t alloc-register)
@@ -305,6 +314,27 @@
      (translate-call x)
      #f)
     (_ (error "bad expression" x))))
+
+
+;; translate store operation on expression, possibly avoiding intermediate
+;; register
+(define (translate-store exp k)
+  (let ((reg (cond ((trivial-register-expression? exp) => id)
+		   (else
+		    (translate exp arg-register)
+		    arg-register))))
+    (k reg)))
+
+
+;; Return source register or #f, depending on whether the expression already
+;; resides in a register
+(define (trivial-register-expression? exp)
+  (match exp
+    (('$local-ref var)
+     (let ((ref (lookup-variable var)))
+       (and (symbol? ref) ref)))
+    (('quote #f) 'FALSE)
+    (_ #f)))
 
 
 ;;; order argument-evaluation to minimize spills
