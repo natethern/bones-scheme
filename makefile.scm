@@ -5,9 +5,7 @@
 (run-verbose #t)
 
 
-(define (all)
-  (bones)
-  (bonesi))
+(define (all) (bones))
 
 (define (clean)
   (run (rm -f *.o bones bones-x86_64-linux.s)))
@@ -27,6 +25,7 @@
     "mangle.scm"
     "program.scm"
     "tsort.scm"
+    "uve.scm"
     "cmplr.scm"
     "main.scm"
     "bones.scm"
@@ -276,6 +275,7 @@
     "base.scm"
     "bones.scm"
     "cc.scm"
+    "uve.scm"
     "cmplr.scm"
     "tsort.scm"
     "x86_64.scm"
