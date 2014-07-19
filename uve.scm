@@ -84,6 +84,8 @@
 	 `($inline ,n ,@(map (cut walk <> env here #f) xs)))
 	(('$allocate t s xs ...)
 	 `($allocate ,t ,s ,@(map (cut walk <> env here #f) xs)))
+	(('$call id xs ...)
+	 `($call ,id ,@(map (cut walk <> env here #f) xs)))
 	((op args ...) (map (cut walk <> env here #f) x))
 	(_ (error "invalid expression" x))))
     (let ((form (walk form '() #f #f)))
