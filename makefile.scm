@@ -5,9 +5,7 @@
 (run-verbose #t)
 
 
-(define (all)
-  (bones)
-  (bonesi))
+(define (all) (bones))
 
 (define (clean)
   (run (rm -f *.o bones bones-x86_64-linux.s)))
