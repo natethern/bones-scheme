@@ -307,6 +307,39 @@
     (_ (error "bad expression" x))))
 
 
+;; test if expression does not need any registers, mostly those
+;; that just need a single machine-instruction
+(define (simple-expression? exp)
+  (match exp
+    ;;XXX $allocate?
+    ((or (? symbol?)
+	 ('quote _)
+	 '($undefined)
+	 '($uninitialized)
+	 ('$closure-ref _)
+	 ('$box-ref (? simple-expression?))
+	 ('$global-ref _)
+	 ('$local-ref _))
+     #t)
+    (_ #f)))
+
+;; test if expression is side-effect free
+(define (pure-expression? exp)
+  (match exp
+    ((or (? symbol?)
+	 ('quote _)
+	 ('$closure _ ((? pure-expression?) ...) . _)
+	 ('$allocate _ _ (? pure-expression?) ...)
+	 '($undefined)
+	 '($uninitialized)
+	 ('$closure-ref _)
+	 ('$box-ref (? pure-expression?))
+	 ('$global-ref _)
+	 ('$local-ref _))
+     #t)
+    (_ #f)))
+
+
 ;;; order argument-evaluation to minimize spills
 ;
 ; - compute registers and locals used for each argument.
