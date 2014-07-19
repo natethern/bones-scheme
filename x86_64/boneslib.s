@@ -1467,8 +1467,7 @@ PRIMITIVE alloc_block
     add ALLOC, rsi
     ;; align
     add ALLOC, ALIGN_BASE
-    mov rdx, ~ALIGN_BASE
-    and ALLOC, rdx
+    and ALLOC, [nalign_base]
     ;; now fill block, so that it doesn't contain garbage pointers
     cmp r9, FALSE
     if ne
@@ -1751,18 +1750,15 @@ reclaim:
     mov rax, [rsi]		; get header
     mov rcx, rax		; rcx = block size
     and rcx, [size_mask]
-    mov rdx, BYTEBLOCK_BIT
-    test rax, rdx
+    test rax, [byteblock_bit]
     if nz
       add rcx, CELLS(1)		; binary block, just skip
       add rcx, ALIGN_BASE	; align
-      mov rdx, ~ALIGN_BASE
-      and rcx, rdx
+      and rcx, [nalign_base]
       add rsi, rcx
     else
       ;; if closure, skip codeptr
-      mov rdx, SPECIAL_BIT
-      test rax, rdx
+      test rax, [special_bit]
       if nz
         add rsi, CELLS(1)
 	dec rcx
@@ -1824,8 +1820,7 @@ reclaim:
 mark:
   mov rbx, [r15]		; rbx = header
   ;; check if already marked
-  mov rdx, MARK_BIT
-  test rbx, rdx
+  test rbx, [mark_bit]
   if nz
     not rdx			; extract forwarding pointer
     and rbx, rdx
@@ -1836,8 +1831,7 @@ mark:
   ;; compute size
   mov rcx, rbx
   and rcx, [size_mask]
-  mov rdx, BYTEBLOCK_BIT
-  test rbx, rdx
+  test rbx, [byteblock_bit]
   if nz
     add rcx, ALIGN_BASE			; align
     shr rcx, CELL_SHIFT			; bytes -> words
@@ -1845,8 +1839,8 @@ mark:
   ;; create forwarding ptr and copy object to tospace
   ;; ALIGNMENT: on 32-bit systems, insert alignment-hole marker, if value is a flonum
   mov [rdi], rbx		; write header to tospace
-  mov rdx, MARK_BIT		; mark header and install forwarding ptr
-  or rdx, rdi
+  mov rdx, rdi
+  or rdx, [mark_bit]		; mark header and install forwarding ptr
   mov [r15], rdx
   mov [rax], rdi		; modify original ptr to point to new object
   add rdi, CELLS(1)
@@ -2073,8 +2067,7 @@ structurally_equal:
     SET_T rax
     jmp .l1
   endif
-  mov rdi, BYTEBLOCK_BIT
-  test r15, rdi
+  test r15, [byteblock_bit]
   if z
     shl rcx, CELL_SHIFT			; words -> bytes
   endif
@@ -2123,8 +2116,7 @@ recursively_equal:
     SET_T rax
     jmp .done
   endif
-  mov rdi, BYTEBLOCK_BIT
-  test r15, rdi
+  test r15, [byteblock_bit]
   if z
     ;; non-byte block, compare elements
     add rax, CELLS(1)		; skip headers
@@ -2731,6 +2723,10 @@ bits_mask: dq BITS_MASK
 size_mask: dq SIZE_MASK
 byteblock_bit: dq BYTEBLOCK_BIT
 closure_type: dq CLOSURE
+mark_bit: dq MARK_BIT
+special_bit: dq SPECIAL_BIT
+align_base: dq ALIGN_BASE
+nalign_base: dq ~ALIGN_BASE
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
