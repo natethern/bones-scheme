@@ -3,6 +3,14 @@ Release 4:
   In the single-argument case "/" did not handle a fixnum argument
   correctly.
 
+  Added some minor optimizations to improve code, mainly removes some
+  uses of "rax" as an intermediate register.
+
+  Added constant- and copy-propagation pass. This gives quite a
+  performance improvement in some cases (e.g. fft.scm).
+
+  Unused variable detection was improved somewhat.  
+
 Release 3:
 
   Added evaluator and standalone-interpreter.
