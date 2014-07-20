@@ -235,7 +235,7 @@
 		(zero? (run* (,gcc tmp/grond.o -o tmp/grond)))
 		(zero? (run* (tmp/grond tests/fac.scm -o tmp/fac.cpp))))))
     (unless r
-      (print "building and running grond failed."))
+      (print "building or running grond failed."))
     r))
 
 (define (bench)
