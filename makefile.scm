@@ -25,7 +25,8 @@
     "mangle.scm"
     "program.scm"
     "tsort.scm"
-    "uve.scm"
+    "uv.scm"
+    "ra.scm"
     "cmplr.scm"
     "main.scm"
     "bones.scm"
@@ -226,11 +227,11 @@
 (define (check-grond)
   (bigbones)
   (run (mkdir -p tmp))
-  (let ((r (and (zero? (run* (./bigbones tests/grond.scm -feature check -comment 
-					 -o tmp/grond.s)))
-		(zero? (run* (nasm -f ,nasm-format -g -F dwarf tmp/grond.s -o tmp/grond.o
-				   -DTOTAL_HEAP_SIZE=1_000_000_000
-				   -DENABLE_GC_LOGGING)))
+  (let ((r (and (zero? (run* (memtime ./bigbones tests/grond.scm -feature check -comment 
+				      -o tmp/grond.s)))
+		(zero? (run* (memtime nasm -f ,nasm-format -g -F dwarf tmp/grond.s -o tmp/grond.o
+				      -DTOTAL_HEAP_SIZE=1_000_000_000
+				      -DENABLE_GC_LOGGING)))
 		(zero? (run* (,gcc tmp/grond.o -o tmp/grond)))
 		(zero? (run* (tmp/grond tests/fac.scm -o tmp/fac.cpp))))))
     (unless r
@@ -275,7 +276,8 @@
     "base.scm"
     "bones.scm"
     "cc.scm"
-    "uve.scm"
+    "uv.scm"
+    "ra.scm"
     "cmplr.scm"
     "tsort.scm"
     "x86_64.scm"

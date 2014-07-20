@@ -1226,6 +1226,10 @@
 
    - =cc.scm= :: The closure-conversion pass.
 
+   - =cp.scm= :: Implements simple constant- and copy-propagation.
+       This pass also indentifies some direct calls to known
+       procedures.
+
    - =cmplr.scm= :: The core compiler, that runs the different stages
        and control the translation of the simplified program into
        assembly code.
@@ -1248,12 +1252,19 @@
    - =mangle.scm= :: Does name-mangling of string-constants and
        variable-names.
 
+   - =ra.scm= :: Register assignment. This is used for reducing spills
+       when setting up argument registers for procedure calls,
+       =$inline= and =$allocate= forms.
+
    - =source.scm= :: Some operations on source expressions.
 
    - =support.scm= :: Miscellaneous non-standard helper procedures for
        all sorts of things.
 
-   - =uve.scm= :: Contains code to detect unused local and global
+   - =tsort.scm= :: An implementation of topological sort, used in
+       =ra.scm=.
+
+   - =uv.scm= :: Contains code to detect unused local and global
        variables by recursively walking the program and collecting 
        usage information.
 
