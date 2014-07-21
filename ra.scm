@@ -1,3 +1,40 @@
+;;;; register assignment
+
+
+(define available-registers '())
+
+(define (blocked-register? reg)
+  (not (memq reg available-registers)))
+
+
+;; Return source register or #f, depending on whether the expression already
+;; resides in a register
+(define (trivial-register-expression? exp)
+  (match exp
+    (('$local-ref var)
+     (let ((ref (lookup-variable var)))
+       (and (symbol? ref) ref)))
+    (('quote #f) 'FALSE)
+    (_ #f)))
+
+
+;; test if expression does not need any registers, mostly those
+;; that just need a single machine-instruction
+(define (simple-expression? exp)
+  (match exp
+    ;;XXX $allocate?
+    ((or (? symbol?)
+	 ('quote _)
+	 '($undefined)
+	 '($uninitialized)
+	 ('$closure-ref _)
+	 ('$box-ref (? simple-expression?))
+	 ('$global-ref _)
+	 ('$local-ref _))
+     #t)
+    (_ #f)))
+
+
 ;;; order argument-evaluation to minimize spills
 ;
 ; - compute registers and locals used for each argument.

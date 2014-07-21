@@ -199,3 +199,22 @@
 		(form
 		 (pp (prepare form) port)))
 	       ls1)))))))
+
+
+;; test if expression is side-effect free
+(define (pure-expression? exp)
+  (match exp
+    ((or (? symbol?)
+	 ('quote _)
+	 ('$closure _ ((? pure-expression?) ...) . _)
+	 ('$allocate _ _ (? pure-expression?) ...)
+	 '($undefined)
+	 '($uninitialized)
+	 ('$closure-ref _)
+	 ('$box-ref (? pure-expression?))
+	 ('$global-ref _)
+	 ('$local-ref _))
+     #t)
+    (_ #f)))
+
+

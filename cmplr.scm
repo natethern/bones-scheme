@@ -17,7 +17,6 @@
 
 (define environment '())
 (define locals-counter 0)
-(define available-registers '())
 (define unused-global-variables '())
 
 
@@ -170,16 +169,6 @@
    symbol-table)
   (generate-defword "false"))
 
-(define (mangle-feature-name name)
-  (string-append
-   "FEATURE_"
-   (list->string 
-    (map (lambda (c)
-	   (case c
-	     ((#\-) #\_)
-	     (else (char-upcase c))))
-	 (string->list (symbol->string name))))))
-
 (define (fixnum? n)
   (and (number? n) (exact? n) (<= (car fixnum-range) n (cdr fixnum-range))))
 
@@ -193,9 +182,6 @@
 
 (define (translate-inline-arguments args)
   (translate/registers args temporary-registers))
-
-(define (blocked-register? reg)
-  (not (memq reg available-registers)))
 
 (define (translate x t)
   ;;(pp (if (pair? x) (car x) x))
@@ -392,50 +378,6 @@
 		    (translate exp arg-register)
 		    arg-register))))
     (k reg)))
-
-
-;; Return source register or #f, depending on whether the expression already
-;; resides in a register
-(define (trivial-register-expression? exp)
-  (match exp
-    (('$local-ref var)
-     (let ((ref (lookup-variable var)))
-       (and (symbol? ref) ref)))
-    (('quote #f) 'FALSE)
-    (_ #f)))
-
-
-;; test if expression does not need any registers, mostly those
-;; that just need a single machine-instruction
-(define (simple-expression? exp)
-  (match exp
-    ;;XXX $allocate?
-    ((or (? symbol?)
-	 ('quote _)
-	 '($undefined)
-	 '($uninitialized)
-	 ('$closure-ref _)
-	 ('$box-ref (? simple-expression?))
-	 ('$global-ref _)
-	 ('$local-ref _))
-     #t)
-    (_ #f)))
-
-;; test if expression is side-effect free
-(define (pure-expression? exp)
-  (match exp
-    ((or (? symbol?)
-	 ('quote _)
-	 ('$closure _ ((? pure-expression?) ...) . _)
-	 ('$allocate _ _ (? pure-expression?) ...)
-	 '($undefined)
-	 '($uninitialized)
-	 ('$closure-ref _)
-	 ('$box-ref (? pure-expression?))
-	 ('$global-ref _)
-	 ('$local-ref _))
-     #t)
-    (_ #f)))
 
 
 (define (translate-call x)

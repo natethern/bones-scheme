@@ -34,3 +34,13 @@
 		   (emit "\\x" (number->string (char->integer c) 16) "\"\"")))))
 	(string->list str))))
    "\""))
+
+(define (mangle-feature-name name)
+  (string-append
+   "FEATURE_"
+   (list->string 
+    (map (lambda (c)
+	   (case c
+	     ((#\-) #\_)
+	     (else (char-upcase c))))
+	 (string->list (symbol->string name))))))
