@@ -207,6 +207,7 @@
        (set! ok #f))
      (print (padl " embedded" 60 #\=))
      (unless (check-embedded) (set! ok #f))
+     (unless (check-grond) (set! ok #f))
      (if ok
 	 "\n\nall checks succeeded."
 	 "\n\nSOME CHECKS FAILED."))))
@@ -233,7 +234,8 @@
 				      -DTOTAL_HEAP_SIZE=1_000_000_000
 				      -DENABLE_GC_LOGGING)))
 		(zero? (run* (,gcc tmp/grond.o -o tmp/grond)))
-		(zero? (run* (tmp/grond tests/fac.scm -o tmp/fac.cpp))))))
+		(zero? (run* (memtime tmp/grond tests/mandelbrot.scm -ignore-fixnum-overflow -verbose 
+				      -clone-size-limit 10))))))
     (unless r
       (print "building or running grond failed."))
     r))
