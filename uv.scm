@@ -9,7 +9,8 @@
 (define (detect-unused-variables form) ; expects expanded + canonicalized form
   (let ((globals '()))
     (define (used var env where)
-      (cond ((assq var env) => (cut set-cdr! <> #t))
+      (cond ((eq? var where))
+	    ((assq var env) => (cut set-cdr! <> #t))
 	    ((assq var globals) =>
 	     (lambda (a)
 	       (set-cdr! a (adjoin (cdr a) where))))
