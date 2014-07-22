@@ -716,13 +716,26 @@
 				  (loop p q)))))))))))))))
 
   (else
+
+   (define (%string->number str base)
+     (let ((len (string-length str)))
+       (cond ((eq? len 0) #f)
+	     ((and (%fx>? len 1)
+		   (not (char-numeric? (string-ref str 0))))
+	      (cond ((or (string-ci=? str "+nan.0")
+			 (string-ci=? str "-nan.0"))
+		     (%ieee754-nan))
+		    ((string-ci=? str "+inf.0")
+		     (%ieee754-infinity))
+		    ((string-ci=? str "-inf.0")
+		     (%ieee754-negative-infinity))
+		    (else #f)))
+	     (else ($inline "CALL str2num" str base)))))
    
    (define-syntax string->number
      (case-lambda 
-       ((str base)
-	($inline "CALL str2num" str base))
-       ((str)
-	($inline "CALL str2num" str 10))))
+       ((str base) (%string->number str base))
+       ((str) (%string->number str 10))))
 
    (define (number->string num . base)
      (cond ((nan? num) "+nan.0")
