@@ -783,35 +783,34 @@ section .text
 
 ;; =: rcx = k, rdx... = numbers, r11 = argc -> (k boolean)
 PRIMITIVE numerically_equal
-  mov r15, compare_numerically
-  jmp pairwise_compare_equal
+  mov r15, compare_numerically_equal
+  jmp pairwise_compare
 
 ;; >: rcx = k, rdx... = numbers, r11 = argc -> (k boolean)
 PRIMITIVE numerically_greater
-  mov r15, compare_numerically
-  jmp pairwise_compare_greater
+  mov r15, compare_numerically_greater
+  jmp pairwise_compare
 
 ;; <: rcx = k, rdx... = numbers, r11 = argc -> (k boolean)
 PRIMITIVE numerically_less
-  mov r15, compare_numerically
-  jmp pairwise_compare_less
+  mov r15, compare_numerically_less
+  jmp pairwise_compare
 
 ;; >=: rcx = k, rdx... = numbers, r11 = argc -> (k boolean)
 PRIMITIVE numerically_greater_or_equal
-  mov r15, compare_numerically
-  jmp pairwise_compare_greater_or_equal
+  mov r15, compare_numerically_greater_or_equal
+  jmp pairwise_compare
 
 ;; <=: rcx = k, rdx... = numbers, r11 = argc -> (k boolean)
 PRIMITIVE numerically_less_or_equal
-  mov r15, compare_numerically
-  jmp pairwise_compare_less_or_equal
+  mov r15, compare_numerically_less_or_equal
+  jmp pairwise_compare
 
 
 ;; pairwise_compare: rcx = k, rdx... = arguments, r11 = argc, r15 = compare -> (k boolean)
-;; the compare-function gets 2 arguments in rax + rbx and should set the flags accordingly (and avoid changing any registers but rax)
+;; the compare-function gets 2 arguments in rax + rbx and should set rax accordingly (and avoid changing any other registers)
 ;; returns #f if argc <= 1
-%macro PAIRWISE_COMPARE 2
-pairwise_compare_%1:
+pairwise_compare:
   cmp r11, 1
   if be
 .no:
@@ -820,37 +819,43 @@ pairwise_compare_%1:
   mov rax, rdx			; 1st arg
   mov rbx, rsi			; 2nd arg
   call r15
-  j%2 .no
+  test al, al
+  jz .no
   cmp r11, 4
   je .yes
   mov rax, rbx
   mov rbx, rdi			; 3rd arg
   call r15
-  j%2 .no
+  test al, al
+  jz .no
   cmp r11, 5
   je .yes
   mov rax, rbx
   mov rbx, r8			; 4th arg
   call r15
-  j%2 .no
+  test al, al
+  jz .no
   cmp r11, 6
   je .yes
   mov rax, rbx
   mov rbx, r9			; 5th arg
   call r15
-  j%2 .no
+  test al, al
+  jz .no
   cmp r11, 7
   je .yes
   mov rax, rbx
   mov rbx, r10			; 6th arg
   call r15
-  j%2 .no
+  test al, al
+  jz .no
   cmp r11, 8
   je .yes
   mov rax, rbx
   mov rbx, r12			; 7th arg
   call r15
-  j%2 .no
+  test al, al
+  jz .no
   mov rax, rbx
   sub r11, NUMBER_OF_ARGUMENT_REGISTERS
   mov rdx, locals
@@ -859,51 +864,58 @@ pairwise_compare_%1:
   while nz
     mov rbx, [rdx]		; 7+nth arg
     call r15
-    j%2 .no
+    test al, al
+    jz .no
     dec r11
     add rdx, CELLS(1)
   again
 .yes:
   SET_T rax
   CONTINUE rax
-%endmacro
-
-PAIRWISE_COMPARE equal, ne
-PAIRWISE_COMPARE greater, le
-PAIRWISE_COMPARE less, ge
-PAIRWISE_COMPARE greater_or_equal, l
-PAIRWISE_COMPARE less_or_equal, g
 
 
 ;; comparison functions
 
-compare_numerically:
+%macro COMPARE_NUMERICALLY 3
+compare_numerically_%1:
   test rax, 1
   jz .l1
   test rbx, 1			; rax = fixnum
   jz .l2
   cmp rax, rbx			; rax, rbx = fixnum
+  set%2 al
   ret
 .l1:
   test rbx, 1			; rax = !fixnum
   jz .l3
   ; rax = !fixnum, rbx = fixnum
   FIX2INT rbx
-  cvtsi2sd xmm0, rbx
-  movsd xmm1, [rax + CELLS(1)]
-  ucomisd xmm1, xmm0
+  cvtsi2sd xmm1, rbx
+  movsd xmm0, [rax + CELLS(1)]
+.compare:
+  ucomisd xmm0, xmm1
+  ;; this architecture is beyond repair: we can not use the same
+  ;; condition codes for integer and float comparison, as [U]COMISD
+  ;; apparently sets the flags like an unsigned integer comparison...
+  set%3 al
   ret  
 .l2:
   ; rax = fixnum, rbx = !fixnum
   FIX2INT rax
   cvtsi2sd xmm0, rax
   movsd xmm1, [rbx + CELLS(1)]
-  ucomisd xmm0, xmm1
-  ret
+  jmp .compare
 .l3:
-  mov rax, [rax + CELLS(1)]	; rax, rbx = !fixnum
-  cmp rax, [rbx + CELLS(1)]
-  ret
+  movsd xmm0, [rax + CELLS(1)]	; rax, rbx = !fixnum
+  movsd xmm1, [rbx + CELLS(1)]
+  jmp .compare
+%endmacro
+
+COMPARE_NUMERICALLY equal, e, e
+COMPARE_NUMERICALLY greater, g, a
+COMPARE_NUMERICALLY less, l, b
+COMPARE_NUMERICALLY greater_or_equal, ge, ae
+COMPARE_NUMERICALLY less_or_equal, le, be
 
 
 ;; *: rcx = k, rdx... = numbers, r11 = argc -> (k boolean)
