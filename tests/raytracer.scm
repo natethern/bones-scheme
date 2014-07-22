@@ -2,7 +2,7 @@
 
 
 (define pi 3.141592653589793)
-(define ninf 1e8)
+(define ninf (string->number "+inf"))
 
 
 (define (vector-x v) (vector-ref v 0))
@@ -184,7 +184,7 @@
 	       (raydir (normalize (vector xx yy -1))))
 	  (vector-set! image pixel (trace (vector 0 0 0) raydir spheres 0))
 	  (set! pixel (+ pixel 1)))))
-    (with-output-to-file "untitled2.ppm"
+    (with-output-to-file "untitled.ppm"
       (lambda ()
 	(for-each display `("P6\n" ,width #\space ,height "\n255\n"))
 	(let ((size (* width height)))
