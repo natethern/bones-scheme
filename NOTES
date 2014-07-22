@@ -2,12 +2,15 @@ BONES                                                                     -*- Or
 =====
 
 
-* TODO UVE doesn't handle self-reference
-  - "(define (foo) (foo))"
-* TODO win64: check.bat should also build "null" and show size
+* TODO port embedded test with shared library to Windows
+  - and add to file:scripts/check.bat
+* TODO test "wrt ..plt" thing / shared libraries on Mac
+* TODO file:tests/raytracer.scm produces wrong output
+  - nearly good, but apparently there are some wrong calculations.
+* TODO test on Windows + Mac
+* TODO "-verbose": show passes and optimization counts
+* DONE win64: check.bat should also build "null" and show size
 * TODO check new file:index.html with IE, Safari
-* TODO move register-assignment into own file
-  - file:ra.scm
 * TODO failed checks could invoke =%error=
   - just invoke "(%error MSG)" with an empty continuation.
   - should probably reset rsp to =saved_rsp=.
@@ -16,7 +19,7 @@ BONES                                                                     -*- Or
 * work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values has two words.
-* test file:copy.scm
+* TODO test file:copy.scm
 * add f64vectors
    - FLOATVECTOR_TYPE (#x12)
    - would need proper alignment on 32-bit systems.
@@ -54,21 +57,14 @@ BONES                                                                     -*- Or
   - have local FA pass ("lfa") that expands $typed-case-lambda according to inferred
     types and convert "let"-bound flonum vars using a custom binding form
     - e.g. "($let-float ...)" or something like this.
-* DONE implement simple copy-propagation
-   - test and merge /cp/
-   - would solve problems related to [[inlining manifest lambdas]]
-* DONE identify direct calls						 :cp:
-  - test.
-  - add removal of =letrec*= forms with empty set of bindings.
+* TODO add removal of =letrec*= forms with empty set of bindings
 * try using libgc as 2nd heap generation
   - needs write-barrier to record assignments of heap-data into non-heap objects.
     - then evict recursively.
   - also, keep GC-count in block header.
 * option "-export VAR"
   - makes global externally visible (+ PREFIX)
-* port to arm								:arm:
-** port fastmath.scm
-** port boneslib.s
+* port to arm is currently abandoned 					:arm:
 * TODO pre-allocated chars in the range 0-255
   - all chars are preallocated, unless we allow chars with arbitrary code.
   - =integer->char=: check range and alloc, ensure this is inlined.
@@ -197,7 +193,10 @@ mainCRTStartup:
   - examples:
     (if (if X TRUE FALSE) Y Z) -> (if X Y Z)
     (if (if X FALSE TRUE) Y Z) -> (if X Z Y)
+* TODO test file:tw.c + file:twports.scm
+* TODO port file:tw.c to windows using file:ezxdisp-win32.c
 * TODO =string->number= does not parse "+/-nan.0"/"+/-inf.0"
+  - also avoid allowing "infinity".
 * Issues
 ** "inexact->exact" uses "fisttp", so needs SSE3
 ** i don't fully trust that "integer?" handles all cases correctly
