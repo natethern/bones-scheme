@@ -301,6 +301,7 @@
     "support.scm"
     "bonesi.scm"
     "eval.scm"
+    "x86_64/fastmath.scm"
     "x86_64/intrinsics.scm"
     "x86_64/boneslib.s"
     "x86_64/linux/syscalls.scm"
