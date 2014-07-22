@@ -704,6 +704,13 @@
     - =(fluid-let ((VAR EXP) ...) BODY ...)= :: Syntax for dynamic scoping,
 	see [[http://srfi.schemers.org/srfi-15/][SRFI-15]] for more information.
 
+    - =(handle-exceptions VAR HANDLE BODY ...)= :: Binds
+        =current-exception-handler= temporarily during exection of
+        =BODY ...= and evaluates the expression =HANDLE= if the body
+        raises an exception. While evaluating =HANDLE=, =VAR= is bound
+        to the exception object and the next outer exception handler
+        is active.
+
     - =(let-optionals VAR1 ((VAR EXP) ... [RVAR]) BODY ...)= :: Destructures 
 	the list in =VAR1=, binding the optional
         arguments =VAR= ... with defaults taken from =EXP= ... Any

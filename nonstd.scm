@@ -103,6 +103,15 @@
       ((_ bindings body ...)
        (bind-param bindings () () () (begin body ...))))))
 
+(define-syntax-rule (handle-exceptions var handler body ...)
+  ((call-with-current-continuation
+    (lambda (k)
+      (parameterize ((current-exception-handler
+		      (lambda (var) (k (lambda () handler)))))
+	(call-with-values (lambda () body ...)
+	  (lambda results
+	    (k (lambda () (apply values results))))))))))
+
 
 (define (open-input-string str)
   (let ((data (cons (string-copy str) 0)))
