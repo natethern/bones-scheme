@@ -14,10 +14,12 @@
 (define emit-expr-comments #f)
 (define enable-checks #f)
 (define enable-pic #f)
+(define verbose #f)
 
 (define environment '())
 (define locals-counter 0)
 (define unused-global-variables '())
+(define dropped-global-count 0)
 
 
 (define (cells n) (* word-size n))
@@ -35,6 +37,7 @@
 
 (define (compile code . options)
   (set! lambda-id-counter 0)
+  (set! dropped-global-count 0)
   (set! argument-register-count (sub1 (length argument-registers)))
   (set! implementation-features
     (append (collect-options 'feature: options)
@@ -47,6 +50,7 @@
 	    (let ((lp (get-environment-variable "BONES_LIBRARY_PATH")))
 	      (if lp (string-split lp (cond-expand (windows ";") (else ":"))) '()))
 	    '("/usr/share/bones" "/usr/local/share/bones")))
+  (set! verbose (option 'verbose: options))
   (let ((prg (match code
 	       (('begin ('program . _))
 		(expand-program (cadr code)))
@@ -65,6 +69,7 @@
        (when (option 'dump-source: options)
 	 (pp prg)
 	 (stop))
+       (NB "expanding syntax")
        (let* ((code (expand-syntax prg))
 	      (_ (when (option 'expand: options) 
 		   (pp code)
@@ -73,12 +78,16 @@
 	      (dumpcps (option 'dump-cps: options))
 	      (dumpserial (not (option 'dump-nested: options)))
 	      (outfile (option 'output-file: options))
+	      (_ (NB "canonicalizing"))
 	      (code (canonicalize-expression code))
+	      (_ (NB "converting to CPS"))
 	      (defs code (cps code))
 	      (_ (when dumpcps
 		   (dump-expressions code dumpserial)
 		   (stop)))
+	      (_ (NB "propagating constants"))
 	      (code (cp code))
+	      (_ (NB "detecting unused variables"))
 	      (code unused (detect-unused-variables code))
 	      (_ (cond ((option 'dump-unused: options)
 			(for-each 
@@ -88,6 +97,7 @@
 		       ((option 'dump: options)
 			(dump-expressions code dumpserial)
 			(stop))))
+	      (_ (NB "converting closures"))
 	      (ccode (cc code '())))
 	 (set! emit-expr-comments (option 'comment: options))
 	 (set! enable-checks (memq 'check implementation-features))
@@ -96,14 +106,22 @@
 	   (stop))
 	 ;;XXX add pass that assigns closure-id's to target variables, for adding comments in
 	 ;;    generated output.
+	 (NB "generating code")
 	 ((if outfile
 	      (lambda (thunk)
 		(with-output-to-file outfile thunk))
 	      (lambda (thunk) (thunk)))
-	  (cut generate-code defs ccode unused)))))))
+	  (cut generate-code defs ccode unused))
+	 (NB "  dropped " dropped-global-count " global assignments"))))))
 
 (define (compile-file fname . options)
   (apply compile (read-forms fname) options))
+
+(define (NB . args)
+  (when verbose
+    (let ((out (current-error-port)))
+      (for-each (cut display <> out) args)
+      (newline out))))
 
 
 (define (generate-code defs code unused)
@@ -239,9 +257,10 @@
     (('$global-set! var val)
      (cond ((memq var unused-global-variables)
 	    ;; either drop assignment entirely or just evaluate "val"
-	    (if (pure-expression? val)
-		(generate-immediate-ref t "undefined" "dropped: " var)
-		(translate val t)))
+	    (cond ((pure-expression? val)
+		   (inc! dropped-global-count)
+		   (generate-immediate-ref t "undefined" "dropped: " var))
+		  (else (translate val t))))
 	   (else
 	    (translate val t)
 	    (generate-global-store var (mangle-identifier var) t)))

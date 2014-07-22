@@ -7,7 +7,8 @@
 ; - removes empty "let" expressions.
 
 (define (detect-unused-variables form) ; expects expanded + canonicalized form
-  (let ((globals '()))
+  (let ((globals '())
+	(dcount 0))
     (define (used var env where)
       (cond ((eq? var where))
 	    ((assq var env) => (cut set-cdr! <> #t))
@@ -41,6 +42,7 @@
 		   ((used? (car vars) env2)
 		    (loop (cdr vars) (cdr vals) (cons (list (car vars) (car vals)) new)))
 		   ((pure-expression? (car vals))
+		    (inc! dcount)
 		    (loop (cdr vars) (cdr vals) new)) ; drop binding
 		   (else (loop (cdr vars) (cdr vals) (cons (list '$unused (car vals)) new)))))))
 	(('begin x) (walk x env here dest))
@@ -89,7 +91,8 @@
 	 `($call ,id ,@(map (cut walk <> env here #f) xs)))
 	((op args ...) (map (cut walk <> env here #f) x))
 	(_ (error "invalid expression" x))))
-    (let ((form (walk form '() #f #f)))
+    (let ((form (walk form '() #f #f))
+	  (ucount 0))
       ;; now remove unused global variables iteratively
       (let loop ((globals globals) (unused '()))
 	(let ((ulist 
@@ -97,13 +100,17 @@
 		(lambda (global)
 		  (and (null? (cdr global)) (car global)))
 		globals)))
-	  (if (null? ulist)
-	      (values form unused)
-	      (loop
-	       (filter-map
-		(lambda (global)
-		  (and (not (memq (car global) ulist))
-		       (cons (car global)
-			     (difference (cdr global) ulist))))
-		globals)
-	       (append ulist unused))))))))
+	  (inc! ucount (length ulist))
+	  (cond ((null? ulist)
+		 (NB "  removed " ucount " global variables")
+		 (NB "  dropped " dcount " pure local expressions")
+		 (values form unused))
+		(else
+		 (loop
+		  (filter-map
+		   (lambda (global)
+		     (and (not (memq (car global) ulist))
+			  (cons (car global)
+				(difference (cdr global) ulist))))
+		   globals)
+		  (append ulist unused)))))))))
