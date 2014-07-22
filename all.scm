@@ -10,6 +10,8 @@
        (features)))
 
 (define bytevector? (const #f))
+(define (nan? x) (and (number? x) (not (= x x))))
+(define (finite? x) (not (= (string->number "+inf.0") (abs x))))
 
 (load "version.scm")
 (load "alexpand.scm")
