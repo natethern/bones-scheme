@@ -11,6 +11,13 @@ Release 4:
 
   Unused variable detection was improved somewhat.  
 
+  Support for using compiled code in shared libraries (requires
+  "-feature pic") has been added.
+
+  Fixed serious bug in floating-point comparison: SSE2 compares
+  sets flags similar as unsigned integer compare, so the same
+  test can not be used for fixnum and flonum comparisons.
+
 Release 3:
 
   Added evaluator and standalone-interpreter.
