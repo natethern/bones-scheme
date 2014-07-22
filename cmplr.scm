@@ -487,7 +487,13 @@
 	       (else (generate-align word-size))) ; assumes word-size == 8
 	 (emit l ": ")
 	 (generate-defword "FLONUM | " (cells 1))
-	 (generate-deffloat (exact->inexact c)))
+	 (cond ((nan? c) (generate-defword "0x7ff0000000000001"))
+	       ((not (finite? c))
+		(generate-defword
+		 (if (positive? c)
+		     "0x7ff0000000000000"
+		     "0xfff0000000000000")))
+	       (else (generate-deffloat (exact->inexact c)))))
 	((pair? c)
 	 (let ((lcar (register-literal (car c)))
 	       (lcdr (register-literal (cdr c))))
