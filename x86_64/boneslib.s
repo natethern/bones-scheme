@@ -26,6 +26,11 @@
 
 %ifdef FEATURE_PIC
   default rel
+ %ifdef FEATURE_LINUX
+  %define WRTPLT  wrt ..plt
+ %endif
+%else
+ %define WRTPLT
 %endif
 
 
@@ -389,7 +394,7 @@
 %else
   xor rax, rax
 %endif
-  call MANGLE(%1)
+  call MANGLE(%1) WRTPLT
   RESTORE_STACK
   RESTORE
 %endmacro
@@ -408,7 +413,7 @@
 %else
   xor rax, rax
 %endif
-  call MANGLE(%1)
+  call MANGLE(%1) WRTPLT
   RESTORE_STACK
   RESTORE
 %endmacro
@@ -429,7 +434,7 @@
 %else
   xor rax, rax
 %endif
-  call MANGLE(%1)
+  call MANGLE(%1) WRTPLT
   RESTORE_STACK
   RESTORE
 %endmacro
@@ -452,7 +457,7 @@
 %else
   xor rax, rax
 %endif
-  call MANGLE(%1)	
+  call MANGLE(%1) WRTPLT
   RESTORE_STACK
   RESTORE
 %endmacro
@@ -476,7 +481,7 @@
 %else
   mov rax, 1
 %endif
-  call MANGLE(%1)	
+  call MANGLE(%1) WRTPLT
   RESTORE_STACK
   RESTORE
 %endmacro
@@ -501,7 +506,7 @@
 %else
   xor rax, rax
 %endif
-  call MANGLE(%1)	
+  call MANGLE(%1) WRTPLT
   RESTORE_STACK
   RESTORE
 %endmacro
