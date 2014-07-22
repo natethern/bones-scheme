@@ -304,6 +304,9 @@
 
    - =-v= :: Print the compiler version and exit.
 
+   - =-verbose= :: Print currently executing compilation phases and
+       some optimzation statistics to stderr.
+
 ** Configuration Macros for Generated Assembly Code
 
   - =ENABLE_WRITE_BARRIER= :: When mutating data-structures that are
