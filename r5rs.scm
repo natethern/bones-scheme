@@ -133,7 +133,9 @@
   (%fx<? (if (exact? x) x (%ieee754-sign x)) 0))
 
 (define-inline (positive? x)
-  (%fx>? (if (exact? x) x (%ieee754-sign x)) 0))
+  (cond ((exact? x) (%fx>? x 0))
+	((eq? 0 (%ieee754-sign x)) (not (eq? 0 (%ieee754-exponent-and-mantissa x))))
+	(else #f)))
 
 (define-inline (zero? n)
   (eq? (if (exact? n) n (%ieee754-exponent-and-mantissa n)) 0))

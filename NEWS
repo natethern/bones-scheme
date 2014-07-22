@@ -18,6 +18,8 @@ Release 4:
   sets flags similar as unsigned integer compare, so the same
   test can not be used for fixnum and flonum comparisons.
 
+  Fixed another bug regarding floating-point numbers in "positive?".
+
 Release 3:
 
   Added evaluator and standalone-interpreter.
