@@ -2693,6 +2693,9 @@ terminate_closure:
 temporary_flonum: dq FLONUM | CELLS(1), 0
 flonum_0: dq FLONUM | CELLS(1), __float64__(0.0)
 flonum_1: dq FLONUM | CELLS(1), __float64__(1.0)
+ieee754_nan: dq FLONUM | CELLS(1), 0x7ff0000000000001
+ieee754_inf: dq FLONUM | CELLS(1), 0x7ff0000000000000
+ieee754_ninf: dq FLONUM | CELLS(1), 0xfff0000000000000
 argc: dq 0
 saved_k: dq 0
 
