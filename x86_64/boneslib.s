@@ -28,6 +28,8 @@
   default rel
  %ifdef FEATURE_LINUX
   %define WRTPLT  wrt ..plt
+ %else 
+  %define WRTPLT
  %endif
 %else
  %define WRTPLT
