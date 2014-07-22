@@ -20,6 +20,8 @@ Release 4:
 
   Fixed another bug regarding floating-point numbers in "positive?".
 
+  "string->number" handles inf/nan correctly.
+
 Release 3:
 
   Added evaluator and standalone-interpreter.

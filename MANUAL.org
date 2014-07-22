@@ -1620,9 +1620,7 @@
   integers and floating-point numbers are not supported.
 
   =string->number= does not detect overflow when converting integers
-  and return -1 if the result does not fit into a fixnum. Also,
-  "+/-nan.0" and "+/-inf.0" is not correctly detected (but "+/-nan"
-  and "+/-inf" are).
+  and returns -1 if the result does not fit into a fixnum.
 
   Library support for on Linux for "nolibc" mode is incomplete:
 
