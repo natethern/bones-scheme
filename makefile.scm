@@ -256,6 +256,9 @@
   (run (echo fft: >>benchmark.txt))
   (run (./run tests/fft.scm >>benchmark.txt 2>&1))
   (run (strip tests/fft ";" ls -l tests/fft >>benchmark.txt))
+  (run (echo raytracer: >>benchmark.txt))
+  (run (./run tests/raytracer.scm >>benchmark.txt 2>&1))
+  (run (strip tests/raytracer ";" ls -l tests/raytracer >>benchmark.txt))
   (run (echo -n "'minimal heap usage: '" >>benchmark.txt))
   (run (./run tests/usedheap.scm >>benchmark.txt))
   (run (echo -n "'large heap '" >>benchmark.txt))
@@ -264,7 +267,7 @@
   (run (echo -n "'minimal program size: '" >>benchmark.txt))
   (run (strip tests/null ";" ls -l tests/null >>benchmark.txt))
   (print "--------------------------------------------------------------------------------")
-  (run (tail -n 50 benchmark.txt)))
+  (run (tail -n 60 benchmark.txt)))
 
 (define distfiles
   '("MANUAL.txt"
