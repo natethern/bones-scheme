@@ -47,6 +47,11 @@
   (or (file-exists? "bin/musl-gcc")
       "gcc"))
 
+(define shared-option
+  (case (system-software)
+    ((Darwin) "-bundle")
+    (else "-shared")))
+
 (define target-feature
   (case (system-software)
     ((Linux) 'linux)
@@ -217,7 +222,7 @@
   (let ((r (and (zero? (run* (./bones tests/embedded.scm -o tmp/embedded.s -feature pic -feature embedded)))
 		(zero? (run* (nasm -f ,nasm-format tmp/embedded.s -o tmp/embedded1.o -DPREFIX=my)))
 		(zero? (run* (nasm -f ,nasm-format tmp/embedded.s -o tmp/embedded2.o -DPREFIX=my_other)))
-		(zero? (run* (gcc -g -I. tmp/embedded2.o -shared -o tmp/embedded2.so)))
+		(zero? (run* (gcc -g -I. tmp/embedded2.o ,shared-option -o tmp/embedded2.so)))
 		(zero? (run* (gcc -g -I. tests/embedded.c tmp/embedded1.o -o tmp/embedded -ldl)))
 		(zero? (run* (tmp/embedded))))))
     (unless r
