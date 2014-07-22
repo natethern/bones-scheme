@@ -62,7 +62,7 @@ typedef struct BONES_block {
 
 /* these macros should not be used on a fixnum */
 #define BONES_size_of(x)         BONES_header_size(BONES_header(x))
-#define BONES_type_of(x)         BONES_header_type(BONES__header(x))
+#define BONES_type_of(x)         BONES_header_type(BONES_header(x))
 
 #define BONES_is_error_object(x)					\
   (BONES_type_of(x) == BONES_RECORD &&					\
