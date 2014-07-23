@@ -26,7 +26,6 @@ BONES                                                                     -*- Or
   - possibly problems with redefinitions of primitives, ending in some
     sort of sicrularity.
 * TODO add exact development system versions (xcode, mingw64, msvc)
-* TODO benchmark bones-grond vs. racket/chicken-grond
 * potential optimizations
 ** we could coalesce allocations inside a lambda
   - but will probably gain very little.
@@ -58,7 +57,6 @@ BONES                                                                     -*- Or
   - also, keep GC-count in block header.
 * option "-export VAR"
   - makes global externally visible (+ PREFIX)
-* port to arm is currently abandoned 					:arm:
 * TODO pre-allocated chars in the range 0-255
   - all chars are preallocated, unless we allow chars with arbitrary code.
   - =integer->char=: check range and alloc, ensure this is inlined.
@@ -191,7 +189,7 @@ mainCRTStartup:
 * TODO port file:tw.c to windows using file:ezxdisp-win32.c
 * TODO port embedded test with shared library to Windows
    - and add to file:scripts/check.bat
-* Issues
+* issues
 ** "inexact->exact" uses "fisttp", so needs SSE3
 ** i don't fully trust that "integer?" handles all cases correctly
    - is the exponent overflow-test correct?
@@ -216,7 +214,7 @@ mainCRTStartup:
    - executable still runs, warning currently disabled with "-Wl,-no_pie".
 ** embedded check doesn't work on Mac OS
    - linker complains when linking embedded2.o with "-bundle".
-* Referencess
+* referencess
   - X86_64:
     - x87: http://www.website.masmforum.com/tutorials/fptute/index.html
     - x86 reference: http://www.fermimn.gov.it/linux/quarta/x86/index.htm
@@ -225,10 +223,7 @@ mainCRTStartup:
     - x86-64 ABI: file:/archive/x86-64-abi.pdf
     - Syscalls: http://blog.rchapman.org/post/36801038863/linux-system-call-table-for-x86-64
   - "long mode", bootloader: http://wiki.osdev.org/Entering_Long_Mode_Directly
-* Notes
-** the write barrier can be disabled by defining DISABLE_WRITE_BARRIER
-** enable GC logging with -DENABLE_GC_LOGGING
-** release steps:
+* release steps:
    1. update file:NEWS
    2. update version in file:version.scm and file:MANUAL.org
    3. merge /develop/ into /master/
