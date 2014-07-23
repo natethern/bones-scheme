@@ -130,7 +130,7 @@
 	  (run (,gcc tmp/bigbones.o -o bigbones)))
 	 ("tmp/bigbones.o" ("bones-x86_64-linux.s" 
 			    "x86_64/boneslib.s")
-	  (run (nasm -f elf64 -g -F dwarf -DTOTAL_HEAP_SIZE=500_000_000 tmp/bigbones.s
+	  (run (nasm -f ,nasm-format -g -F dwarf -DTOTAL_HEAP_SIZE=500_000_000 tmp/bigbones.s
 		     -o tmp/bigbones.o))))))
 
 (define (backup)
