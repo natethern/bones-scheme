@@ -2,13 +2,8 @@ BONES                                                                     -*- Or
 =====
 
 
-* TODO port embedded test with shared library to Windows
-  - and add to file:scripts/check.bat
-* TODO test "wrt ..plt" thing / shared libraries on Mac
 * TODO file:tests/raytracer.scm produces wrong output
   - nearly good, but apparently there are some wrong calculations.
-* TODO test on Mac
-* TODO check new file:index.html with Safari
 * TODO failed checks could invoke =%error=
   - just invoke "(%error MSG)" with an empty continuation.
   - should probably reset rsp to =saved_rsp=.
@@ -24,7 +19,7 @@ BONES                                                                     -*- Or
    - would need proper alignment on 32-bit systems.
    - put API into file:fastmath.scm
    - adapt printer + reader.
-* TODO add more checks
+* add more checks
   - copying of slots and bytes (bounds, types).
 * grass hangs, when built with bones
   - endless GC during startup.
@@ -194,8 +189,8 @@ mainCRTStartup:
     (if (if X FALSE TRUE) Y Z) -> (if X Z Y)
 * TODO test file:tw.c + file:twports.scm
 * TODO port file:tw.c to windows using file:ezxdisp-win32.c
-* TODO =string->number= does not parse "+/-nan.0"/"+/-inf.0"
-  - also avoid allowing "infinity".
+* TODO port embedded test with shared library to Windows
+   - and add to file:scripts/check.bat
 * Issues
 ** "inexact->exact" uses "fisttp", so needs SSE3
 ** i don't fully trust that "integer?" handles all cases correctly
@@ -217,6 +212,10 @@ mainCRTStartup:
      might be inaccurate or needs to be less accurate. This shows
      up when num->str generates a string with ".", but the =integer?=
      test returns true (thus appending another ".0")
+** gcc/clang prints warning when linking compiled code ("PIE disabled")
+   - executable still runs, warning currently disabled with "-Wl,-no_pie".
+** embedded check doesn't work on Mac OS
+   - linker complains when linking embedded2.o with "-bundle".
 * Referencess
   - X86_64:
     - x87: http://www.website.masmforum.com/tutorials/fptute/index.html

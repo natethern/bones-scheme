@@ -1,4 +1,4 @@
-/Release 3/
+/Release 4/
 
 * Introduction
 
@@ -147,6 +147,8 @@
     sure why this happens and how this warning can be prevented. The
     linked executables run fine as far as I can tell (it may be caused
     by a bug in NASM or the Apple linker, but I'm not sure about it.)
+    You can disable this warning by adding the option =-Wl,-no_pie=
+    when linking an executable.
 
   Now you have a compiler, which you can test by entering 
 
@@ -1637,6 +1639,9 @@
   The maximum number of arguments that can be passed to a procedure is
   currently 1024 + 9. You can change this by giving a different value
   for the =NUMBER_OF_NON_REGISTER_ARGUMENTS= in the =boneslib.s= file.
+
+  Building shared libraries ("bundles") from code compiled with BONES
+  does currently not work on Mac OS X.
 
 * Porting Guide
 
