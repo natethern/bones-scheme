@@ -1613,8 +1613,8 @@
   Access to undefined ("unbound") variables will produce linker
   errors, where the variable name will be mangled, by prefixing it
   with "___" (three underscores) and replacing non-alphanumeric
-  characters with "_XX" with "XX" being the hexadecimal character code
-  of the character.
+  characters with "_XX". "XX" in this case is the hexadecimal
+  code of the character.
 
 * Bugs and Limitations
 
@@ -1760,7 +1760,7 @@
     The pretty-printer (=pp.scm=) is
 
     Copyright (c) 1991, Marc Feeley
-    Author: Marc Feeley (feeley@iro.umontreal.ca)
+    Author: Marc Feeley
     Distribution restrictions: none
 
     The pattern-matching package was written by Alex Shinn and
@@ -1768,7 +1768,7 @@
 
     The syntax-expander (=alexpand.scm=) is
 
-      Copyright 2002-2004 Al Petrofsky <alexpander@petrofsky.org>
+      Copyright 2002-2004 Al Petrofsky
 
       Redistribution and use in source and binary forms, with or without
       modification, are permitted provided that the following conditions
