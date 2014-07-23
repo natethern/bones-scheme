@@ -54,7 +54,7 @@
 
   To run programs compiled with BONES (and to run the compiler
   itself), an x86_64 system is required, with support for SSE2 and
-  SSE3 instructions. Currently the the compiler runs under the Linux,
+  SSE3 instructions. Currently the compiler runs under the Linux,
   Mac OS X and Windows operating systems.
 
   BONES has been successfully tested on the following systems:
@@ -161,7 +161,7 @@
   The =bones= executable can be moved anywhere you desire, but assumes
   that some supporting files are in the directory where it is invoked.
   You can use the =-L= command-line option (described below) to set
-  the the directory where the supporting files are located. The default
+  the directory where the supporting files are located. The default
   search path contains the following directories:
 
   - The current directory (".")
@@ -1613,8 +1613,8 @@
   Access to undefined ("unbound") variables will produce linker
   errors, where the variable name will be mangled, by prefixing it
   with "___" (three underscores) and replacing non-alphanumeric
-  characters with "_XX" with "XX" being the hexadecimal character code
-  of the character.
+  characters with "_XX". "XX" in this case is the hexadecimal
+  code of the character.
 
 * Bugs and Limitations
 
@@ -1759,16 +1759,15 @@
 
     The pretty-printer (=pp.scm=) is
 
-    Copyright (c) 1991, Marc Feeley
-    Author: Marc Feeley (feeley@iro.umontreal.ca)
-    Distribution restrictions: none
+    Copyright (c) 1991, Marc Feeley,
+    Author: Marc Feeley, Distribution restrictions: none
 
     The pattern-matching package was written by Alex Shinn and
     is in the public domain.
 
     The syntax-expander (=alexpand.scm=) is
 
-      Copyright 2002-2004 Al Petrofsky <alexpander@petrofsky.org>
+      Copyright 2002-2004 Al Petrofsky
 
       Redistribution and use in source and binary forms, with or without
       modification, are permitted provided that the following conditions
