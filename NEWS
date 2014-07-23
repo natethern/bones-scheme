@@ -22,6 +22,8 @@ Release 4:
 
   "string->number" handles inf/nan correctly.
 
+  Added "handle-exceptions" syntactic form.
+
 Release 3:
 
   Added evaluator and standalone-interpreter.
