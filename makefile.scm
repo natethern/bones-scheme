@@ -45,7 +45,9 @@
 
 (define gcc
   (or (file-exists? "bin/musl-gcc")
-      "gcc"))
+      (case (system-software)
+	((Darwin) "gcc -Wl,-no_pie")
+	(else "gcc"))))
 
 (define shared-option
   (case (system-software)
