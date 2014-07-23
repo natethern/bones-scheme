@@ -5,9 +5,7 @@
 (run-verbose #t)
 
 
-(define (all)
-  (bones)
-  (bonesi))
+(define (all) (bones))
 
 (define (clean)
   (run (rm -f *.o bones bones-x86_64-linux.s)))
@@ -27,6 +25,8 @@
     "mangle.scm"
     "program.scm"
     "tsort.scm"
+    "uv.scm"
+    "ra.scm"
     "cmplr.scm"
     "main.scm"
     "bones.scm"
@@ -45,7 +45,14 @@
 
 (define gcc
   (or (file-exists? "bin/musl-gcc")
-      "gcc"))
+      (case (system-software)
+	((Darwin) "gcc -Wl,-no_pie")
+	(else "gcc"))))
+
+(define shared-option
+  (case (system-software)
+    ((Darwin) "-bundle")
+    (else "-shared")))
 
 (define target-feature
   (case (system-software)
@@ -123,7 +130,7 @@
 	  (run (,gcc tmp/bigbones.o -o bigbones)))
 	 ("tmp/bigbones.o" ("bones-x86_64-linux.s" 
 			    "x86_64/boneslib.s")
-	  (run (nasm -f elf64 -g -F dwarf -DTOTAL_HEAP_SIZE=500_000_000 tmp/bigbones.s
+	  (run (nasm -f ,nasm-format -g -F dwarf -DTOTAL_HEAP_SIZE=500_000_000 tmp/bigbones.s
 		     -o tmp/bigbones.o))))))
 
 (define (backup)
@@ -207,18 +214,18 @@
        (set! ok #f))
      (print (padl " embedded" 60 #\=))
      (unless (check-embedded) (set! ok #f))
+     (unless (check-grond) (set! ok #f))
      (if ok
 	 "\n\nall checks succeeded."
 	 "\n\nSOME CHECKS FAILED."))))
 
 (define (check-embedded)
   (bones)
-  (let ((r (and (zero? (run* (./bones tests/embedded.scm -o tmp/embedded.s -feature embedded)))
-		(zero? (run* (nasm -f ,nasm-format tmp/embedded.s 
-				   -o tmp/embedded1.o -DPREFIX=my)))
-		(zero? (run* (nasm -f ,nasm-format tmp/embedded.s
-				   -o tmp/embedded2.o -DPREFIX=my_other)))
-		(zero? (run* (gcc -g -I. tests/embedded.c tmp/embedded1.o tmp/embedded2.o -o tmp/embedded)))
+  (let ((r (and (zero? (run* (./bones tests/embedded.scm -o tmp/embedded.s -feature pic -feature embedded)))
+		(zero? (run* (nasm -f ,nasm-format tmp/embedded.s -o tmp/embedded1.o -DPREFIX=my)))
+		(zero? (run* (nasm -f ,nasm-format tmp/embedded.s -o tmp/embedded2.o -DPREFIX=my_other)))
+		(zero? (run* (gcc -g -I. tmp/embedded2.o ,shared-option -o tmp/embedded2.so)))
+		(zero? (run* (gcc -g -I. tests/embedded.c tmp/embedded1.o -o tmp/embedded -ldl)))
 		(zero? (run* (tmp/embedded))))))
     (unless r
       (print "embedding check failed."))
@@ -227,12 +234,16 @@
 (define (check-grond)
   (bigbones)
   (run (mkdir -p tmp))
-  (let ((r (and (zero? (run* (./bigbones tests/grond.scm -o tmp/grond.s)))
-		(zero? (run* (nasm -f ,nasm-format tmp/grond.s -o tmp/grond.o -DTOTAL_HEAP_SIZE=2_000_000_000)))
+  (let ((r (and (zero? (run* (memtime ./bigbones tests/grond.scm -feature check -comment 
+				      -o tmp/grond.s)))
+		(zero? (run* (memtime nasm -f ,nasm-format -g -F dwarf tmp/grond.s -o tmp/grond.o
+				      -DTOTAL_HEAP_SIZE=500_000_000
+				      -DENABLE_GC_LOGGING)))
 		(zero? (run* (,gcc tmp/grond.o -o tmp/grond)))
-		(zero? (run* (tmp/grond tests/fac.scm -o tmp/fac.cpp))))))
+		(zero? (run* (memtime tmp/grond tests/mandelbrot.scm -ignore-fixnum-overflow -verbose 
+				      -clone-size-limit 10))))))
     (unless r
-      (print "building and running grond failed."))
+      (print "building or running grond failed."))
     r))
 
 (define (bench)
@@ -252,6 +263,9 @@
   (run (echo fft: >>benchmark.txt))
   (run (./run tests/fft.scm >>benchmark.txt 2>&1))
   (run (strip tests/fft ";" ls -l tests/fft >>benchmark.txt))
+  (run (echo raytracer: >>benchmark.txt))
+  (run (./run tests/raytracer.scm >>benchmark.txt 2>&1))
+  (run (strip tests/raytracer ";" ls -l tests/raytracer >>benchmark.txt))
   (run (echo -n "'minimal heap usage: '" >>benchmark.txt))
   (run (./run tests/usedheap.scm >>benchmark.txt))
   (run (echo -n "'large heap '" >>benchmark.txt))
@@ -260,7 +274,7 @@
   (run (echo -n "'minimal program size: '" >>benchmark.txt))
   (run (strip tests/null ";" ls -l tests/null >>benchmark.txt))
   (print "--------------------------------------------------------------------------------")
-  (run (tail -n 50 benchmark.txt)))
+  (run (tail -n 60 benchmark.txt)))
 
 (define distfiles
   '("MANUAL.txt"
@@ -273,6 +287,8 @@
     "base.scm"
     "bones.scm"
     "cc.scm"
+    "uv.scm"
+    "ra.scm"
     "cmplr.scm"
     "tsort.scm"
     "x86_64.scm"
@@ -292,6 +308,7 @@
     "support.scm"
     "bonesi.scm"
     "eval.scm"
+    "x86_64/fastmath.scm"
     "x86_64/intrinsics.scm"
     "x86_64/boneslib.s"
     "x86_64/linux/syscalls.scm"

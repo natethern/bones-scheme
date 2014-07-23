@@ -1,2 +1,2 @@
-(define bones-version 3)
+(define bones-version 4)
 

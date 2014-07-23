@@ -1,4 +1,4 @@
-/Release 3/
+/Release 4/
 
 * Introduction
 
@@ -59,12 +59,13 @@
 
   BONES has been successfully tested on the following systems:
 
-  | OS                                                                            |    nasm | C compiler |
-  |-------------------------------------------------------------------------------+---------+------------|
-  | Linux Mint 13 Maya Ubuntu/Linaro 4.6.3-1ubuntu4 Linux 3.2.0-23-generic x86_64 | 2.09.10 | gcc 4.6.3  |
-  | openSUSE 13.1 (Bottle) Linux 3.15.1-2.g3289da4-default x86_64                 | 2.09.10 | gcc 4.8.1  |
-  | Windows 7 Professional                                                        |         |            |
-  | Mac OS 10.8                                                                   |         |            |
+  | OS                                                                            |    nasm | C compiler     | libc        |
+  |-------------------------------------------------------------------------------+---------+----------------+-------------|
+  | Linux Mint 13 Maya Ubuntu/Linaro 4.6.3-1ubuntu4 Linux 3.2.0-23-generic x86_64 | 2.09.10 | gcc 4.6.3      | EGLIBC 2.15 |
+  |                                                                               |         |                | musl 1.1.0  |
+  | openSUSE 13.1 (Bottle) Linux 3.15.1-2.g3289da4-default x86_64                 | 2.09.10 | gcc 4.8.1      | glibc 2.18  |
+  | Windows 7 Professional                                                        |         |                |             |
+  | Mac OS 10.8.5                                                                 | 2.11.05 | clang-503.0.38 |             |
 
 * Requirements
 
@@ -146,6 +147,8 @@
     sure why this happens and how this warning can be prevented. The
     linked executables run fine as far as I can tell (it may be caused
     by a bug in NASM or the Apple linker, but I'm not sure about it.)
+    You can disable this warning by adding the option =-Wl,-no_pie=
+    when linking an executable.
 
   Now you have a compiler, which you can test by entering 
 
@@ -302,6 +305,9 @@
        stdout.
 
    - =-v= :: Print the compiler version and exit.
+
+   - =-verbose= :: Print currently executing compilation phases and
+       some optimzation statistics to stderr.
 
 ** Configuration Macros for Generated Assembly Code
 
@@ -699,6 +705,13 @@
 
     - =(fluid-let ((VAR EXP) ...) BODY ...)= :: Syntax for dynamic scoping,
 	see [[http://srfi.schemers.org/srfi-15/][SRFI-15]] for more information.
+
+    - =(handle-exceptions VAR HANDLE BODY ...)= :: Binds
+        =current-exception-handler= temporarily during exection of
+        =BODY ...= and evaluates the expression =HANDLE= if the body
+        raises an exception. While evaluating =HANDLE=, =VAR= is bound
+        to the exception object and the next outer exception handler
+        is active.
 
     - =(let-optionals VAR1 ((VAR EXP) ... [RVAR]) BODY ...)= :: Destructures 
 	the list in =VAR1=, binding the optional
@@ -1225,6 +1238,10 @@
 
    - =cc.scm= :: The closure-conversion pass.
 
+   - =cp.scm= :: Implements simple constant- and copy-propagation.
+       This pass also indentifies some direct calls to known
+       procedures.
+
    - =cmplr.scm= :: The core compiler, that runs the different stages
        and control the translation of the simplified program into
        assembly code.
@@ -1247,10 +1264,21 @@
    - =mangle.scm= :: Does name-mangling of string-constants and
        variable-names.
 
+   - =ra.scm= :: Register assignment. This is used for reducing spills
+       when setting up argument registers for procedure calls,
+       =$inline= and =$allocate= forms.
+
    - =source.scm= :: Some operations on source expressions.
 
    - =support.scm= :: Miscellaneous non-standard helper procedures for
        all sorts of things.
+
+   - =tsort.scm= :: An implementation of topological sort, used in
+       =ra.scm=.
+
+   - =uv.scm= :: Contains code to detect unused local and global
+       variables by recursively walking the program and collecting 
+       usage information.
 
    - =version.scm= :: Contains a definition for the current compiler
        version.
@@ -1601,9 +1629,7 @@
   integers and floating-point numbers are not supported.
 
   =string->number= does not detect overflow when converting integers
-  and return -1 if the result does not fit into a fixnum. Also,
-  "+/-nan.0" and "+/-inf.0" is not correctly detected (but "+/-nan"
-  and "+/-inf" are).
+  and returns -1 if the result does not fit into a fixnum.
 
   Library support for on Linux for "nolibc" mode is incomplete:
 
@@ -1613,6 +1639,9 @@
   The maximum number of arguments that can be passed to a procedure is
   currently 1024 + 9. You can change this by giving a different value
   for the =NUMBER_OF_NON_REGISTER_ARGUMENTS= in the =boneslib.s= file.
+
+  Building shared libraries ("bundles") from code compiled with BONES
+  does currently not work on Mac OS X.
 
 * Porting Guide
 

@@ -14,11 +14,12 @@
 (define emit-expr-comments #f)
 (define enable-checks #f)
 (define enable-pic #f)
+(define verbose #f)
 
 (define environment '())
 (define locals-counter 0)
-(define available-registers '())
 (define unused-global-variables '())
+(define dropped-global-count 0)
 
 
 (define (cells n) (* word-size n))
@@ -36,6 +37,7 @@
 
 (define (compile code . options)
   (set! lambda-id-counter 0)
+  (set! dropped-global-count 0)
   (set! argument-register-count (sub1 (length argument-registers)))
   (set! implementation-features
     (append (collect-options 'feature: options)
@@ -48,6 +50,7 @@
 	    (let ((lp (get-environment-variable "BONES_LIBRARY_PATH")))
 	      (if lp (string-split lp (cond-expand (windows ";") (else ":"))) '()))
 	    '("/usr/share/bones" "/usr/local/share/bones")))
+  (set! verbose (option 'verbose: options))
   (let ((prg (match code
 	       (('begin ('program . _))
 		(expand-program (cadr code)))
@@ -66,6 +69,7 @@
        (when (option 'dump-source: options)
 	 (pp prg)
 	 (stop))
+       (NB "expanding syntax")
        (let* ((code (expand-syntax prg))
 	      (_ (when (option 'expand: options) 
 		   (pp code)
@@ -74,11 +78,16 @@
 	      (dumpcps (option 'dump-cps: options))
 	      (dumpserial (not (option 'dump-nested: options)))
 	      (outfile (option 'output-file: options))
+	      (_ (NB "canonicalizing"))
 	      (code (canonicalize-expression code))
+	      (_ (NB "converting to CPS"))
 	      (defs code (cps code))
 	      (_ (when dumpcps
 		   (dump-expressions code dumpserial)
 		   (stop)))
+	      (_ (NB "propagating constants"))
+	      (code (cp code))
+	      (_ (NB "detecting unused variables"))
 	      (code unused (detect-unused-variables code))
 	      (_ (cond ((option 'dump-unused: options)
 			(for-each 
@@ -88,6 +97,7 @@
 		       ((option 'dump: options)
 			(dump-expressions code dumpserial)
 			(stop))))
+	      (_ (NB "converting closures"))
 	      (ccode (cc code '())))
 	 (set! emit-expr-comments (option 'comment: options))
 	 (set! enable-checks (memq 'check implementation-features))
@@ -96,24 +106,86 @@
 	   (stop))
 	 ;;XXX add pass that assigns closure-id's to target variables, for adding comments in
 	 ;;    generated output.
+	 (NB "generating code")
 	 ((if outfile
 	      (lambda (thunk)
 		(with-output-to-file outfile thunk))
 	      (lambda (thunk) (thunk)))
-	  (cut generate-code defs ccode unused)))))))
+	  (cut generate-code defs ccode unused))
+	 (NB "  dropped " dropped-global-count " global assignments"))))))
 
 (define (compile-file fname . options)
   (apply compile (read-forms fname) options))
 
-(define (mangle-feature-name name)
-  (string-append
-   "FEATURE_"
-   (list->string 
-    (map (lambda (c)
-	   (case c
-	     ((#\-) #\_)
-	     (else (char-upcase c))))
-	 (string->list (symbol->string name))))))
+(define (NB . args)
+  (when verbose
+    (let ((out (current-error-port)))
+      (for-each (cut display <> out) args)
+      (newline out))))
+
+
+(define (generate-code defs code unused)
+  (set! label-counter 0)
+  (generate-header (map mangle-feature-name implementation-features))
+  (set! literals-to-be-translated '())
+  (set! primitives '())
+  (set! unused-global-variables unused)
+  (generate-closures code)
+  (generate-globals defs)
+  (generate-literals)
+  (generate-primitives)
+  (generate-trailer))
+
+(define (generate-globals defs)
+  (generate-section ".data")
+  (emit "globals:\n")
+  (for-each 
+   (lambda (def)
+     (emit (mangle-identifier def) ": ")
+     (generate-defword "undefined"))
+   defs)
+  (emit "endglobals:\n"))
+
+(define (generate-closures top)
+  (set! closures-to-be-translated (list top))
+  (generate-section ".text")
+  (emit "toplevel:\n")
+  (do ()
+      ((null? closures-to-be-translated))
+    (translate-closure (pop! closures-to-be-translated))))
+
+(define (generate-literals)
+  (set! string-literals '())
+  (set! symbol-table '())
+  (generate-section ".data")
+  (do ()
+      ((null? literals-to-be-translated))
+    (match-let (((l . c) (pop! literals-to-be-translated)))
+      (translate-literal l c)))
+  (generate-strings)
+  (generate-symbol-table))
+
+(define (generate-strings)
+  (generate-section ".data")
+  (for-each
+   (match-lambda
+     ((l . str)
+      (generate-align word-size)
+      (emit l ": ")
+      (generate-defword "STRING | " (string-length str))
+      (when (positive? (string-length str))
+	(generate-defbyte 
+	 (join (map (o number->string char->integer) (string->list str)) ",")))))
+   string-literals))
+
+(define (generate-symbol-table)
+  (generate-section ".data")
+  (emit "symbol_literals:\n")
+  (for-each
+   (lambda (l)
+     (generate-defword (cdr l)))
+   symbol-table)
+  (generate-defword "false"))
 
 (define (fixnum? n)
   (and (number? n) (exact? n) (<= (car fixnum-range) n (cdr fixnum-range))))
@@ -129,9 +201,6 @@
 (define (translate-inline-arguments args)
   (translate/registers args temporary-registers))
 
-(define (blocked-register? reg)
-  (not (memq reg available-registers)))
-
 (define (translate x t)
   ;;(pp (if (pair? x) (car x) x))
   (when emit-expr-comments
@@ -144,8 +213,10 @@
      (do ((lst cap (cdr lst))
 	  (off 2 (add1 off)))
 	 ((null? lst))
-       (translate (car lst) arg-register)
-       (generate-slot-store alloc-register (cells off) arg-register))
+       (translate-store
+	(car lst)
+	(lambda (reg)
+	  (generate-slot-store alloc-register (cells off) reg))))
      (generate-move t alloc-register)
      (generate-add alloc-register (cells (+ 2 (length cap))))
      #t)
@@ -157,22 +228,27 @@
 	 (for-each
 	  (lambda (var val)
 	    (cond ((eq? var '$unused)
-		   ;; just evaluate but don't bind
+		   ;; just evaluate but don't bind - must be non-trivial or it would already
+		   ;; have been removed
 		   (translate val arg-register))
 		  ((null? available-registers)
 		   ;; evaluate and move into local
-		   (translate val arg-register)
-		   (generate-comment var " = local #" locals-counter)
-		   (generate-move-to-local (cells locals-counter) arg-register)
+		   (translate-store
+		    val
+		    (lambda (reg)
+		      (generate-comment var " = local #" locals-counter)
+		      (generate-move-to-local (cells locals-counter) reg)))
 		   (push! (cons var locals-counter) newenv)
 		   (inc! locals-counter))
 		  (else
 		   ;; evaluate into target register
 		   ;;XXX could eval directly into reg, if reg is not used in the val
 		   (let ((reg (car available-registers)))
-		     (translate val arg-register)
-		     (generate-comment var " = " reg)
-		     (generate-move reg arg-register)
+		     (translate-store
+		      val
+		      (lambda (reg2)
+			(generate-comment var " = " reg)
+			(generate-move reg reg2)))
 		     (push! (cons var reg) newenv)
 		     (pop! available-registers)))))
 	  vars vals)
@@ -181,9 +257,10 @@
     (('$global-set! var val)
      (cond ((memq var unused-global-variables)
 	    ;; either drop assignment entirely or just evaluate "val"
-	    (if (pure-expression? val)
-		(generate-immediate-ref t "undefined" "dropped: " var)
-		(translate val t)))
+	    (cond ((pure-expression? val)
+		   (inc! dropped-global-count)
+		   (generate-immediate-ref t "undefined" "dropped: " var))
+		  (else (translate val t))))
 	   (else
 	    (translate val t)
 	    (generate-global-store var (mangle-identifier var) t)))
@@ -232,8 +309,10 @@
        (generate-immediate-ref t l1 name)
        #t))
     (('$box val)
-     (translate val t)
-     (generate-slot-store alloc-register (cells 1) t)
+     (translate-store
+      val
+      (lambda (reg)
+	(generate-slot-store alloc-register (cells 1) reg)))
      (generate-immediate-ref t "VECTOR | 1")
      (generate-slot-store alloc-register 0 t)
      (generate-move t alloc-register)
@@ -301,176 +380,24 @@
 	    (let ((l1 (register-literal c)))
 	      (generate-immediate-ref t l1))))
      #t)
+    (('$call id args ...)
+     (translate-call-to-known-target id args)
+     #f)
     ((op args ...)
      (translate-call x)
      #f)
     (_ (error "bad expression" x))))
 
 
-;;; order argument-evaluation to minimize spills
-;
-; - compute registers and locals used for each argument.
-; - identify circular dependencies between target registers and target-registers
-;   of dependant arguments, and spill these cases to stack.
-; - finally, topologically sort arguments by dependencies and evaluate in reverse
-;   order.
-; - returns list of argument registers / locals associated with given arguments.
+;; translate store operation on expression, possibly avoiding intermediate
+;; register
+(define (translate-store exp k)
+  (let ((reg (cond ((trivial-register-expression? exp) => id)
+		   (else
+		    (translate exp arg-register)
+		    arg-register))))
+    (k reg)))
 
-(define (translate/registers args regs)
-  (let* ((argc (length args))
-	 (rargs (map (lambda (arg reg)
-		       (list reg arg (delete-duplicates (used-registers arg))))
-		     args
-		     (append (take argc regs)
-			     (iota (- argc (length regs)))))))
-    (define (circular? ra rargs)
-      ;;XXX special case: arg depends on own target register - could be
-      ;;    ignored, but will make tsort fail
-      (define (follow r done)
-	(or (memq r done)
-	    (let ((done (cons r done)))
-	      (cond ((assq r rargs) =>
-		     (match-lambda 
-		       ((r2 _ deps)
-			(any (cut follow <> done) deps))))
-		    (else #f)))))
-      (any (cut follow <> '()) (caddr ra)))
-    (define (translate-arguments spilled unspilled)
-      (let* ((n (length spilled))
-	     (reserve (cells n)))
-	;;(pp `(SPILLED: ,spilled))	;XXX
-	;;(pp `(UNSPILLED: ,unspilled))	;XXX
-	(unless (zero? n)
-	  (generate-reserve-on-stack reserve)
-	  (do ((rargs spilled (cdr rargs))
-	       (i 0 (add1 i)))
-	      ((null? rargs))
-	    (match-let ((((_ arg _) . _) rargs))
-	      (let ((reg (argument-register arg)))
-		(cond ((symbol? reg)
-		       (generate-slot-store stack-register (cells i) reg))
-		      (else
-		       (translate arg arg-register)
-		       (generate-slot-store stack-register (cells i) arg-register)))))))
-	(let* ((dag (map (match-lambda
-			   ((tr _ deps) (cons tr deps)))
-			 unspilled))
-	       (sorted (topological-sort dag eqv?)))
-	  ;;(pp `(DAG: ,@dag))			;XXX
-	  ;;(pp `(SORTED: ,@sorted))			;XXX
-	  (for-each
-	   (lambda (sr)
-	     (cond ((assv sr unspilled) =>
-		    (match-lambda
-		      ((tr arg _)
-		       (cond ((symbol? tr) (translate arg tr))
-			     (else 
-			      (translate arg arg-register)
-			      (generate-move-to-local (cells tr) arg-register))))))))
-	   sorted))
-	(unless (zero? n)
-	  (do ((rargs spilled (cdr rargs))
-	       (i 0 (add1 i)))
-	      ((null? rargs))
-	    (match-let ((((tr arg _) . _) rargs))
-	      (cond ((symbol? tr)
-		     (generate-slot-ref tr stack-register (cells i)))
-		    (else
-		     (generate-slot-ref arg-register stack-register (cells i))
-		     (generate-move-to-local (cells tr) arg-register)))))
-	  (generate-pop-stack reserve))))
-    ;;(pp `(RARGS: ,@rargs))				;XXX
-    (let loop ((ras rargs) (spilled '()) (unspilled '()))
-      (match ras
-	(()
-	 (translate-arguments spilled unspilled)
-	 (map car rargs))
-	((ra . more)
-	 (if (circular? ra (append unspilled rargs))
-	     (loop more (cons ra spilled) unspilled)
-	     (loop more spilled (cons ra unspilled))))))))
-
-
-;;; compute set of registers used by an expression
-;
-; - does not remove duplicates.
-; - does not take the target-register into account.
-
-(define (used-registers x)
-  (match x
-    (('$closure id cap . _)
-     (cons arg-register (append-map used-registers cap)))
-    (('let ((vars vals) ...) body)
-     (fluid-let ((environment environment)
-		 (locals-counter locals-counter)
-		 (available-registers available-registers))
-       (let ((newenv environment))
-	 (append
-	  (concatenate
-	   (map
-	    (lambda (var val)
-	      (cond ((eq? var '$unused)
-		     (if (simple-expression? val)
-			 '()
-			 (cons arg-register (used-registers val))))
-		    ((null? available-registers)
-		     (push! (cons var locals-counter) newenv)
-		     (inc! locals-counter)
-		     (cons* 
-		      arg-register
-		      (sub1 locals-counter)
-		      (used-registers val)))
-		    (else
-		     (let ((reg (car available-registers)))
-		       (push! (cons var reg) newenv)
-		       (pop! available-registers)
-		       (cons* arg-register reg (used-registers val))))))
-	    vars vals))
-	  (begin 
-	    (set! environment newenv)
-	    (used-registers body))))))
-    (('$global-set! var val) (used-registers val))
-    (('$global-ref var) '())
-    (('$local-ref var) (list (lookup-variable var)))
-    (('$local-set! var val)
-     (let ((ref (lookup-variable var)))
-       (append
-	(list ref)
-	(used-registers val))))
-    (('if x y z)
-     (append
-      (used-registers x)
-      (used-registers y)
-      (used-registers z)))
-    (('$primitive (or ('quote name) name)) '())
-    (('$box val) (used-registers val))
-    (('$box-ref val) (used-registers val))
-    (('$box-set! box val)
-     (append
-      temporary-registers
-      (used-registers box)
-      (used-registers val)))
-    (('$inline (or ('quote opr) opr) args ...)
-     (append 
-      temporary-registers      ; inline code may clobber any temporary
-      (append-map used-registers args)))
-    (('$allocate (or ('quote type) type) (or ('quote size) size) args ...)
-     (append
-      (take (length args) temporary-registers)
-      (append-map used-registers args)))
-    (((or '$undefined '$uninitialized)) '())
-    (('$closure-ref i) (list self-register))
-    (('quote c) '())
-    ((op args ...)
-     (error "CPS-call in non-tail position" x))
-    (_ (error "bad expression" x))))
-
-
-;; return register that holds this value of #f
-(define (argument-register arg)
-  (match arg
-    (('$local-ref var) (lookup-variable var))
-    (_ #f)))
 
 (define (translate-call x)
   (let ((n (length x)))
@@ -479,9 +406,24 @@
       (generate-procedure-check))
     (generate-slot-ref arg-register self-register (cells 1))
     (generate-immediate-ref count-register n)
-    (if allocating
-	(generate-alloc-check-and-call)
-	(generate-tail-call arg-register))))
+    (cond (allocating
+	   (generate-alloc-check)
+	   (generate-tail-call arg-register))
+	  (else
+	   (generate-tail-call arg-register)))))
+
+(define (translate-call-to-known-target id x)
+  (let ((n (length x))
+	(lbl (string-append "f_" (number->string id))))
+    (translate/registers x argument-registers)
+    (cond (allocating
+	   (generate-slot-ref arg-register self-register (cells 1))
+	   (generate-immediate-ref count-register n)
+	   (generate-alloc-check)
+	   (generate-direct-tail-call lbl))
+	  (else
+	   (generate-immediate-ref count-register n)
+	   (generate-direct-tail-call lbl)))))
 
 (define (translate-closure exp)
   (match exp
@@ -545,7 +487,13 @@
 	       (else (generate-align word-size))) ; assumes word-size == 8
 	 (emit l ": ")
 	 (generate-defword "FLONUM | " (cells 1))
-	 (generate-deffloat (exact->inexact c)))
+	 (cond ((nan? c) (generate-defword "0x7ff0000000000001"))
+	       ((not (finite? c))
+		(generate-defword
+		 (if (positive? c)
+		     "0x7ff0000000000000"
+		     "0xfff0000000000000")))
+	       (else (generate-deffloat (exact->inexact c)))))
 	((pair? c)
 	 (let ((lcar (register-literal (car c)))
 	       (lcdr (register-literal (cdr c))))
@@ -592,70 +540,3 @@
 	 (match-lambda 
 	   ((_ . r) r)))
 	(else (error "unknown local variable" var))))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(define (generate-code defs code unused)
-  (set! label-counter 0)
-  (generate-header (map mangle-feature-name implementation-features))
-  (set! literals-to-be-translated '())
-  (set! primitives '())
-  (set! unused-global-variables unused)
-  (generate-closures code)
-  (generate-globals defs)
-  (generate-literals)
-  (generate-primitives)
-  (generate-trailer))
-
-(define (generate-globals defs)
-  (generate-section ".data")
-  (emit "globals:\n")
-  (for-each 
-   (lambda (def)
-     (emit (mangle-identifier def) ": ")
-     (generate-defword "undefined"))
-   defs)
-  (emit "endglobals:\n"))
-
-(define (generate-closures top)
-  (set! closures-to-be-translated (list top))
-  (generate-section ".text")
-  (emit "toplevel:\n")
-  (do ()
-      ((null? closures-to-be-translated))
-    (translate-closure (pop! closures-to-be-translated))))
-
-(define (generate-literals)
-  (set! string-literals '())
-  (set! symbol-table '())
-  (generate-section ".data")
-  (do ()
-      ((null? literals-to-be-translated))
-    (match-let (((l . c) (pop! literals-to-be-translated)))
-      (translate-literal l c)))
-  (generate-strings)
-  (generate-symbol-table))
-
-(define (generate-strings)
-  (generate-section ".data")
-  (for-each
-   (match-lambda
-     ((l . str)
-      (generate-align word-size)
-      (emit l ": ")
-      (generate-defword "STRING | " (string-length str))
-      (when (positive? (string-length str))
-	(generate-defbyte 
-	 (join (map (o number->string char->integer) (string->list str)) ",")))))
-   string-literals))
-
-(define (generate-symbol-table)
-  (generate-section ".data")
-  (emit "symbol_literals:\n")
-  (for-each
-   (lambda (l)
-     (generate-defword (cdr l)))
-   symbol-table)
-  (generate-defword "false"))

@@ -1,3 +1,29 @@
+Release 4:
+
+  In the single-argument case "/" did not handle a fixnum argument
+  correctly.
+
+  Added some minor optimizations to improve code, mainly removes some
+  uses of "rax" as an intermediate register.
+
+  Added constant- and copy-propagation pass. This gives quite a
+  performance improvement in some cases (e.g. fft.scm).
+
+  Unused variable detection was improved somewhat.  
+
+  Support for using compiled code in shared libraries (requires
+  "-feature pic") has been added.
+
+  Fixed serious bug in floating-point comparison: SSE2 compares
+  sets flags similar as unsigned integer compare, so the same
+  test can not be used for fixnum and flonum comparisons.
+
+  Fixed another bug regarding floating-point numbers in "positive?".
+
+  "string->number" handles inf/nan correctly.
+
+  Added "handle-exceptions" syntactic form.
+
 Release 3:
 
   Added evaluator and standalone-interpreter.

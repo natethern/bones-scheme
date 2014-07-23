@@ -165,6 +165,10 @@
 	($inline "fld qword [rax + CELLS(1)]; fsqrt; fstp qword [r11 + CELLS(1)]" x r))
     r))
 
+(define-syntax-rule (%ieee754-nan) ($inline "lea rax, [ieee754_nan]"))
+(define-syntax-rule (%ieee754-infinity) ($inline "lea rax, [ieee754_inf]"))
+(define-syntax-rule (%ieee754-negative-infinity) ($inline "lea rax, [ieee754_ninf]"))
+
 ;; compute size for a given number of cells
 (define-syntax-rule (%cells n) ($inline "shl rax, CELL_SHIFT; or rax, 1" n))
 

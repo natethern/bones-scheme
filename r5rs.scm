@@ -133,7 +133,9 @@
   (%fx<? (if (exact? x) x (%ieee754-sign x)) 0))
 
 (define-inline (positive? x)
-  (%fx>? (if (exact? x) x (%ieee754-sign x)) 0))
+  (cond ((exact? x) (%fx>? x 0))
+	((eq? 0 (%ieee754-sign x)) (not (eq? 0 (%ieee754-exponent-and-mantissa x))))
+	(else #f)))
 
 (define-inline (zero? n)
   (eq? (if (exact? n) n (%ieee754-exponent-and-mantissa n)) 0))
@@ -714,13 +716,25 @@
 				  (loop p q)))))))))))))))
 
   (else
+
+   (define (%string->number str base)
+     (let ((len (string-length str)))
+       (cond ((eq? len 0) #f)
+	     ((or (string-ci=? str "+nan.0")
+		  (string-ci=? str "-nan.0"))
+	      (%ieee754-nan))
+	     ((string-ci=? str "+inf.0")
+	      (%ieee754-infinity))
+	     ((string-ci=? str "-inf.0")
+	      (%ieee754-negative-infinity))
+	     (else
+	      (let ((n ($inline "CALL str2num" str base)))
+		(and (finite? n) n)))))) ; handle "[-+]infinity"
    
    (define-syntax string->number
      (case-lambda 
-       ((str base)
-	($inline "CALL str2num" str base))
-       ((str)
-	($inline "CALL str2num" str 10))))
+       ((str base) (%string->number str base))
+       ((str) (%string->number str 10))))
 
    (define (number->string num . base)
      (cond ((nan? num) "+nan.0")

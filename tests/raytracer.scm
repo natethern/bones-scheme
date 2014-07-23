@@ -1,0 +1,211 @@
+;;;; simple raytracer example from www.scratchapixel.com, ported from C++ to Scheme
+
+
+(define pi 3.141592653589793)
+(define ninf (string->number "+inf"))
+
+
+(define (vector-x v) (vector-ref v 0))
+(define (vector-y v) (vector-ref v 1))
+(define (vector-z v) (vector-ref v 2))
+(define (vector-x-set! v x) (vector-set! v 0 x))
+(define (vector-y-set! v y) (vector-set! v 1 y))
+(define (vector-z-set! v z) (vector-set! v 2 z))
+
+(define (normalize vec)
+  (let ((nor2 (vec-length2 vec)))
+    (if (positive? nor2)
+	(let ((invnor (/ (sqrt nor2))))
+	  (vector (* invnor (vector-x vec))
+		  (* invnor (vector-y vec))	  
+		  (* invnor (vector-z vec))))
+	vec)))
+
+(define (vec-length2 vec)
+  (+ (let ((x (vector-x vec))) (* x x))
+     (let ((y (vector-y vec))) (* y y))
+     (let ((z (vector-z vec))) (* z z))))
+
+(define (vec-length vec)
+  (sqrt (vec-length2 vec)))
+
+(define (vec/f* v f)
+  (vector (* (vector-x v) f) (* (vector-y v) f) (* (vector-z v) f)))
+
+(define (vec* v1 v2)
+  (vector (* (vector-x v1) (vector-x v2))
+	  (* (vector-y v1) (vector-y v2))
+	  (* (vector-z v1) (vector-z v2))))
+
+(define (vec- v1 . v2)
+  (if (pair? v2)
+      (let ((v2 (car v2)))
+	(vector (- (vector-x v1) (vector-x v2))
+		(- (vector-y v1) (vector-y v2))
+		(- (vector-z v1) (vector-z v2))))
+      (vector (- (vector-x v1))
+	      (- (vector-y v1))
+	      (- (vector-z v1)))))
+
+(define (vec+ v1 v2)
+  (vector (+ (vector-x v1) (vector-x v2))
+	  (+ (vector-y v1) (vector-y v2))
+	  (+ (vector-z v1) (vector-z v2))))
+
+(define (vec+! v1 v2)
+  (vector-x-set! v1 (+ (vector-x v1) (vector-x v2)))
+  (vector-y-set! v1 (+ (vector-y v1) (vector-y v2)))
+  (vector-z-set! v1 (+ (vector-z v1) (vector-z v2))))
+
+(define (vec*! v1 v2)
+  (vector-x-set! v1 (* (vector-x v1) (vector-x v2)))
+  (vector-y-set! v1 (* (vector-y v1) (vector-y v2)))
+  (vector-z-set! v1 (* (vector-z v1) (vector-z v2))))
+
+(define (vec-dot v1 v2)
+  (+ (* (vector-x v1) (vector-x v2))
+     (* (vector-y v1) (vector-y v2))
+     (* (vector-z v1) (vector-z v2))))
+
+(define (sphere c r sc refl transp . ec)
+  (vector c r (* r r) sc refl transp (if (null? ec) (vector 0 0 0) (car ec))))
+
+(define (sphere-center s) (vector-ref s 0))
+(define (sphere-radius s) (vector-ref s 1))
+(define (sphere-radius2 s) (vector-ref s 2))
+(define (sphere-surface-color s) (vector-ref s 3))
+(define (sphere-reflection s) (vector-ref s 4))
+(define (sphere-transparency s) (vector-ref s 5))
+(define (sphere-emission-color s) (vector-ref s 6))
+
+(define (intersect s rayorig raydir)	; returns #f or (t0 . t1)
+  (let* ((l (vec- (sphere-center s) rayorig))
+	 (tca (vec-dot l raydir)))
+    (and (not (negative? tca))
+	 (let ((d2 (- (vec-dot l l) (* tca tca)))
+	       (r2 (sphere-radius2 s)))
+	   (and (<= d2 r2)
+		(let ((thc (sqrt (- r2 d2))))
+		  (cons (- tca thc) (+ tca thc))))))))
+
+(define max-ray-depth 5)
+
+(define (mix a b mix)
+  (+ (* b mix) (* a (- 1 mix))))
+
+(define (trace rayorig raydir spheres depth)
+  (let ((tnear ninf)
+	(sphere #f))
+    (for-each
+     (lambda (s)
+       (cond ((intersect s rayorig raydir) =>
+	      (lambda (tt)
+		(let ((t0 (car tt))
+		      (t1 (cdr tt)))
+		  (if (negative? t0) (set! t0 t1))
+		  (if (< t0 tnear)
+		      (begin
+			(set! tnear t0)
+			(set! sphere s))))))))
+     spheres)
+    (if (not sphere)
+	(vector 2 2 2)
+	(let* ((surface-color (vector 0 0 0))
+	       (phit (vec+ rayorig (vec/f* raydir tnear)))
+	       (nhit (normalize (vec- phit (sphere-center sphere))))
+	       (bias 1e-4)
+	       (inside #f))
+	  (if (positive? (vec-dot raydir nhit))
+	      (begin
+		(set! nhit (vec- nhit))
+		(set! inside #t)))
+	  (if (and (or (positive? (sphere-transparency sphere))
+		       (positive? (sphere-reflection sphere)))
+		   (< depth max-ray-depth))
+	      (let* ((facingratio (- (vec-dot raydir nhit)))
+		     (fresneleffect (mix (expt (- 1 facingratio) 3) 1 0.1))
+		     (refldir (normalize (vec- raydir (vec/f* nhit (* 2 (vec-dot raydir nhit))))))
+		     (reflection (trace (vec+ phit (vec/f* nhit bias))
+					refldir
+					spheres
+					(+ depth 1)))
+		     (refraction
+		      (if (not (zero? (sphere-transparency sphere)))
+			  (let* ((ior 1.1)
+				 (eta (if inside ior (/ ior)))
+				 (cosi (- (vec-dot nhit raydir)))
+				 (k (- 1 (* eta eta (- 1 (* cosi cosi)))))
+				 (refrdir (normalize (vec+ (vec/f* raydir eta) 
+							   (vec/f* nhit (- (* eta cosi) (sqrt k)))))))
+			    (trace (vec- phit (vec/f* nhit bias))
+				   refrdir
+				   spheres
+				   (+ depth 1)))
+			  '#(0 0 0))))
+		(set! surface-color
+		  (vec* (vec+ (vec/f* reflection fresneleffect)
+			      (vec/f* refraction (* (- 1 fresneleffect) (sphere-transparency sphere))))
+			(sphere-surface-color sphere))))
+	      (for-each
+	       (lambda (sphere1)
+		 (if (positive? (vector-x (sphere-emission-color sphere1)))
+		     (let ((transmission '#(1 1 1))
+			   (light-direction (normalize (vec- (sphere-center sphere1) phit))))
+		       (let loop ((ss spheres))
+			 (if (pair? ss)
+			     (let ((sphere2 (car ss)))
+			       (if (and (not (eq? sphere2 sphere1))
+					(intersect sphere2 (vec+ phit (vec/f* nhit bias)) light-direction))
+				   (set! transmission '#(0 0 0))
+				   (loop (cdr ss))))))
+		       (vec+! surface-color 
+			      (vec* (vec* (sphere-surface-color sphere) transmission)
+				    (vec/f* (sphere-emission-color sphere1)
+					    (max 0 (vec-dot nhit light-direction))))))))
+	       spheres))
+	  (vec+ surface-color (sphere-emission-color sphere))))))
+
+(define (render spheres)
+  (let* ((width 640)
+	 (height 480)
+	 (image (make-vector (* width height) 0.0))
+	 (pixel 0)
+	 (inv-width (/ width))
+	 (inv-height (/ height))
+	 (fov 30)
+	 (aspectratio (/ width height))
+	 (angle (tan (* pi 0.5 (/ fov 180)))))
+    (do ((y 0 (+ y 1)))
+	((>= y height))
+      (do ((x 0 (+ x 1)))
+	  ((>= x width))
+	(let* ((xx (* (- (* 2 (+ x 0.5) inv-width) 1) angle aspectratio))
+	       (yy (* (- 1 (* 2 (+ y 0.5) inv-height)) angle))
+	       (raydir (normalize (vector xx yy -1))))
+	  (vector-set! image pixel (trace (vector 0 0 0) raydir spheres 0))
+	  (set! pixel (+ pixel 1)))))
+    (with-output-to-file "untitled.ppm"
+      (lambda ()
+	(for-each display `("P6\n" ,width #\space ,height "\n255\n"))
+	(let ((size (* width height)))
+	  (do ((i 0 (+ i 1)))
+	      ((>= i size))
+	    (let ((p (vector-ref image i)))
+	      (display (integer->char (inexact->exact (truncate (* 255 (min 1 (vector-x p)))))))
+	      (display (integer->char (inexact->exact (truncate (* 255 (min 1 (vector-y p)))))))
+	      (display (integer->char (inexact->exact (truncate (* 255 (min 1 (vector-z p))))))))))))))
+
+(define (main)
+  (let ((spheres
+	 (list
+	  ;; position, radius, surface color, reflectivity, transparency, emission color
+	  (sphere (vector 0.0 -10004.0 -20.0) 10000 (vector 0.2 0.2 0.2) 0 0)
+	  (sphere (vector 0.0 0.0 -20.0) 4 (vector 1.0 0.32 0.36) 1 0.5)
+	  (sphere (vector 5.0 -1.0 -15.0) 2 (vector 0.9 0.76 0.46) 1 0)
+	  (sphere (vector 5.0 0.0 -25.0) 3 (vector 0.65 0.77 0.97) 1 0)
+	  (sphere (vector -5.5 0.0 -15.0) 3 (vector 0.9 0.9 0.9) 1 0)
+	  ;; light
+	  (sphere (vector 0.0 20.0 -30.0) 3 (vector 0.0 0.0 0.0) 0 0 (vector 3.0 3.0 3.0)))))
+    (render spheres)))
+
+(main)

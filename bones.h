@@ -41,6 +41,9 @@ typedef struct BONES_block {
 
 #define BONES_ERROR_RECORD_ID   1
 
+/* access block header */
+#define BONES_header(x)          (((BONES_block *)(x))->header)
+
 /* operations on block-headers */
 #define BONES_header_size(hdr)   ((hdr) & BONES_SIZE_MASK)
 #define BONES_header_type(hdr)   (((hdr) & BONES_TYPE_MASK) >> 56)
@@ -58,8 +61,8 @@ typedef struct BONES_block {
 #define BONES_slot_set(x, i, y)  (((BONES_block *)(x))->slots[ i ] == (y))
 
 /* these macros should not be used on a fixnum */
-#define BONES_size_of(x)         BONES_header_size(((BONES_block *)(x))->header)
-#define BONES_type_of(x)         BONES_header_type(((BONES_block *)(x))->header)
+#define BONES_size_of(x)         BONES_header_size(BONES_header(x))
+#define BONES_type_of(x)         BONES_header_type(BONES_header(x))
 
 #define BONES_is_error_object(x)					\
   (BONES_type_of(x) == BONES_RECORD &&					\
@@ -68,6 +71,7 @@ typedef struct BONES_block {
 /* extract string-pointer and float-value */
 #define BONES_string(x)         ((char *)(((BONES_block *)(x))->slots))
 #define BONES_float(x)          (*((double *)(((BONES_block *)(x))->slots)))
+#define BONES_bytevector(x)     ((unsigned char *)((BONES_block *)(x))->slots)
 
 /* extract error-message fields */
 #define BONES_error_object_message(eo)    BONES_slot_ref(eo, 2)

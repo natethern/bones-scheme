@@ -4,7 +4,12 @@ set fail=0
 
 mkdir tmp
 
-for %%f in (tests\fac.scm tests\tak.scm tests\mandelbrot.scm tests\r4rstest.scm tests\r5rs_pitfalls.scm tests\dynamic.scm tests\compiler.scm tests\forth.scm) do echo %%f & call run %%f
+echo tests\r4rstest.scm
+call scripts\run tests\r4rstest.scm -case-insensitive
+for %%f in (tests\fac.scm tests\tak.scm tests\mandelbrot.scm tests\r5rs_pitfalls.scm tests\dynamic.scm tests\compiler.scm tests\forth.scm) do echo %%f & call scripts\run %%f
+
+call scripts\run tests\null.scm
+dir tests\null
 
 echo.
 
