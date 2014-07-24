@@ -55,7 +55,7 @@ BONES                                                                     -*- Or
   - needs write-barrier to record assignments of heap-data into non-heap objects.
     - then evict recursively.
   - also, keep GC-count in block header.
-* option "-export VAR"
+* configuration form "(export VAR ...)"
   - makes global externally visible (+ PREFIX)
 * TODO pre-allocated chars in the range 0-255
   - all chars are preallocated, unless we allow chars with arbitrary code.
