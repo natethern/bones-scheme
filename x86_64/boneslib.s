@@ -643,6 +643,7 @@ MANGLE(ENTRYPOINT):
   mov [toplevel_rsp], rsp
   mov rcx, rdi			; argument
   mov SELF, rax			; saved K
+  mov r11, 2
   mov rax, [SELF + CELLS(1)]
   jmp rax
 %elifdef FEATURE_NOLIBC
