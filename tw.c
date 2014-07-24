@@ -22,36 +22,52 @@ int size_x, size_y;
 char *fontname = "-misc-fixed-bold-r-normal--18-120-100-100-c-90-iso8859-1";
 int screen;
 XColor colortable[ 256 ];
-BONES_X key_event_vector[ 4 ];
-int line_height = 10;		/* XXX */
+BONES_X key_event_vector[ 5 ];
+int line_height = 20;		/* XXX */
 char *window_name = "tw";
 BONES_X topline = NULL;
 int init_width = 500, init_height = 300;
 
 
-void keypress(char c, KeySym sym, int state)
+static void call_scheme(BONES_X arg)
 {
-  BONES_X vec = (BONES_X)key_event_vector;
-  vec->header = (BONES_VECTOR << 56) | 4;
-  vec->slots[ 0 ] = BONES_int2fix(c);
-  vec->slots[ 1 ] = BONES_int2fix(sym);
-  vec->slots[ 2 ] = BONES_int2fix(state);
-  vec->slots[ 3 ] = BONES_int2fix(1);
+  BONES_X result = scheme(arg);
+
+  if(BONES_is_error_object(result)) {
+    BONES_X msg = BONES_error_object_message(result);
+    fprintf(stderr, "Scheme error: %.*s\n", (int)BONES_size_of(msg), BONES_string(msg));
+    exit(1);
+  }
+
+  topline = result;
 }
 
 
-void keyrelease(char c, KeySym sym, int state)
+static void keypress(char c, KeySym sym, int state)
 {
   BONES_X vec = (BONES_X)key_event_vector;
-  vec->header = (BONES_VECTOR << 56) | 4;
-  vec->slots[ 0 ] = BONES_int2fix(c);
-  vec->slots[ 1 ] = BONES_int2fix(sym);
-  vec->slots[ 2 ] = BONES_int2fix(state);
-  vec->slots[ 3 ] = BONES_int2fix(1);
+  BONES_header_set(vec, (BONES_VECTOR << 56) | 4);
+  BONES_slot_set(vec, 0, BONES_int2fix(c));
+  BONES_slot_set(vec, 1, BONES_int2fix(sym));
+  BONES_slot_set(vec, 2, BONES_int2fix(state));
+  BONES_slot_set(vec, 3, BONES_int2fix(1));
+  call_scheme(vec);
 }
 
 
-void palette(BONES_X vec)
+static void keyrelease(char c, KeySym sym, int state)
+{
+  BONES_X vec = (BONES_X)key_event_vector;
+  BONES_header_set(vec, (BONES_VECTOR << 56) | 4);
+  BONES_slot_set(vec, 0, BONES_int2fix(c));
+  BONES_slot_set(vec, 1, BONES_int2fix(sym));
+  BONES_slot_set(vec, 2, BONES_int2fix(state));
+  BONES_slot_set(vec, 3, BONES_int2fix(0));
+  call_scheme(vec);
+}
+
+
+static void palette(BONES_X vec)
 {
   int i, len = BONES_size_of(vec);
   XColor rgb;
@@ -64,28 +80,16 @@ void palette(BONES_X vec)
 }
 
 
-void render_lines(BONES_X topline)
-{
-  int y = 0;
-
-  if(topline == NULL) return;
-
-  while(y < size_y) {
-    render_line(topline);
-    y += line_height;
-    topline = BONES_slot_ref(topline, 1); /* slot #1: next */
-  }
-}
-
-
-void render_text(BONES_X str, int y)
+static void render_text(BONES_X str, int y)
 {
   int len = BONES_size_of(str);
+
   XDrawString(display, top, gc, 0, y, BONES_string(str), len);
+  //printf(">>%.*s<<\n", len, BONES_string(str));
 }
 
 
-void render_line(BONES_X line, int y)
+static void render_line(BONES_X line, int y)
 {
   BONES_X content = BONES_slot_ref(line, 2); /* slot #2: content */
 
@@ -106,12 +110,29 @@ void render_line(BONES_X line, int y)
 	XSetBackground(display, gc, colortable[ col ].pixel);
 	render_text(BONES_slot_ref(cell, 2), y);
       }
+
+      content = BONES_slot_ref(content, 1); /* cdr */
     }
   }
 }
 
 
-int init(int w, int h, char *window_name)
+static void render_lines(BONES_X topline)
+{
+  int y = 0;
+  BONES_X ln = topline; 
+
+  if(ln == NULL) return;
+
+  while(BONES_type_of(ln) != BONES_BOOLEAN && y < size_y) {
+    render_line(ln, y);
+    y += line_height;
+    ln = BONES_slot_ref(ln, 1); /* slot #1: next */
+  }
+}
+
+
+static int init(int w, int h, char *window_name)
 {
   char  *server;
   XEvent ev;
@@ -164,7 +185,7 @@ int init(int w, int h, char *window_name)
 }
 
 
-void redraw()
+static void redraw()
 {
   XSetBackground(display, gc, white.pixel);
   XSetForeground(display, gc, black.pixel);
@@ -176,7 +197,7 @@ int main()
 {
   if(!init(init_width, init_height, window_name)) return 1;
 
-  palette(bones(NULL));
+  palette(scheme(NULL));
 
   for (;;) {
     XEvent xevent;
@@ -196,6 +217,8 @@ int main()
 	  keypress(c, keysym, xevent.xkey.state);
 	else
 	  keyrelease(c, keysym, xevent.xkey.state);
+
+	redraw();
       }
     } 
     else if (xevent.type == ClientMessage) {
