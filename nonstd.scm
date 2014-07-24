@@ -301,3 +301,12 @@
      ($inline "CALL copy_bytes" (cons from start) (cons to at) (%fx- (bytevector-length from) start)))
     ((to at from)
      ($inline "CALL copy_bytes" (cons from 0) (cons to at) (bytevector-length from)))))
+
+(define (with-input-from-string str thunk)
+  (parameterize ((current-input-port (open-input-string str)))
+    (thunk)))
+
+(define (with-output-to-string thunk)
+  (parameterize ((current-output-port (open-output-string)))
+    (thunk)
+    (get-output-string (current-output-port))))

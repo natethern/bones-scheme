@@ -1,3 +1,13 @@
+Release 5:
+
+  "return-to-host" failed when compiled with "-feature check".
+
+  Changed embedded entry point name from "bones" to "scheme" (the
+  name-prefix still applies.)
+
+  Added "with-input-from-string" and "with-output-to-string" to
+  "nonstd.scm".
+
 Release 4:
 
   In the single-argument case "/" did not handle a fixnum argument

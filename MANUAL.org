@@ -778,6 +778,16 @@
         from =PORT=, the /end-of-file/ object is returned. =PORT=
         defaults to the value of =(current-input-port)=.
 
+    - =(with-output-to-string STRING THUNK)= :: Calls the
+        zero-argument procedure =THUNK= with the current output port
+        temporarily bound to a string output port on =STRING= and
+        returns the accumulated output from that port as a string.
+
+    - =(with-input-from-string STRING THUNK)= :: Calls the
+        zero-argument procedure =THUNK= with the current input port
+        temporarily bound to a string input port on =STRING= and
+        returns the result.
+
     - =(write-string STRING [PORT])= :: Writes the characters in =STRING= to =PORT=,
         which defaults to the current output port.
 
@@ -1541,7 +1551,7 @@
   having this signature:
 
   #+BEGIN_SRC c
-  BONES_X bones(BONES_X argument);
+  BONES_X scheme(BONES_X argument);
   #+END_SRC
 
   where =BONES_X= is a generic type designating a Scheme value.  
@@ -1550,7 +1560,7 @@
   threads, because it refers to static data buffers and variables.  It
   is possible to combine multiple programs by using the
   =-DPREFIX=<prefix>= option when assembling each compiled program. In
-  this case the entry-point will be named =<prefix>_bones=. Every
+  this case the entry-point will be named =<prefix>_scheme=. Every
   entry-point refers to a self-contained Scheme environment and thus
   can be run in a separate thread, if desired.
 
