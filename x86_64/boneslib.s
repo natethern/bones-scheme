@@ -698,6 +698,9 @@ terminate:
   FIX2INT rax
   pop rbp
   RESTORE
+%ifdef FEATURE_EMBEDDED
+  mov rax, embedded_error_object
+%endif  
   ret
 
 
@@ -2690,6 +2693,23 @@ true:
 terminate_closure:
   dq CLOSURE | 1
   dq terminate
+
+%ifdef FEATURE_EMBEDDED
+embedded_error_object:
+  dq RECORD | 6
+  dq error_object_symbol, FIX(1), embedded_error_msg, null, false, false
+embedded_error_msg:
+  dq STRING | (.msg2 - .msg1)
+.msg1:
+  db `error in embedded scheme code`
+.msg2:
+error_object_symbol:
+  dq SYMBOL | 1
+  dq error_object_string
+error_object_string:
+  dq STRING | 12
+  db `error-object`
+%endif
 
 temporary_flonum: dq FLONUM | CELLS(1), 0
 flonum_0: dq FLONUM | CELLS(1), __float64__(0.0)
