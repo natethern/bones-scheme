@@ -101,9 +101,9 @@
 
 %ifdef FEATURE_EMBEDDED
  %ifdef PREFIX
-  %define ENTRYPOINT PREFIX %+ _bones
+  %define ENTRYPOINT PREFIX %+ _scheme
  %else
-  %define ENTRYPOINT bones
+  %define ENTRYPOINT scheme
  %endif
 %endif
 

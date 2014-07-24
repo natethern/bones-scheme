@@ -80,7 +80,7 @@ typedef struct BONES_block {
 
 
 /* default entry-point */
-extern BONES_X bones(BONES_X);
+extern BONES_X scheme(BONES_X);
 
 
 #endif
