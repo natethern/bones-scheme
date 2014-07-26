@@ -6,7 +6,7 @@
   (else))
 
 (define pi 3.141592653589793)
-(define ninf (string->number "+inf"))
+(define ninf (string->number "+inf.0"))
 
 
 (define (vector-x v) (vector-ref v 0))
