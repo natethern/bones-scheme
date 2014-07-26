@@ -1,6 +1,10 @@
 ;;;; simple raytracer example from www.scratchapixel.com, ported from C++ to Scheme
 
 
+(cond-expand
+  (chicken (use ports))
+  (else))
+
 (define pi 3.141592653589793)
 (define ninf (string->number "+inf"))
 
