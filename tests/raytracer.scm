@@ -184,16 +184,18 @@
 	       (raydir (normalize (vector xx yy -1))))
 	  (vector-set! image pixel (trace (vector 0 0 0) raydir spheres 0))
 	  (set! pixel (+ pixel 1)))))
-    (with-output-to-file "untitled.ppm"
-      (lambda ()
-	(for-each display `("P6\n" ,width #\space ,height "\n255\n"))
-	(let ((size (* width height)))
-	  (do ((i 0 (+ i 1)))
-	      ((>= i size))
-	    (let ((p (vector-ref image i)))
-	      (display (integer->char (inexact->exact (truncate (* 255 (min 1 (vector-x p)))))))
-	      (display (integer->char (inexact->exact (truncate (* 255 (min 1 (vector-y p)))))))
-	      (display (integer->char (inexact->exact (truncate (* 255 (min 1 (vector-z p))))))))))))))
+    (let ((output
+	   (with-output-to-string
+	     (lambda ()
+	       (for-each display `("P6\n" ,width #\space ,height "\n255\n"))
+	       (let ((size (* width height)))
+		 (do ((i 0 (+ i 1)))
+		     ((>= i size))
+		   (let ((p (vector-ref image i)))
+		     (display (integer->char (inexact->exact (truncate (* 255 (min 1 (vector-x p)))))))
+		     (display (integer->char (inexact->exact (truncate (* 255 (min 1 (vector-y p)))))))
+		     (display (integer->char (inexact->exact (truncate (* 255 (min 1 (vector-z p))))))))))))))
+      (call-with-output-file "untitled.ppm" (cut display output <>)))))
 
 (define (main)
   (let ((spheres
