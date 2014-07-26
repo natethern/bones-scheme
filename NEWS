@@ -8,6 +8,12 @@ Release 5:
   Added "with-input-from-string" and "with-output-to-string" to
   "nonstd.scm".
 
+  Characters with code outside 8 bit range are printed in hexadecimal
+  notation.
+
+  Characters with codes in the 8-bit range are pre-allocated so
+  "integer->char" doesn't need to allocate memory for these.
+
 Release 4:
 
   In the single-argument case "/" did not handle a fixnum argument
