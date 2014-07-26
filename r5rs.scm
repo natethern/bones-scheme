@@ -996,7 +996,13 @@
 			((#\newline) (outs "newline"))
 			((#\space) (outs "space"))
 			((#\tab) (outs "tab"))
-			(else (out x))))
+			(else
+			 (let ((n (char->integer x)))
+			   (cond ((and (%fx>=? n 0) (%fx<? n 256))
+				  (out x))
+				 (else
+				  (outs "x")
+				  (outs (number->string n 16))))))))
 		     (else (out x))))
 	      ((number? x) (outs (number->string x)))
 	      ((null? x) (outs "()"))
@@ -1216,14 +1222,20 @@
 	      ((#\%) (string->symbol (read-token (%list (docase c) #\#) cs)))
 	      ((#\!) (skip-line) (read1))
 	      ((#\\) 
-	       (let ((t (read-token '() #t)))
+	       (let* ((t (read-token '() #t))
+		      (len (string-length t)))
 		 (cond ((string-ci=? "newline" t) #\newline)
 		       ((string-ci=? "tab" t) #\tab)
 		       ((string-ci=? "space" t) #\space)
 		       ((string-ci=? "return" t) #\return)
-		       ((eq? 0 (string-length t)) (read-char port))
+		       ((eq? 0 len) (read-char port))
+		       ((and (char-ci=? #\x (string-ref t 0))
+			     (%fx>? len 1))
+			(integer->char
+			 (or (string->number (substring t 1) 16)
+			     (read-error "invalid character name" t))))
 		       (else (string-ref t 0)))))
-	      ((#\') `(syntax ,(read1))) ; for...whatever
+	      ((#\') `(syntax ,(read1))) ; for... whatever
 	      (else (read-error "invalid `#' syntax" c))))))
     (define (read-list delim)
       (call-with-current-continuation
