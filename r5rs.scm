@@ -97,7 +97,9 @@
        (eq? (%type-of x) #x10)))
 
 (define-inline (char->integer x) (%slot-ref x 0))
-(define-inline (integer->char x) ($allocate 4 1 x))
+
+(define-inline (integer->char x)
+  (or ($inline "CALL lookup_char" x) ($allocate 4 1 x)))
 
 (define %= ($primitive "numerically_equal"))
 (define %> ($primitive "numerically_greater"))

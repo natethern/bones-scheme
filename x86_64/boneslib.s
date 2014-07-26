@@ -2585,6 +2585,20 @@ get_last_error:
 %endif
 
 
+;; lookup char in character-table: rax = code (fixnum) -> rax (char or #f)
+lookup_char:
+  FIX2INT rax
+  cmp rax, 256
+  if b
+    lea r11, [char_table]
+    shl rax, CELL_SHIFT + 1
+    add rax, r11
+    ret
+  endif
+  mov rax, FALSE
+  ret
+
+
 %ifdef FEATURE_CHECK
 
 ;; check slot-access: rax = block, r11 = index (fixnum), clobbers r11
@@ -2749,6 +2763,13 @@ random_numbers:
   db 3,14,204,72,21,41,56,66,28,193,40,217,25,54,179,117
   db 238,87,240,155,180,170,242,212,191,163,78,218,137,194,175,110
   db 43,119,224,71,122,142,42,160,104,48,247,103,15,11,138,239
+
+char_table:
+  %assign i 0
+  %rep 256
+    dq CHAR | 1, FIX(i)
+    %assign i i + 1
+  %endrep
 
 %ifdef FEATURE_LLP64
 dcvt: db "%lld", 0
