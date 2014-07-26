@@ -1,7 +1,7 @@
 #!/bin/scheme /grass/16/boot
 ;; run .scm, .s or .o file -*- Scheme -*-
 
-(require 'sh 'match 'make)
+(require 'sh 'match)
 
 
 (define compiler "./bones")
