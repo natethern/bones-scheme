@@ -167,6 +167,7 @@
 
 (define (check)
   (bones)
+  (bonesi)
   (run (mkdir -p tmp))
   (print
    (let ((ok #t))
@@ -212,8 +213,11 @@
        (set! ok #f))
      (unless (zero? (run* (cmp ,(symbol-append 'bones-x86_64- target-feature '.s) tmp/bones.s)))
        (set! ok #f))
+     (print (padl " bonesi" 60 #\=))
+     (set! ok (and ok (zero? (run* (./bonesi tests/r4rstest.scm)))))
      (print (padl " embedded" 60 #\=))
      (unless (check-embedded) (set! ok #f))
+     (print (padl " grond" 60 #\=))
      (unless (check-grond) (set! ok #f))
      (if ok
 	 "\n\nall checks succeeded."
