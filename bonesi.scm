@@ -10,6 +10,8 @@
 
  (code
 
+  (eval-trace #t)
+
   (let ((args (cdr (command-line))))
     (cond ((null? args)
 	   (print "(BONES " bones-version ")")

@@ -14,6 +14,14 @@ Release 5:
   Characters with codes in the 8-bit range are pre-allocated so
   "integer->char" doesn't need to allocate memory for these.
 
+  "exit" and "emergency-exit" invoke exit(3) and _exit(2),
+  respectively.
+
+  Failed checks invoke error-handler instead of simply aborting with
+  an error message.
+
+  The evaluator features a call-trace, now.
+
 Release 4:
 
   In the single-argument case "/" did not handle a fixnum argument
