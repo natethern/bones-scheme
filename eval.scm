@@ -122,7 +122,15 @@
 			      body))))))
 	 (syntax-rules ()
 	   ((_ bindings body ...)
-	    (bind-param bindings () () () (begin body ...))))))))
+	    (bind-param bindings () () () (begin body ...))))))
+     (define-syntax-rule (handle-exceptions var handler body ...)
+       ((call-with-current-continuation
+	 (lambda (k)
+	   (parameterize ((current-exception-handler
+			   (lambda (var) (k (lambda () handler)))))
+	     (call-with-values (lambda () body ...)
+	       (lambda results
+		 (k (lambda () (apply values results))))))))))))
 
 (define eval-unbound-value (list 'unbound))
 (define expand expand-syntax)
@@ -194,6 +202,7 @@
      force
      truncate round floor ceiling
      open-input-string open-output-string get-output-string
+     with-input-from-string with-output-to-string
      current-second
      get-environment-variable
      current-jiffy jiffies-per-second
