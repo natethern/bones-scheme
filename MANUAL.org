@@ -844,11 +844,12 @@
     - =(emergency-exit [CODE])= :: Terminates the current program
         immediately.  Still pending =dynamic-wind= thunks are not
         invoked. =CODE= is the exit code of the process and defaults
-        to 0.
+        to 0. Invokes the =_exit(2)= library/system call.
 
     - =(exit [CODE])= :: Terminates the process with the process
        status =CODE= (or 0, if not given). Pending =dynamic-wind=
-       "after" thunks will be executed.
+       "after" thunks will be executed. Invokes the =exit(3)=
+       library/system call.
 
     - =(return-to-host RESULT)= :: Suspends the currently running
         program and returns =RESULT= to the caller. This procedure is
@@ -1026,6 +1027,10 @@
    =eval.scm= provides the following procedures:
 
    - =(eval FORM)= :: Evaluates =FORM= and returns its result(s).
+
+   - =(eval-trace [FLAG])= :: Parameter that enables maintaining a
+       "call-trace", which can be printed in an error
+       situation. Defaults to =#f=.
 
    - =(load FILENAME [EVALPROC])= :: Reads expressions from the file
        given by =FILENAME= (a string) and evaluates them. If
