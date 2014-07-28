@@ -116,7 +116,7 @@
 	 ("bonesi.o" ("bonesi.s")	;XXX boneslib?
 	  (run (nasm -f ,nasm-format bonesi.s -o bonesi.o)))
 	 ("bonesi.s" ("bonesi.scm" "eval.scm" "version.scm" "alexpand.scm") ;XXX intrinsics, etc?
-	  (run (./bones bonesi.scm -o bonesi.s))))))
+	  (run (./bones bonesi.scm -o bonesi.s -feature check))))))
 
 (define (bigbones)
   (bones)
