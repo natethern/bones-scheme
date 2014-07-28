@@ -1620,6 +1620,11 @@
 
   - Checking attempts to modify immutable data (literals).
 
+  Failed checks invoke the exception handler, and thus can be caught.
+  In certain fatal situations, for example, when the heap is full or
+  corrupted, the error-processing machinery may not be able to exit
+  with a meaningful message.
+
   Access to undefined ("unbound") variables will produce linker
   errors, where the variable name will be mangled, by prefixing it
   with "___" (three underscores) and replacing non-alphanumeric
