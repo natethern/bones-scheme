@@ -354,11 +354,6 @@
 (define (upload)
   (run (upload -d bones MANUAL.html NEWS bones.tar.gz bones.zip)))
 
-(define (twtest)
-  (run (bones twtest.scm -o twtest.s -feature check -feature embedded))
-  (run (nasm -f elf64 -g -F dwarf twtest.s -o twtest.o))
-  (run (gcc -g twtest.o tw.c -o twtest -lX11)))
-
 
 (define (-n)
   (run-dry-run #t))
