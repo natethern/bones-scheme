@@ -7,6 +7,7 @@
 
 (do ((i 1000 (- i 1))) ((zero? i)) 
   (let ((r (tak 18 12 6)))
-    (unless (eq? 7 r)
-      (display "failed.")
-      (exit 1))))
+    (if (not (eq? 7 r))
+	(begin
+	  (display "failed.")
+	  (exit 1)))))
