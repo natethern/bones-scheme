@@ -53,3 +53,9 @@
 
 (define-syntax-rule (%errno-string)
   ($inline "CALL get_last_error"))
+
+(define-syntax-rule (%exit code)
+  ($inline "INT2FIX rax; LIBCALL1 exit, rax" code))
+
+(define-syntax-rule (%_exit code)
+  ($inline "INT2FIX rax; LIBCALL1 _exit, rax" code))

@@ -1047,14 +1047,14 @@
   (let ((code (optional code 0)))
     (when (boolean? code)
       (set! code (if code 0 70)))	; EXIT_FAILURE
-    (%terminate code)))
+    (%_exit code)))
 
 (define (exit . code)
   (let ((code (optional code 0)))
     (when (boolean? code)
       (set! code (if code 0 70)))
     (let loop ()
-      (cond ((null? %dynamic-winds) (%terminate code))
+      (cond ((null? %dynamic-winds) (%exit code))
 	    (else
 	     (let ((dw (car %dynamic-winds)))
 	       (set! %dynamic-winds (cdr %dynamic-winds))
