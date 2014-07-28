@@ -21,6 +21,7 @@ BONES                                                                     -*- Or
    - adapt printer + reader.
 * add more checks
   - copying of slots and bytes (bounds, types).
+* try NASM optimization settings
 * grass hangs, when built with bones
   - endless GC during startup.
   - possibly problems with redefinitions of primitives, ending in some
@@ -52,14 +53,18 @@ BONES                                                                     -*- Or
     types and convert "let"-bound flonum vars using a custom binding form
     - e.g. "($let-float ...)" or something like this.
 * try using libgc as 2nd heap generation
-  - needs write-barrier to record assignments of heap-data into non-heap objects.
+  - needs write-barrier to record assignments of heap-data into
+    non-heap objects.
     - then evict recursively.
   - also, keep GC-count in block header.
+  - tricky to integrate into GC code: we need to mark+scan first, then
+    check GC-counts, then process heap once again (no pointers back
+    into heap are allowed). Or evict + record "inner" slots of evicted
+    data that point to heap objects? and recursive eviction may
+    invalidate forwarding-pointers, etc.
 * configuration form "(export VAR ...)"
   - makes global externally visible (+ PREFIX)
-* TODO pre-allocated chars in the range 0-255
-  - all chars are preallocated, unless we allow chars with arbitrary code.
-  - =integer->char=: check range and alloc, ensure this is inlined.
+* DONE pre-allocated chars in the range 0-255
   - benchmark. 
 * TODO we need FP num/str conversion
   - atof: http://pastebin.com/prYRrseH
