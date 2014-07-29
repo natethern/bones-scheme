@@ -64,8 +64,6 @@ BONES                                                                     -*- Or
     invalidate forwarding-pointers, etc.
 * configuration form "(export VAR ...)"
   - makes global externally visible (+ PREFIX)
-* DONE pre-allocated chars in the range 0-255
-  - benchmark. 
 * TODO we need FP num/str conversion
   - atof: http://pastebin.com/prYRrseH
     #+BEGIN_SRC asm
@@ -190,8 +188,6 @@ mainCRTStartup:
   - examples:
     (if (if X TRUE FALSE) Y Z) -> (if X Y Z)
     (if (if X FALSE TRUE) Y Z) -> (if X Z Y)
-* TODO test file:tw.c + file:twports.scm
-* TODO port file:tw.c to windows using file:ezxdisp-win32.c
 * TODO port embedded test with shared library to Windows
    - and add to file:scripts/check.bat
 * issues
