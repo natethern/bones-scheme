@@ -1041,8 +1041,18 @@
        expression is printed to the current output port before it is
        evaluated.
 
-   - =(repl)= :: Start an interactive read-eval-print loop until EOF is
-       read from the current input-port.
+   - =(oblist)= :: Returns an association list containing all global
+       variables currently defined in the evaluator where each element
+       of the list is of the form =(VARIABLENAME . VALUE)=.
+
+   - =(quit [RESULT])= :: Exit the currently running read-eval-print loop
+       and return =RESULT=, which defaults to an unspecified value.
+
+   - =(repl)= :: Start an interactive read-eval-print loop until EOF
+       is read from the current input-port. Returns the value given to
+       =quit=.
+
+   All these procedures are also available in interpreted code.
 
    Note that error-checking is still minimal, even for evaluated code.
 
