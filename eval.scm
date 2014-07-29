@@ -309,8 +309,7 @@
 			  (if (eq? val eval-unbound-value)
 			      (error "unbound variable" x)
 			      val)))
-		      (let ((val (cdr cell)))
-			(lambda (v) val)))))))
+		      (lambda (v) (cdr cell)))))))
 
 	((or (? number?)
 	     (? string?)
