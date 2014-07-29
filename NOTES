@@ -4,9 +4,6 @@ BONES                                                                     -*- Or
 
 * TODO file:tests/raytracer.scm produces wrong output
   - nearly good, but apparently there are some wrong calculations.
-* TODO failed checks could invoke =%error=
-  - just invoke "(%error MSG)" with an empty continuation.
-  - should probably reset rsp to =saved_rsp=.
 * TODO implement record-handling in file:match.scm
   - =is-a?=, =slot-ref=, =slot-set!=
 * TODO work around nasm-limitation in =__float64__= literals
@@ -19,9 +16,8 @@ BONES                                                                     -*- Or
    - would need proper alignment on 32-bit systems.
    - put API into file:fastmath.scm
    - adapt printer + reader.
-* add more checks
+* TODO add more checks
   - copying of slots and bytes (bounds, types).
-* try NASM optimization settings
 * grass hangs, when built with bones
   - endless GC during startup.
   - possibly problems with redefinitions of primitives, ending in some
@@ -172,15 +168,10 @@ mainCRTStartup:
 
 	ret
   #+END_SRC
-* TODO handling of conditionals is very bad
-  - e.g. =eq?=:
-    cmp rax, r11; SET_T rax; cmovne rax, FALSE
-    cmp rax, FALSE
-    j...
-  - add "($inline-test CODE CONDITION ARG ...)", which sets the arg-register
-    according to CONDITION.
-  - "(if ($inline-test ...) ...)" can then use custom branch,
-    depending on CONDITION.
+* TODO handling of conditionals is very bad			
+  - branch /inline-test/
+  - reimplement comparison intrinsics, check library code.
+  - test, benchmark.
 * TODO implement sexpr-simplification pass
   - match expressions for certain cases.
   - perhaps add "($comment COMMENT EXP)" special form to detect particular
