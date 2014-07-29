@@ -225,10 +225,10 @@
 (define eval-trace-buffer-len 0)
 (define eval-trace-buffer-max 20)
 
-(define (eval-print-trace-buffer)
+(define (eval-print-trace-buffer . port)
   (when (pair? eval-trace-buffer)
-    (let ((out (current-error-port)))
-      (display "\ncall trace:\n" out)
+    (let ((out (optional port (current-error-port))))
+      (display "\nCall trace:\n" out)
       (for-each
        (lambda (exp)
 	 (display "\n  " out)
