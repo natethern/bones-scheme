@@ -86,6 +86,8 @@
 	(('$primitive n) x)
 	(('$inline n xs ...)
 	 `($inline ,n ,@(map (cut walk <> env here #f) xs)))
+	(('$inline-test n cnd xs ...)
+	 `($inline-test ,n ,cnd ,@(map (cut walk <> env here #f) xs)))
 	(('$allocate t s xs ...)
 	 `($allocate ,t ,s ,@(map (cut walk <> env here #f) xs)))
 	(('$call id xs ...)

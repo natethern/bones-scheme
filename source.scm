@@ -36,7 +36,7 @@
   (and (pair? exp) 
        (not (memq (car exp)
 		  '($inline $allocate if begin $primitive quote letrec* let define set!
-			    $case-lambda $lambda $undefined $uninitialized)))))
+			    $case-lambda $lambda $undefined $uninitialized $inline-test)))))
 
 
 ;; Convert to canonical form
@@ -111,6 +111,8 @@
 	(('$primitive name) x)
 	(('$inline name xs ...)
 	 `($inline ,name ,@(map (cut walk <> env) xs)))
+	(('$inline-test name cnd xs ...)
+	 `($inline-test ,name ,cnd ,@(map (cut walk <> env) xs)))
 	(('$allocate t s xs ...)
 	 `($allocate ,t ,s ,@(map (cut walk <> env) xs)))
 	(('begin x) (walk x env))
