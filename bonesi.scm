@@ -3,6 +3,8 @@
 
 (program
 
+ (provide checked)
+
  (include "base.scm")
  (include "eval.scm")
 
