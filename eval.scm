@@ -213,6 +213,8 @@
      read-string write-string
      print
      reclaim free
+     file-exists? delete-file
+     current-directory
      open-append-output-file
      make-parameter make-disjoint-type
      expand
