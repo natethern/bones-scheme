@@ -483,7 +483,8 @@
 			   (write x)
 			   (newline))
 			 (evproc x)
-			 (loop)))))
+			 (loop))))
+		   (void))
 		 (cut close-input-port in))))))
     (values
      (case-lambda
