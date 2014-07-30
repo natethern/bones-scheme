@@ -469,23 +469,27 @@
 
 
 (define-values (load load-verbose)
-  (let ((load
-	 (lambda (filename evproc verbose)
-	   (let ((in (open-input-file filename)))
-	     (dynamic-wind
-		 void
-		 (lambda ()
-		   (let loop ()
-		     (let ((x (read in)))
-		       (unless (eof-object? x)
-			 (when verbose 
-			   (newline)
-			   (write x)
-			   (newline))
-			 (evproc x)
-			 (loop))))
-		   (void))
-		 (cut close-input-port in))))))
+  (let ((home (get-environment-variable "HOME")))
+    (define (load filename evproc verbose)
+      (let* ((filename (if (and (positive? (string-length filename))
+				(char=? #\~ (string-ref filename 0)))
+			   (string-append home (substring filename 1))
+			   filename))
+	     (in (open-input-file filename)))
+	(dynamic-wind
+	    void
+	    (lambda ()
+	      (let loop ()
+		(let ((x (read in)))
+		  (unless (eof-object? x)
+		    (when verbose 
+		      (newline)
+		      (write x)
+		      (newline))
+		    (evproc x)
+		    (loop))))
+	      (void))
+	    (cut close-input-port in))))
     (values
      (case-lambda
        ((filename ev) (load filename ev #f))
