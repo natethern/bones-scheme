@@ -1039,7 +1039,9 @@
    - =(load FILENAME [EVALPROC])= :: Reads expressions from the file
        given by =FILENAME= (a string) and evaluates them. If
        =EVALPROC= is given then each expression is passed to this
-       procedure instead of =eval=.
+       procedure instead of =eval=. If =FILENAME= starts with "~"
+       (tilde), then the remaining part will be appended to the value
+       of the environment-variable =HOME=.
 
    - =(load-verbose FILENAME [EVALPROC])= :: Like =load=, but each
        expression is printed to the current output port before it is
