@@ -20,7 +20,11 @@ Release 5:
   Failed checks invoke error-handler instead of simply aborting with
   an error message.
 
-  The evaluator features a call-trace, now.
+  Fixed various bugs in the evaluator and added support for showing a
+  call-trace on error. Renamed the standalone interpreter to "si".
+
+  "get-environment-variable" returned an invlaid result when the
+  variable was not defined.
 
 Release 4:
 
