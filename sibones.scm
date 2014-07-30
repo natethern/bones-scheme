@@ -1,12 +1,14 @@
 ;;;; program-description for self-compile
 
 
+;(load "~/bones/megalet.scm")
+;(load "~/bones/match.scm")
+;(load "~/bones/pp.scm")
+;(load "~/bones/support.scm")
+
+
 (load "version.scm")
-(load "match.scm")
-(load "support.scm")
-(load "pp.scm")
 (load "alexpand.scm")
-(load "megalet.scm")
 (load "source.scm")
 (load "cp.scm")
 (load "uv.scm")
