@@ -335,7 +335,8 @@
 		(let ((cell (findcell x)))
 		  ;; no need to check bound-ness if already bound
 		  (cond ((eq? (cdr cell) eval-unbound-value)
-			 (when eval-potentially-unbound
+			 (when (and eval-potentially-unbound
+				    (not (assq x eval-potentially-unbound)))
 			   (set! eval-potentially-unbound (cons cell eval-potentially-unbound)))
 			 (lambda (v)
 			   (let ((val (cdr cell)))
