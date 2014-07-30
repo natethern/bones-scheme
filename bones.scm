@@ -3,9 +3,6 @@
 
 (program
  (include "base.scm")
- (code
-  (define (features) '(bones))
-  (define flush-output void))
  (files "version.scm"
 	"match.scm"
 	"support.scm"

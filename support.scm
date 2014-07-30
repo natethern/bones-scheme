@@ -1,6 +1,6 @@
 ;;;; support-library for bones
 ;
-; - currently not used, but needed later for self-compiling
+; - needs match.scm and pp.scm
 
 
 (define (id x) x)
@@ -164,13 +164,6 @@
 	  ((follow lst1 lst2))
 	  (else (loop (cdr lst2))))))
 
-;; is one list the prefix of the other?
-(define (prefix-list? lst1 lst2)
-  (let loop ((lst1 lst1) (lst2 lst2))
-    (cond ((or (null? lst1) (null? lst2)))
-	  ((equal=? (car lst1) (car lst2)) (loop (cdr lst1) (cdr lst2)))
-	  (else #f))))
-
 (define (butlast lst)
   (let loop ((lst lst))
     (if (null? (cdr lst))
@@ -286,8 +279,7 @@
 	  (cons i (loop (add1 i) (sub1 n)))))))
 
 (define (print* . xs)
-  (apply emit xs)
-  (flush-output))
+  (apply emit xs))
 
 (define (show x)
   (pp x)
@@ -411,7 +403,6 @@
 	      (else (loop (cons c lst))))))))
 
 (define (dribble . args)
-  (flush-output)
   (for-each
    (cut display <> (current-error-port))
    args)
@@ -554,48 +545,16 @@
 (define (with-output-to-port port thunk)
   (parameterize ((current-output-port port)) (thunk)))
 
-(define close-file-input-port
-  (let ((close close-input-port))
-    (lambda (port) 
-      (close port))))
-
-(define close-file-output-port
-  (let ((close close-output-port))
-    (lambda (port) (close port))))
-
 (define (call-with-input-string str proc)
   (let ((in (open-input-string str)))
-    (begin0 (proc in) (close-file-input-port in))))
+    (begin0 (proc in) (close-input-port in))))
 
 (define (call-with-output-string proc)
   (let ((out (open-output-string)))
     (proc out)
     (begin0 
      (get-output-string out)
-     (close-file-output-port out))))
-
-(define (with-input-from-string str thunk)
-  (let ((in (open-input-string str)))
-    (begin0
-      (with-input-from-port in thunk)
-      (close-file-input-port in))))
-
-(define (with-output-to-string thunk)
-  (let ((out (open-output-string)))
-    (with-output-to-port out thunk)
-    (begin0
-      (get-output-string out)
-      (close-file-output-port out))))
-
-(define-syntax-rule (handle-exceptions var handle body ...)
-  ((call/cc
-    (lambda (k)
-      (with-exception-handler
-       (lambda (msg args)
-	 (k (lambda ()
-	      (let ((var (cons msg args)))
-		handle))))
-       (lambda () body ...))))))
+     (close-output-port out))))
 
 (define gentemp
   (let ((counter 0))
@@ -648,3 +607,118 @@
 	 (string->list str))
     (list "'"))))
 
+(define *temporary-files* '())
+
+(define temporary-directory 
+  (make-parameter
+   (or (get-environment-variable "TMPDIR")
+       (get-environment-variable "TMP")
+       (get-environment-variable "TEMP")
+       "/tmp")))
+
+(define (with-temporary-files thunk)
+  (fluid-let ((*temporary-files* *temporary-files*))
+    (let ((tmpfiles *temporary-files*))
+      (call-with-values thunk
+	(lambda results
+	  (let loop ((ts *temporary-files*))
+	    (if (or (null? ts) (eq? ts tmpfiles))
+		(apply values results)
+		(begin
+		  (delete-file* (car ts))
+		  (loop (cdr ts))))))))))
+
+(define make-temporary-filename
+  (let ((count 0))
+    (lambda args
+      (let-optionals args ((prefix "tmp")
+			   (extension #f))
+	(set! count (+ count 1))
+	(string-append
+	 (temporary-directory)
+	 "/" prefix
+	 "." (number->string (current-second))
+	 "." (number->string (current-process-id))
+	 "." (number->string count)
+	 (if extension
+	     (string-append "." extension)
+	     ""))))))
+
+(define (temporary-file . args)
+  (let-optionals args ((prefix "tmp") (suffix #f))
+    (let ((tmp (make-temporary-filename prefix suffix)))
+      (push! tmp *temporary-files*)
+      tmp)))
+
+(define run-verbose (make-parameter #f))
+(define run-dry-run (make-parameter #f))
+
+(define (execute cmd)
+  (define (build-command cmd)
+    (cond ((string? cmd) cmd)
+	  ((number? cmd) (number->string cmd))
+	  ((char? cmd) (string cmd))
+	  ((symbol? cmd) (symbol->string cmd))
+	  ((list? cmd) (join (map build-command cmd) " "))
+	  (else (error "invalid command part" cmd))))
+  (let ((cmd (build-command cmd)))
+    (when (run-verbose) 
+      (with-output-to-port (current-error-port)
+	(cut print "  " cmd)))
+    (if (run-dry-run)
+	0
+	(system cmd))))
+
+(define (check-status s . msg)
+  (if (zero? s)
+      s 
+      (error (optional msg "executing command failed with non-zero exit status") s)))
+
+(define-syntax-rule (run cmd ...)
+  (values (check-status (execute `cmd) 'cmd) ...))
+
+(define-syntax-rule (run* cmd ...)
+  (values (execute `cmd) ...))
+
+(define-syntax-rule (capture cmd ...)
+  (parameterize ((run-verbose #f))
+    (with-temporary-files
+     (lambda ()
+       (values
+	(let ((tmp (temporary-file)))
+	  (check-status (execute `(cmd > ,(qs tmp))) 'cmd)
+	  (trim (with-input-from-file tmp read-all)))
+	...)))))
+
+(define-syntax-rule (capture-lines cmd ...)
+  (parameterize ((run-verbose #f))
+    (with-temporary-files
+     (lambda ()
+       (values
+	(let ((tmp (temporary-file)))
+	  (check-status (execute `(cmd > ,(qs tmp))) 'cmd)
+	  (read-file tmp read-line))
+	...)))))
+
+(define system-software
+  (let ((s (string->symbol (capture (uname)))))
+    (lambda () s)))
+
+(define system-architecture
+  (let ((s (string->symbol (capture (uname "-m")))))
+    (lambda () s)))
+
+(define (file-executable? fn)
+  (zero? (run* (test "-x" ,(qs fn)))))
+
+(define (file-size fn)
+  (string->number
+   (case (system-software)
+     ((Darwin) (capture (stat "-f" "\"%z\"" ,(qs fn))))
+     (else (capture (stat "-c" "\"%s\"" ,(qs fn)))))))
+
+(define (file-modification-time fn)
+  (string->number
+   (case (system-software)
+     ((Darwin) (capture (stat "-f" "\"%c\"" ,(qs fn))))
+     (else (capture (stat "-c" "\"%Y\"" ,(qs fn)))))))
