@@ -1057,10 +1057,12 @@
    Note that error-checking is still minimal, even for evaluated code.
 
    The evaluator is also available as a standalone interpreter, in the
-   file =bonesi.scm=, which can be compiled and linked like any other
-   Scheme program. When invoked without arguments, =bonesi= will start
-   a REPL, otherwise it will try to load the first argument given on
-   the command-line and exit.
+   file =si.scm=, ("Scheme interpreter") which can be compiled and
+   linked like any other Scheme program. When invoked without
+   arguments, =si= will start a REPL, otherwise it will try to load
+   and evaluate the file given in the first command-line argument and
+   exit. See the source-code for =si= for more information about using
+   and customizing the interpreter.
 
 * Compiler Details
 
