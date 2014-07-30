@@ -1,0 +1,21 @@
+;;;; program-description for self-compile
+
+
+(load "version.scm")
+(load "match.scm")
+(load "support.scm")
+(load "pp.scm")
+(load "alexpand.scm")
+(load "megalet.scm")
+(load "source.scm")
+(load "cp.scm")
+(load "uv.scm")
+(load "cc.scm")
+(load "cps.scm")
+(load "mangle.scm")
+(load "program.scm")
+(load "tsort.scm")
+(load "ra.scm")
+(load "cmplr.scm")
+(load "main.scm")
+(load "x86_64.scm")
