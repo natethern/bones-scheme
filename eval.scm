@@ -534,7 +534,14 @@
 
 (define (eval-quit-hook result) (exit))
 
-(define (quit . result) (eval-quit-hook (optional result #f)))
+(define (quit . result) (eval-quit-hook (optional result (void))))
+
+(define eval-repl-level 0)
+
+(define repl-prompt 
+  (make-parameter 
+   (lambda ()
+     (string-append (make-string eval-repl-level #\>) " "))))
 
 (define (repl)
   (let ((maxdepth 10))
@@ -597,32 +604,28 @@
 	  (report-unbound))))
     (call/cc
      (lambda (exit)
-       (let ((e-p-u eval-potentially-unbound)
-	     (e-q-h eval-quit-hook))
-	 (dynamic-wind
-	     (lambda ()
-	       (set! eval-quit-hook
-		 (case-lambda 
-		   (() (exit (void)))
-		   ((result) (exit result)))))
-	     (lambda ()
-	       (do () (#f)
-		 (display "> ")
-		 (let ((x (read)))
-		   (when (eof-object? x) (exit #f))
-		   (call/cc
-		    (lambda (return)
-		      (call-with-values (cut eval-form x return)
-			(lambda results
-			  (for-each
-			   (lambda (x)
-			     (write x)
-			     (newline))
-			   results))))))))
-	     (lambda ()
-	       (set! eval-potentially-unbound e-p-u)
-	       (set! eval-quit-hook e-q-h))))
-       (newline)))))
+       (fluid-let ((eval-potentially-unbound eval-potentially-unbound)
+		   (eval-quit-hook
+		    (case-lambda 
+		      (() (exit (void)))
+		      ((result) (exit result))))
+		   (eval-repl-level (+ eval-repl-level 1)))
+	 (do () (#f)
+	   (display ((repl-prompt)))
+	   (let ((x (read)))
+	     (when (eof-object? x) (exit #f))
+	     (call/cc
+	      (lambda (return)
+		(call-with-values (cut eval-form x return)
+		  (lambda results
+		    (unless (and (= 1 (length results))
+				 (eq? (void) (car results)))
+		      (for-each
+		       (lambda (x)
+			 (write x)
+			 (newline))
+		       results))))))))
+	 (newline))))))
 
 (eval
  `(begin
@@ -630,6 +633,7 @@
     (define load ',load)
     (define quit ',quit)
     (define repl ',repl)
+    (define repl-prompt ',repl-prompt)
     (define oblist ',(lambda () eval-environment))))
 
 )
