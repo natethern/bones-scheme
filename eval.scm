@@ -30,12 +30,10 @@
        ($case-lambda (lambda llist . body) ...))
      (define-syntax cut
        (syntax-rules (<> <...>)
-	 ;; construct fixed- or variable-arity procedure:
 	 ((_ "1" (slot-name ...) (proc arg ...))
 	  (lambda (slot-name ...) (proc arg ...)))
 	 ((_ "1" (slot-name ...) (proc arg ...) <...>)
 	  (lambda (slot-name ... . rest-slot) (apply proc arg ... rest-slot)))
-	 ;; process one slot-or-expr
 	 ((_ "1" (slot-name ...)   (position ...)      <>  . se)
 	  (cut "1" (slot-name ... x) (position ... x)        . se))
 	 ((_ "1" (slot-name ...)   (position ...)      nse . se)
@@ -555,14 +553,15 @@
 
 (define (eval-quit-hook result) (exit))
 
-(define (quit . result) (eval-quit-hook (optional result (void))))
-
 (define eval-repl-level 0)
+
+(define (quit . result) (eval-quit-hook (optional result (void))))
 
 (define repl-prompt 
   (make-parameter 
-   (lambda ()
-     (string-append (make-string eval-repl-level #\>) " "))))
+   (lambda () (string-append (make-string eval-repl-level #\>) " "))))
+
+(define repl-print (make-parameter (lambda (x) (write x) (newline))))
 
 (define (repl)
   (let ((maxdepth 10))
@@ -623,30 +622,28 @@
 	(begin0
 	  (eval x)
 	  (report-unbound))))
-    (call/cc
-     (lambda (exit)
-       (fluid-let ((eval-potentially-unbound eval-potentially-unbound)
-		   (eval-quit-hook
-		    (case-lambda 
-		      (() (exit (void)))
-		      ((result) (exit result))))
-		   (eval-repl-level (+ eval-repl-level 1)))
-	 (do () (#f)
-	   (display ((repl-prompt)))
-	   (let ((x (read)))
-	     (when (eof-object? x) (exit #f))
-	     (call/cc
-	      (lambda (return)
-		(call-with-values (cut eval-form x return)
-		  (lambda results
-		    (unless (and (= 1 (length results))
-				 (eq? (void) (car results)))
-		      (for-each
-		       (lambda (x)
-			 (write x)
-			 (newline))
-		       results))))))))
-	 (newline))))))
+    (let ((rpt (repl-prompt))
+	  (rp (repl-print)))
+      (call/cc
+       (lambda (exit)
+	 (fluid-let ((eval-potentially-unbound eval-potentially-unbound)
+		     (eval-quit-hook
+		      (case-lambda 
+			(() (exit (void)))
+			((result) (exit result))))
+		     (eval-repl-level (+ eval-repl-level 1)))
+	   (do () (#f)
+	     (display (rpt))
+	     (let ((x (read)))
+	       (when (eof-object? x) (exit #f))
+	       (call/cc
+		(lambda (return)
+		  (call-with-values (cut eval-form x return)
+		    (lambda results
+		      (unless (and (= 1 (length results))
+				   (eq? (void) (car results)))
+			(for-each rp results))))))))
+	   (newline)))))))
 
 (eval
  `(begin
@@ -655,6 +652,7 @@
     (define quit ',quit)
     (define repl ',repl)
     (define repl-prompt ',repl-prompt)
+    (define repl-print ',repl-print)
     (define oblist ',(lambda () eval-environment))))
 
 )
