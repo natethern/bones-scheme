@@ -10,6 +10,8 @@
        (features)))
 
 (define bytevector? (const #f))
+(define (bytevector-length x) (error "no bytevectors"))
+(define (bytevector-u8-ref x y) (error "no bytevectors"))
 (define (nan? x) (and (number? x) (not (= x x))))
 (define (finite? x) (not (= (string->number "+inf.0") (abs x))))
 
