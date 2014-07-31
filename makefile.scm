@@ -116,7 +116,7 @@
 	  (run (,gcc si.o -o si)))
 	 ("si.o" ("si.s")	;XXX boneslib?
 	  (run (nasm -f ,nasm-format -g -F dwarf si.s -o si.o)))
-	 ("si.s" ("si.scm" "eval.scm" "version.scm" "alexpand.scm") ;XXX intrinsics, etc?
+	 ("si.s" ("si.scm" "eval.scm" "version.scm" "alexpand.scm" "pp.scm") ;XXX intrinsics, etc?
 	  (run (./bones si.scm -o si.s))))))
 
 (define (bigbones)

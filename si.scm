@@ -8,11 +8,13 @@
  (include "base.scm")
  (include "eval.scm")
 
- (files "version.scm")
+ (files "version.scm"
+	"pp.scm")
 
  (code
 
   (eval-trace #t)
+  (repl-print pp)
 
   (let ((bootfile
 	 (or (get-environment-variable "SI_BOOT_FILE")
