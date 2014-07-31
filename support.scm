@@ -325,8 +325,6 @@
     (cond ((or (null? lst) (zero? n)) lst)
 	  (else (loop (cdr lst) (sub1 n))))))
 
-(define call/cc call-with-current-continuation)
-
 (define (cons* first . rest)
   (let recur ((x first) (rest rest))
     (if (pair? rest)
@@ -391,16 +389,17 @@
 
 (define (read-all . in)
   (let* ((in (optional in (current-input-port)))
-	 (port (if (string? in) (open-input-file in) in)))
-    (let loop ((lst '()))
-      (let ((c (read-char port)))
+	 (port (if (string? in) (open-input-file in) in))
+	 (out (open-output-string)))
+    (let loop ()
+      (let ((c (read-string 4096 port)))
 	(cond ((eof-object? c)
 	       (begin0
-		(if (null? lst)
-		    ""
-		    (list->string (reverse lst)))
-		(when (string? in) (close-input-port port))))
-	      (else (loop (cons c lst))))))))
+		 (get-output-string out)
+		 (when (string? in) (close-input-port port))))
+	      (else
+	       (display c out)
+	       (loop)))))))
 
 (define (dribble . args)
   (for-each
