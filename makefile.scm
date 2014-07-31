@@ -8,7 +8,7 @@
 (define (all) (bones))
 
 (define (clean)
-  (run (rm -f *.o bones bones-x86_64-linux.s)))
+  (run (rm -f *.o bones bones-x86_64-linux.s si si.s)))
 
 (define compiler-sources
   '("bones.scm"
