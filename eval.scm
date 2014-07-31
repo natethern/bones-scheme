@@ -463,6 +463,27 @@
 			(lambda args
 			  (body (cons (list->vector args) v)))))))))))
 
+	(('$case-lambda ('lambda llists . bodies) ...)
+	 ;;XXX this can probably be done more efficiently
+	 (let ((bodies (map (lambda (llist body)
+			      (compile `(lambda ,llist ,@body) e))
+			    llists bodies))
+	       (tests (map (lambda (llist)
+			     (call-with-values (cut parse-lambda-list llist)
+			       (lambda (vars argc rest)
+				 (lambda (args)
+				   (let loop ((i 0) (args args))
+				     (cond ((>= i argc) (or rest (null? args)))
+					   ((null? args) #f)
+					   (else (loop (+ i 1) (cdr args)))))))))
+			   llists)))
+	   (lambda (v)
+	     (lambda args
+	       (let loop ((tests tests) (bodies bodies))
+		 (cond ((null? tests) (error 'case-lambda "no matching case" args))
+		       (((car tests) args) (apply ((car bodies) v) args))
+		       (else (loop (cdr tests) (cdr bodies)))))))))
+
 	((op args ...)
 	 (let ((n (length x))
 	       (y (map (cut compile <> e) x)))
