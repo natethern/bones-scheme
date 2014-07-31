@@ -2600,6 +2600,7 @@ lookup_char:
 
 ;; invoke "(%error MSG ARGS ...)": rax = error-msg (char *), rsi, ... = irritants, r11 = argc
 invoke_error:
+  mov rsp, [rsp_save]		; just in case error was triggered with stuff on the stack
   call alloc_zstring
   mov rdx, rax
   mov SELF, [____25error]

@@ -130,10 +130,39 @@
 			   (lambda (var) (k (lambda () handler)))))
 	     (call-with-values (lambda () body ...)
 	       (lambda results
-		 (k (lambda () (apply values results))))))))))))
+		 (k (lambda () (apply values results))))))))))
+     (define-syntax cond-expand
+       (syntax-rules (and or not else si)
+	 ((cond-expand) (error 'cond-expand "no matching clause"))
+	 ((cond-expand (si body ...) . more-clauses)
+	  (begin body ...))
+	 ((cond-expand (else body ...)) (begin body ...))
+	 ((cond-expand ((and) body ...) more-clauses ...) (begin body ...))
+	 ((cond-expand ((and req1 req2 ...) body ...) more-clauses ...)
+	  (cond-expand
+	    (req1 (cond-expand
+		    ((and req2 ...) body ...)
+		    more-clauses ...))
+	    more-clauses ...))
+	 ((cond-expand ((or) body ...) more-clauses ...) 
+	  (cond-expand more-clauses ...))
+	 ((cond-expand ((or req1 req2 ...) body ...) more-clauses ...)
+	  (cond-expand
+	    (req1 (begin body ...))
+	    (else
+	     (cond-expand
+	       ((or req2 ...) body ...)
+	       more-clauses ...))))
+	 ((cond-expand ((not req) body ...) more-clauses ...)
+	  (cond-expand
+	    (req (cond-expand more-clauses ...))
+	    (else body ...)))
+	 ((cond-expand (feature-id body ...) more-clauses ...)
+	  (cond-expand more-clauses ...))))))
 
 
 (define eval-unbound-value (list 'unbound))
+(define eval-potentially-unbound #f)
 (define expand expand-syntax)
 
 (define eval-environment
@@ -212,6 +241,8 @@
      read-string write-string
      print
      reclaim free
+     file-exists? delete-file
+     current-directory
      open-append-output-file
      make-parameter make-disjoint-type
      expand
@@ -303,13 +334,16 @@
 	       (else
 		(let ((cell (findcell x)))
 		  ;; no need to check bound-ness if already bound
-		  (if (eq? (cdr cell) eval-unbound-value)
-		      (lambda (v)
-			(let ((val (cdr cell)))
-			  (if (eq? val eval-unbound-value)
-			      (error "unbound variable" x)
-			      val)))
-		      (lambda (v) (cdr cell)))))))
+		  (cond ((eq? (cdr cell) eval-unbound-value)
+			 (when (and eval-potentially-unbound
+				    (not (assq x eval-potentially-unbound)))
+			   (set! eval-potentially-unbound (cons cell eval-potentially-unbound)))
+			 (lambda (v)
+			   (let ((val (cdr cell)))
+			     (if (eq? val eval-unbound-value)
+				 (error "unbound variable" x)
+				 val))))
+			(else (lambda (v) (cdr cell))))))))
 
 	((or (? number?)
 	     (? string?)
@@ -330,10 +364,14 @@
 	   (cond ((lookup var e) =>
 		  (match-lambda 
 		    ((i . j)
-		     (lambda (v) (vector-set! (list-ref v i) j (x v))))))
+		     (lambda (v)
+		       (vector-set! (list-ref v i) j (x v))
+		       (void)))))
 		 (else
 		  (let ((cell (findcell var)))
-		    (lambda (v) (set-cdr! cell (x v))))))))
+		    (lambda (v)
+		      (set-cdr! cell (x v))
+		      (void)))))))
 
 	(('if x y)
 	 (let ((x (compile x e))
@@ -362,7 +400,9 @@
 	(('define var x)
 	 (let* ((x (compile x e))
 		(cell (findcell var)))
-	   (lambda (v) (set-cdr! cell (x v)))))
+	   (lambda (v) 
+	     (set-cdr! cell (x v))
+	     (void))))
 
 	(('letrec* ((vars vals) ...) body ...)
 	 (let* ((e (cons vars e))
@@ -458,22 +498,27 @@
 
 
 (define-values (load load-verbose)
-  (let ((load
-	 (lambda (filename evproc verbose)
-	   (let ((in (open-input-file filename)))
-	     (dynamic-wind
-		 void
-		 (lambda ()
-		   (let loop ()
-		     (let ((x (read in)))
-		       (unless (eof-object? x)
-			 (when verbose 
-			   (newline)
-			   (write x)
-			   (newline))
-			 (evproc x)
-			 (loop)))))
-		 (cut close-input-port in))))))
+  (let ((home (get-environment-variable "HOME")))
+    (define (load filename evproc verbose)
+      (let* ((filename (if (and (positive? (string-length filename))
+				(char=? #\~ (string-ref filename 0)))
+			   (string-append home (substring filename 1))
+			   filename))
+	     (in (open-input-file filename)))
+	(dynamic-wind
+	    void
+	    (lambda ()
+	      (let loop ()
+		(let ((x (read in)))
+		  (unless (eof-object? x)
+		    (when verbose 
+		      (newline)
+		      (write x)
+		      (newline))
+		    (evproc x)
+		    (loop))))
+	      (void))
+	    (cut close-input-port in))))
     (values
      (case-lambda
        ((filename ev) (load filename ev #f))
@@ -487,53 +532,108 @@
   (embedded (eval `(define return-to-host ',return-to-host)))
   (else))
 
+(define (eval-quit-hook result) (exit))
+
+(define (quit . result) (eval-quit-hook (optional result (void))))
+
+(define eval-repl-level 0)
+
+(define repl-prompt 
+  (make-parameter 
+   (lambda ()
+     (string-append (make-string eval-repl-level #\>) " "))))
+
+(define (repl)
+  (let ((maxdepth 10))
+    (define (fragment exp)
+      (define (walk x d)
+	(if (> d maxdepth)
+	    '...
+	    (cond ((vector? x) (list->vector (walk (vector->list x) d)))
+		  ((pair? x)
+		   (let loop ((x x) (n maxdepth))
+		     (cond ((null? x) '())
+			   ((zero? n) '(...))
+			   ((pair? x) (cons (walk (car x) (+ d 1)) (loop (cdr x) (- n 1))))
+			   (else x))))
+		  (else x))))
+      (walk exp 1))
+    (define (report-unbound)
+      (let loop ((cells eval-potentially-unbound) (ub '()))
+	(match cells
+	  (() 
+	   (when (pair? ub)
+	     (let ((out (current-error-port)))
+	       (display "Warning: the following global variables are currently unbound:\n\n" out)
+	       (for-each
+		(lambda (a)
+		  (display "  " out)
+		  (display (car a) out)
+		  (newline out))
+		ub)
+	       (newline out))))
+	  (((and a (_ . val)) . more)
+	   (loop more (if (eq? eval-unbound-value val) (cons a ub) ub))))))
+    (define (eval-form x return)
+      (parameterize ((current-exception-handler
+		      (lambda (exn)
+			(let ((out (current-error-port)))
+			  (newline out)
+			  (cond ((error-object? exn)
+				 (display "Error: " out)
+				 (display (error-object-message exn) out)
+				 (newline out)
+				 (for-each
+				  (lambda (x)
+				    (newline out)
+				    (write (fragment x) out)
+				    (newline out))
+				  (error-object-irritants exn)))
+				(else
+				 (display "Unhandled excception: " out)
+				 (write exn out)
+				 (newline out)))
+			  (when (eval-trace) (eval-print-trace-buffer))
+			  (return #f)))))
+	(set! eval-trace-buffer '())
+	(set! eval-trace-buffer-end '())
+	(set! eval-trace-buffer-len 0)
+	(set! eval-potentially-unbound '())
+	(begin0
+	  (eval x)
+	  (report-unbound))))
+    (call/cc
+     (lambda (exit)
+       (fluid-let ((eval-potentially-unbound eval-potentially-unbound)
+		   (eval-quit-hook
+		    (case-lambda 
+		      (() (exit (void)))
+		      ((result) (exit result))))
+		   (eval-repl-level (+ eval-repl-level 1)))
+	 (do () (#f)
+	   (display ((repl-prompt)))
+	   (let ((x (read)))
+	     (when (eof-object? x) (exit #f))
+	     (call/cc
+	      (lambda (return)
+		(call-with-values (cut eval-form x return)
+		  (lambda results
+		    (unless (and (= 1 (length results))
+				 (eq? (void) (car results)))
+		      (for-each
+		       (lambda (x)
+			 (write x)
+			 (newline))
+		       results))))))))
+	 (newline))))))
+
 (eval
  `(begin
     (define load-verbose ',load-verbose)
     (define load ',load)
+    (define quit ',quit)
+    (define repl ',repl)
+    (define repl-prompt ',repl-prompt)
     (define oblist ',(lambda () eval-environment))))
-
-(define (repl)
-  (define (eval-form x return)
-    (parameterize ((current-exception-handler
-		    (lambda (exn)
-		      (let ((out (current-error-port)))
-			(newline out)
-			(cond ((error-object? exn)
-			       (display "Error: " out)
-			       (display (error-object-message exn) out)
-			       (newline out)
-			       (for-each
-				(lambda (x)
-				  (newline out)
-				  (write x out)
-				  (newline out))
-				(error-object-irritants exn)))
-			      (else
-			       (display "Unhandled excception: " out)
-			       (write exn out)
-			       (newline out)))
-			(when (eval-trace) (eval-print-trace-buffer))
-			(return #f)))))
-      (set! eval-trace-buffer '())
-      (set! eval-trace-buffer-end '())
-      (set! eval-trace-buffer-len 0)
-      (eval x)))
-  (call/cc
-   (lambda (exit)
-     (do () (#f)
-       (display "> ")
-       (let ((x (read)))
-	 (when (eof-object? x) (exit #f))
-	 (call/cc
-	  (lambda (return)
-	    (call-with-values (cut eval-form x return)
-	      (lambda results
-		(for-each
-		 (lambda (x)
-		   (write x) 
-		   (newline))
-		 results)))))))
-     (newline))))
 
 )

@@ -44,10 +44,11 @@
     (else (error "can't determine nasm format for this system"))))
 
 (define gcc
-  (or (file-exists? "bin/musl-gcc")
-      (case (system-software)
-	((Darwin) "gcc -Wl,-no_pie")
-	(else "gcc"))))
+  (case (system-software)
+    ((Darwin) "gcc -Wl,-no_pie")
+    (else "gcc")))
+
+(define musl-gcc (file-exists? "bin/musl-gcc"))
 
 (define shared-option
   (case (system-software)
@@ -109,14 +110,14 @@
      (make (("bones" ("bones-x86_64-mac.o")
              (run (,gcc bones-x86_64-mac.o -o bones))))))))
 
-(define (bonesi)
+(define (si)
   (bones)
-  (make (("bonesi" ("bonesi.o")
-	  (run (,gcc bonesi.o -o bonesi)))
-	 ("bonesi.o" ("bonesi.s")	;XXX boneslib?
-	  (run (nasm -f ,nasm-format bonesi.s -o bonesi.o)))
-	 ("bonesi.s" ("bonesi.scm" "eval.scm" "version.scm" "alexpand.scm") ;XXX intrinsics, etc?
-	  (run (./bones bonesi.scm -o bonesi.s -feature check))))))
+  (make (("si" ("si.o")
+	  (run (,gcc si.o -o si)))
+	 ("si.o" ("si.s")	;XXX boneslib?
+	  (run (nasm -f ,nasm-format si.s -o si.o)))
+	 ("si.s" ("si.scm" "eval.scm" "version.scm" "alexpand.scm") ;XXX intrinsics, etc?
+	  (run (./bones si.scm -o si.s))))))
 
 (define (bigbones)
   (bones)
@@ -167,7 +168,7 @@
 
 (define (check)
   (bones)
-  (bonesi)
+  (si)
   (run (mkdir -p tmp))
   (print
    (let ((ok #t))
@@ -199,22 +200,23 @@
             (unless (compile+run "nolibc" prg "./bones" '() '(-feature nolibc))
               (set! ok #f))))
         '("fac" "tak" #;"r4rstest" "dynamic" "forth"))
-       (unless (string=? "gcc" gcc)
-	 (for-each
-	  (lambda (prg)
-	    (let* ((bopts (if (member prg '("r4rstest")) '(-case-insensitive) '()))
-		   (prg (string-append "tests/" prg)))
-	      (unless (compile+run "glibc" prg "./bones" '() `(-feature glibc ,@bopts))
-		(set! ok #f))))
-	  '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth"))))
+       (when musl-gcc
+	 (fluid-let ((gcc musl-gcc))
+	   (for-each
+	    (lambda (prg)
+	      (let* ((bopts (if (member prg '("r4rstest")) '(-case-insensitive) '()))
+		     (prg (string-append "tests/" prg)))
+		(unless (compile+run "glibc" prg "./bones" '() `(-feature glibc ,@bopts))
+		  (set! ok #f))))
+	    '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth")))))
      (unless (compile+run "self-compile" "bones" "./bones"
 			  `(bones.scm -o tmp/bones.s -feature ,target-feature)
 			  `(-feature ,target-feature))
        (set! ok #f))
      (unless (zero? (run* (cmp ,(symbol-append 'bones-x86_64- target-feature '.s) tmp/bones.s)))
        (set! ok #f))
-     (print (padl " bonesi" 60 #\=))
-     (set! ok (and ok (zero? (run* (./bonesi tests/r4rstest.scm)))))
+     (print (padl " si" 60 #\=))
+     (set! ok (and ok (zero? (run* (./si tests/r4rstest.scm)))))
      (print (padl " embedded" 60 #\=))
      (unless (check-embedded) (set! ok #f))
      (print (padl " grond" 60 #\=))
@@ -310,7 +312,7 @@
     "fastmath.scm"
     "copy.scm"
     "support.scm"
-    "bonesi.scm"
+    "si.scm"
     "eval.scm"
     "x86_64/fastmath.scm"
     "x86_64/intrinsics.scm"
