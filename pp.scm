@@ -64,6 +64,12 @@
 			((null? l) (out ")" col))
 			(else      (out ")" (wr l (out " . " col))))))
 		(out "()" col)))
+
+	  (define (bytevector->list bv)
+	    (let loop ((i (- (bytevector-length bv) 1)) (lst '()))
+	      (if (negative? i)
+		  lst
+		  (loop (- i 1) (cons (bytevector-u8-ref bv i) lst)))))
 	  
 	  (cond ((pretty-print-hook obj (out/col col)))
 		((pair? obj)        (wr-expr obj col))
@@ -72,6 +78,7 @@
 		((number? obj)      (out (number->string obj) col))
 		((symbol? obj)      (out (symbol->string obj) col))
 		((vector? obj)      (wr-lst (vector->list obj) (out "#" col)))
+		((bytevector? obj)  (wr-lst (bytevector->list obj) (out "#u8" col)))
 		((string? obj)      (if display?
 					(out obj col)
 					(let loop ((i 0) (j 0) (col (out "\"" col)))
