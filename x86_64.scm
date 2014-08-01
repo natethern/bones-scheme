@@ -161,16 +161,20 @@
   (emit " cmov" (real-condition cnd) " " dest ", " src "\n"))
 
 (define (real-condition cnd)
-  (case cnd
+  (case (symbolify cnd)
     ((eq) 'e)
     (else cnd)))
 
 (define (inverted-condition cnd)
-  (case cnd
+  (case (symbolify cnd)
     ((eq) 'ne)
     ((ne) 'e)
     ((gt) 'le)
     ((lt) 'ge)
     ((ge) 'lt)
     ((le) 'gt)
+    ((a) 'be)
+    ((b) 'ae)
+    ((ae) 'b)
+    ((be) 'a)
     (else (error "conditional code not supported for this architecture" cnd))))
