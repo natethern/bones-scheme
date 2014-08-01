@@ -234,7 +234,7 @@
      current-second
      get-environment-variable
      current-jiffy jiffies-per-second
-     current-process-id 
+     current-process-id command-line
      system
      read-string write-string
      print
