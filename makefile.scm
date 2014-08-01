@@ -217,6 +217,9 @@
        (set! ok #f))
      (print (padl " si" 60 #\=))
      (set! ok (and ok (zero? (run* (./si tests/r4rstest.scm)))))
+     (set! ok
+       (and ok
+	    (compile+run "bones/si" "tests/fac" "./si tests/bones-in-si.scm")))
      (print (padl " embedded" 60 #\=))
      (unless (check-embedded) (set! ok #f))
      (print (padl " grond" 60 #\=))

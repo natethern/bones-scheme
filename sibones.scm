@@ -1,4 +1,4 @@
-;;;; program-description for self-compile
+;;;; run bones inside si
 
 
 ;(load "~/bones/megalet.scm")
