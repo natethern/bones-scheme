@@ -70,19 +70,19 @@
     ((x) (fl/ 1.0 x))))
 
 (define-inline (fl= x y)
-  ($inline "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1; lea rax, [FALSE + CELLS(2)]; cmovne rax, FALSE" x y))
+  ($inline-test "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1" "eq" x y))
 
 (define-inline (fl> x y)
-  ($inline "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1; lea rax, [FALSE + CELLS(2)]; cmovbe rax, FALSE" x y))
+  ($inline-test "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1" "a" x y))
 
 (define-inline (fl< x y)
-  ($inline "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1; lea rax, [FALSE + CELLS(2)]; cmovae rax, FALSE" x y))
+  ($inline-test "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1" "b" x y))
 
 (define-inline (fl>= x y)
-  ($inline "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1; lea rax, [FALSE + CELLS(2)]; cmovb rax, FALSE" x y))
+  ($inline-test "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1" "ae" x y))
 
 (define-inline (fl<= x y)
-  ($inline "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1; lea rax, [FALSE + CELLS(2)]; cmova rax, FALSE" x y))
+  ($inline-test "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1" "be" x y))
 
 (define-inline (flround x) (%ieee754-round x))
 
