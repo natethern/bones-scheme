@@ -126,7 +126,7 @@
 	      (len (string-length s))
 	      (p2 (%fx+ p1 n))
 	      (p2 (if (%fx<=? p2 len) p2 len)))
-	 (if (eq? p1 p2)
+	 (if (%eq? p1 p2)
 	     (eof-object)
 	     (let ((r (substring s p1 p2)))
 	       (set-cdr! data p2)
@@ -256,7 +256,7 @@
 	(tag (%list #f)))
     (lambda args
       (let-optionals args ((new tag) (restore #f))
-	(cond ((eq? new tag) val)
+	(cond ((%eq? new tag) val)
 	      (else
 	       (set! val (if restore new (guard new)))
 	       val))))))
@@ -269,7 +269,7 @@
     (set! %record-type-id-counter (%fx+ %record-type-id-counter 1))
     (values
      (lambda (data) ($allocate 10 3 name id data))
-     (lambda (x) (and (record? x) (eq? id (%slot-ref x 1))))
+     (lambda (x) (and (record? x) (%eq? id (%slot-ref x 1))))
      (lambda (rec) (%slot-ref rec 2)))))
 
 

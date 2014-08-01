@@ -68,33 +68,33 @@
 (define-inline (eqv? x y) ($inline "CALL structurally_equal" x y))
 (define-inline (equal? x y) ($inline "CALL recursively_equal" x y))
 
-(define-inline (pair? x) (eq? (%type-of x) 2))
-(define-inline (null? x) (eq? x '()))
-(define-inline (symbol? x) (eq? (%type-of x) 1))
-(define-inline (string? x) (eq? (%type-of x) #x11))
-(define-inline (bytevector? x) (eq? (%type-of x) #x12))
-(define-inline (procedure? x) (eq? (%type-of x) #x20))
-(define-inline (vector? x) (eq? (%type-of x) 3))
-(define-inline (char? x) (eq? (%type-of x) 4))
-(define-inline (eof-object? x) (eq? x (eof-object)))
-(define-inline (boolean? x) (eq? (%type-of x) 7))
-(define-inline (port? x) (eq? (%type-of x) 8))
-(define-inline (record? x) (eq? (%type-of x) 10))
+(define-inline (pair? x) (%eq? (%type-of x) 2))
+(define-inline (null? x) (%eq? x '()))
+(define-inline (symbol? x) (%eq? (%type-of x) 1))
+(define-inline (string? x) (%eq? (%type-of x) #x11))
+(define-inline (bytevector? x) (%eq? (%type-of x) #x12))
+(define-inline (procedure? x) (%eq? (%type-of x) #x20))
+(define-inline (vector? x) (%eq? (%type-of x) 3))
+(define-inline (char? x) (%eq? (%type-of x) 4))
+(define-inline (eof-object? x) (%eq? x (eof-object)))
+(define-inline (boolean? x) (%eq? (%type-of x) 7))
+(define-inline (port? x) (%eq? (%type-of x) 8))
+(define-inline (record? x) (%eq? (%type-of x) 10))
 (define-inline (input-port? x) (and (port? x) (%slot-ref x 1)))
 (define-inline (output-port? x) (and (port? x) (not (%slot-ref x 1))))
-(define-inline (promise? x) (eq? (%type-of x) 9))
+(define-inline (promise? x) (%eq? (%type-of x) 9))
 
-(define-inline (number? x) (or (%fixnum? x) (eq? (%type-of x) #x10)))
+(define-inline (number? x) (or (%fixnum? x) (%eq? (%type-of x) #x10)))
 (define-syntax real? number?)
 (define-inline (exact? x) (%fixnum? x))
 
 (define-inline (rational? x)
   (or (exact? x)
-      (not (eq? 2047 (%ieee754-exponent x))))) ; inf or nan
+      (not (%eq? 2047 (%ieee754-exponent x))))) ; inf or nan
 
 (define-inline (inexact? x) 
   (and (not (%fixnum? x))
-       (eq? (%type-of x) #x10)))
+       (%eq? (%type-of x) #x10)))
 
 (define-inline (char->integer x) (%slot-ref x 0))
 
@@ -136,11 +136,11 @@
 
 (define-inline (positive? x)
   (cond ((exact? x) (%fx>? x 0))
-	((eq? 0 (%ieee754-sign x)) (not (eq? 0 (%ieee754-exponent-and-mantissa x))))
+	((%eq? 0 (%ieee754-sign x)) (not (%eq? 0 (%ieee754-exponent-and-mantissa x))))
 	(else #f)))
 
 (define-inline (zero? n)
-  (eq? (if (exact? n) n (%ieee754-exponent-and-mantissa n)) 0))
+  (%eq? (if (exact? n) n (%ieee754-exponent-and-mantissa n)) 0))
 
 (define-inline (even? n)
   (zero? (if (exact? n) (bitwise-and n 1) (%/ n 2))))
@@ -149,13 +149,13 @@
 
 (define-inline (finite? x)
   (or (exact? x)
-      (not (eq? 2047 (%ieee754-exponent x)))   ; inf or nan
-      (not (eq? 0 (%ieee754-mantissa x)))))    ; nan
+      (not (%eq? 2047 (%ieee754-exponent x)))   ; inf or nan
+      (not (%eq? 0 (%ieee754-mantissa x)))))    ; nan
 
 (define-inline (nan? x)
   (and (not (exact? x))
-       (eq? 2047 (%ieee754-exponent x))
-       (not (eq? 0 (%ieee754-mantissa x)))))
+       (%eq? 2047 (%ieee754-exponent x))
+       (not (%eq? 0 (%ieee754-mantissa x)))))
 
 (define-inline (inexact->exact x)
   (if (exact? x)
@@ -171,11 +171,11 @@
   (or (exact? x)
       (let ((e (%ieee754-exponent x))
 	    (m (%ieee754-mantissa x)))
-	(cond ((eq? #x7ff e) #f)	; inf or nan
-	      ((eq? 0 e) (eq? 0 m))	; zero or denormal
+	(cond ((%eq? #x7ff e) #f)	; inf or nan
+	      ((%eq? 0 e) (%eq? 0 m))	; zero or denormal
 	      ((%fx>=? e 1075))	; exceeds precision of mantissa, so must be integer (1023 + 52)
 	      ((%fx<? e 1023) #f) ; no integer part, so must be fraction
-	      (else (eq? 0 (arithmetic-shift m (%fx- e 1012)))))))) ; e - 1023 + 11 (1 bit gets lost in fixnum)
+	      (else (%eq? 0 (arithmetic-shift m (%fx- e 1012)))))))) ; e - 1023 + 11 (1 bit gets lost in fixnum)
 
 (define-inline (quotient x y) ($inline "CALL quotient" x y))
 (define-inline (remainder x y) ($inline "CALL remainder" x y))
@@ -213,7 +213,7 @@
 (define-inline (sqrt x) (%ieee754-sqrt x))
 
 (define-inline (expt x y)
-  (if (eq? y 0) 
+  (if (%eq? y 0) 
       1
       (cond ((and (inexact? y) (%= y 0.0)) 1.0)
 	    ((and (exact? x) (exact? y) (positive? y) (%fx<? y 256)) ($inline "CALL fixnum_expt" x y))
@@ -275,7 +275,7 @@
 		   (and (pair? fast)
 			(let ((fast (cdr fast))
 			      (slow (cdr slow)))
-			  (and (not (eq? fast slow))
+			  (and (not (%eq? fast slow))
 			       (loop fast slow))))))))))
 
 (define-inline (string-length s) (%size s))
@@ -283,7 +283,7 @@
 
 (define (list-tail lst i)
   (let loop ((lst lst) (i i))
-    (if (eq? i 0)
+    (if (%eq? i 0)
 	lst
 	(loop (cdr lst) (%fx- i 1)))))
 
@@ -356,8 +356,8 @@
       (lambda (p n) 
 	(let* ((str (%allocate-block #x11 n #f n #f #f))
 	       (nr (%read str (%slot-ref p 0) n)))
-	  (cond ((eq? nr 0) (eof-object))
-		((eq? n nr) str)
+	  (cond ((%eq? nr 0) (eof-object))
+		((%eq? n nr) str)
 		((%fx>? nr 0)
 		 (let ((str2 (%allocate-block #x11 nr #f nr #f #f)))
 		   ($inline "CALL copy_bytes" (cons str 0) (cons str2 0) nr)
@@ -517,7 +517,7 @@
 
 (define-inline (char-whitespace? c)
   (let ((n (char->integer c)))
-    (or (eq? n 32) (eq? n 9) (eq? n 12) (eq? n 10) (eq? n 13))))
+    (or (%eq? n 32) (%eq? n 9) (%eq? n 12) (%eq? n 10) (%eq? n 13))))
 
 (define-inline (char-upper-case? c)
   (let ((n (char->integer c)))
@@ -531,13 +531,13 @@
 	  ((%fx>? n #x7a) #f)		; z
 	  (else #t))))
 
-(define-inline (char=? x y) (eq? (%slot-ref x 0) (%slot-ref y 0)))
+(define-inline (char=? x y) (%eq? (%slot-ref x 0) (%slot-ref y 0)))
 (define-inline (char>? x y) (%fx>? (%slot-ref x 0) (%slot-ref y 0)))
 (define-inline (char<? x y) (%fx<? (%slot-ref x 0) (%slot-ref y 0)))
 (define-inline (char>=? x y) (%fx>=? (%slot-ref x 0) (%slot-ref y 0)))
 (define-inline (char<=? x y) (%fx<=? (%slot-ref x 0) (%slot-ref y 0)))
 
-(define-inline (char-ci=? x y) (eq? (%char-downcase x) (%char-downcase y)))
+(define-inline (char-ci=? x y) (%eq? (%char-downcase x) (%char-downcase y)))
 (define-inline (char-ci>? x y) (%fx>? (%char-downcase x) (%char-downcase y)))
 (define-inline (char-ci<? x y) (%fx<? (%char-downcase x) (%char-downcase y)))
 (define-inline (char-ci>=? x y) (%fx>=? (%char-downcase x) (%char-downcase y)))
@@ -550,25 +550,25 @@
 	 (ylen (string-length y))
 	 (len (if (%fx<? xlen ylen) xlen ylen))
 	 (r ($inline "CALL compare_strings" x y len)))
-    (if (eq? r 0)
+    (if (%eq? r 0)
 	(%fx>? xlen ylen)
-	(eq? r 1))))
+	(%eq? r 1))))
 
 (define-inline (string<? x y)
   (let* ((xlen (string-length x))
 	 (ylen (string-length y))
 	 (len (if (%fx<? xlen ylen) xlen ylen))
 	 (r ($inline "CALL compare_strings" x y len)))
-    (if (eq? r 0)
+    (if (%eq? r 0)
 	(%fx<? xlen ylen)
-	(eq? r -1))))
+	(%eq? r -1))))
 
 (define-inline (string>=? x y)
   (let* ((xlen (string-length x))
 	 (ylen (string-length y))
 	 (len (if (%fx<? xlen ylen) xlen ylen))
 	 (r ($inline "CALL compare_strings" x y len)))
-    (if (eq? r 0)
+    (if (%eq? r 0)
 	(%fx>=? xlen ylen)
 	(%fx>=? r 0))))
 
@@ -577,39 +577,39 @@
 	 (ylen (string-length y))
 	 (len (if (%fx<? xlen ylen) xlen ylen))
 	 (r ($inline "CALL compare_strings" x y len)))
-    (if (eq? r 0)
+    (if (%eq? r 0)
 	(%fx<=? xlen ylen)
 	(%fx<=? r 0))))
 
 (define-inline (string-ci=? x y)
   (let ((len (string-length x)))
-    (and (eq? len (string-length y))
-	 (eq? ($inline "CALL compare_strings_ci" x y len) 0))))
+    (and (%eq? len (string-length y))
+	 (%eq? ($inline "CALL compare_strings_ci" x y len) 0))))
 
 (define-inline (string-ci>? x y)
   (let* ((xlen (string-length x))
 	 (ylen (string-length y))
 	 (len (if (%fx<? xlen ylen) xlen ylen))
 	 (r ($inline "CALL compare_strings_ci" x y len)))
-    (if (eq? r 0)
+    (if (%eq? r 0)
 	(%fx>? xlen ylen)
-	(eq? r 1))))
+	(%eq? r 1))))
 
 (define-inline (string-ci<? x y)
   (let* ((xlen (string-length x))
 	 (ylen (string-length y))
 	 (len (if (%fx<? xlen ylen) xlen ylen))
 	 (r ($inline "CALL compare_strings_ci" x y len)))
-    (if (eq? r 0)
+    (if (%eq? r 0)
 	(%fx<? xlen ylen)
-	(eq? r -1))))
+	(%eq? r -1))))
 
 (define-inline (string-ci>=? x y)
   (let* ((xlen (string-length x))
 	 (ylen (string-length y))
 	 (len (if (%fx<? xlen ylen) xlen ylen))
 	 (r ($inline "CALL compare_strings_ci" x y len)))
-    (if (eq? r 0)
+    (if (%eq? r 0)
 	(%fx>=? xlen ylen)
 	(%fx>=? r 0))))
 
@@ -618,7 +618,7 @@
 	 (ylen (string-length y))
 	 (len (if (%fx<? xlen ylen) xlen ylen))
 	 (r ($inline "CALL compare_strings_ci" x y len)))
-    (if (eq? r 0)
+    (if (%eq? r 0)
 	(%fx<=? xlen ylen)
 	(%fx<=? r 0))))
 
@@ -675,7 +675,7 @@
 	    (len (string-length str))
 	    (s 1)
 	    (p 0))
-       (cond ((eq? 0 len) #f)
+       (cond ((%eq? 0 len) #f)
 	     (else
 	      (case (string-ref str 0)
 		((#\-) 
@@ -697,12 +697,12 @@
        (let ((buffer (make-string buflen)))
 	 (lambda (num . base)
 	   (cond ((inexact? num) (%error "sorry, float->string conversion is not implemented, yet"))
-		 ((eq? num 0) "0")
+		 ((%eq? num 0) "0")
 		 (else
 		  (let ((neg (negative? num))
 			(base (optional base 10)))
 		    (let loop ((p buflen) (n (if neg (%fx- 0 num) num)))
-		      (cond ((eq? n 0)
+		      (cond ((%eq? n 0)
 			     (when neg
 			       (set! p (%fx- p 1))
 			       (string-set! buffer p #\-))
@@ -721,7 +721,7 @@
 
    (define (%string->number str base)
      (let ((len (string-length str)))
-       (cond ((eq? len 0) #f)
+       (cond ((%eq? len 0) #f)
 	     ((or (string-ci=? str "+nan.0")
 		  (string-ci=? str "-nan.0"))
 	      (%ieee754-nan))
@@ -890,7 +890,7 @@
       (%apply values results))))
 
 (define (%dynamic-unwind topitems n)
-  (cond ((eq? topitems %dynamic-winds))
+  (cond ((%eq? topitems %dynamic-winds))
 	((%fx<? n 0)
 	 (%dynamic-unwind (cdr topitems) (%fx+ n 1))
 	 ((caar %dynamic-winds))
@@ -908,7 +908,7 @@
        (proc
 	(lambda results
 	  (let ((items2 %dynamic-winds))
-	    (unless (eq? items2 topitems)
+	    (unless (%eq? items2 topitems)
 	      (%dynamic-unwind topitems (%fx- (length items2) (length topitems))) )
 	    (%apply cont results) ) ) ) ) ) ))
 
@@ -1028,9 +1028,9 @@
 	      ((output-port? x) (outs "#<output-port>"))
 	      ((procedure? x) (outs "#<procedure>"))
 	      ((eof-object? x) (outs "#<eof>"))
-	      ((eq? (%undefined) x) (outs "#<undefined>"))
-	      ((eq? #t x) (outs "#t"))
-	      ((eq? #f x) (outs "#f"))
+	      ((%eq? (%undefined) x) (outs "#<undefined>"))
+	      ((%eq? #t x) (outs "#t"))
+	      ((%eq? #f x) (outs "#f"))
 	      (else (outs "#<unknown object>")))))))
 
 (define-syntax display
@@ -1068,7 +1068,7 @@
 
 
 (define-inline (error-object? x) 
-  (and (record? x) (eq? (%slot-ref x 1) 1)))
+  (and (record? x) (%eq? (%slot-ref x 1) 1)))
 
 (define-inline (error-object-message exn) (%slot-ref exn 2))
 (define-inline (error-object-irritants exn) (%slot-ref exn 3))
@@ -1117,10 +1117,10 @@
     ((xh . r) (set! %current-exception-handler xh)))) ; fake parameter
 
 (define-inline (file-error? x)
-  (and (error-object? x) (eq? 'file (%slot-ref x 5))))
+  (and (error-object? x) (%eq? 'file (%slot-ref x 5))))
 
 (define-inline (read-error? x)
-  (and (error-object? x) (eq? 'read (%slot-ref x 5))))
+  (and (error-object? x) (%eq? 'read (%slot-ref x 5))))
 
 
 (define case-sensitive
@@ -1228,7 +1228,7 @@
 		       ((string-ci=? "tab" t) #\tab)
 		       ((string-ci=? "space" t) #\space)
 		       ((string-ci=? "return" t) #\return)
-		       ((eq? 0 len) (read-char port))
+		       ((%eq? 0 len) (read-char port))
 		       ((and (char-ci=? #\x (string-ref t 0))
 			     (%fx>? len 1))
 			(integer->char
@@ -1379,7 +1379,7 @@
 	      (else
 	       (let* ((m (%ieee754-mantissa n))
 		      (mask (arithmetic-shift #xfffffffffffff (%fx- 0 (%fx- e 1023)))))
-		 (if (eq? 0 (bitwise-and m mask))
+		 (if (%eq? 0 (bitwise-and m mask))
 		     n
 		     (%ieee754-mask n (bitwise-not mask)))))))))
 
@@ -1389,16 +1389,16 @@
       (let ((e (%ieee754-exponent n)))
 	(cond ((%fx>=? e 1075) n)	; no fractional part
 	      ((%fx<? e 1023)		; no integral part
-	       (if (eq? 0 (%ieee754-sign n))
+	       (if (%eq? 0 (%ieee754-sign n))
 		   1.0
 		   0.0))
 	      (else
 	       (let* ((m (%ieee754-mantissa n))
 		      (mask (arithmetic-shift #xfffffffffffff (%fx- 0 (%fx- e 1023)))))
-		 (if (eq? 0 (bitwise-and m mask))
+		 (if (%eq? 0 (bitwise-and m mask))
 		     1.0
 		     (let ((n2 (%ieee754-mask n (bitwise-not mask))))
-		       (if (eq? 0 (%ieee754-sign n))
+		       (if (%eq? 0 (%ieee754-sign n))
 			   (%+ 1.0 n2)
 			   n2)))))))))
 
@@ -1408,16 +1408,16 @@
       (let ((e (%ieee754-exponent n)))
 	(cond ((%fx>=? e 1075) n)	; no fractional part
 	      ((%fx<? e 1023)		; no integral part
-	       (if (eq? 0 (%ieee754-sign n))
+	       (if (%eq? 0 (%ieee754-sign n))
 		   0.0
 		   -1.0))
 	      (else
 	       (let* ((m (%ieee754-mantissa n))
 		      (mask (arithmetic-shift #xfffffffffffff (%fx- 0 (%fx- e 1023)))))
-		 (if (eq? 0 (bitwise-and m mask))
+		 (if (%eq? 0 (bitwise-and m mask))
 		     0.0
 		     (let ((n2 (%ieee754-mask n (bitwise-not mask))))
-		       (if (eq? 0 (%ieee754-sign n))
+		       (if (%eq? 0 (%ieee754-sign n))
 			   n2
 			   (%- 1.0 n2))))))))))
 

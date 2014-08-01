@@ -25,9 +25,9 @@
 (define-inline (fxarithmetic-shift-left x n) (arithmetic-shift x n))
 (define-inline (fxpositive? x) (%fx>? x 0))
 (define-inline (fxnegative? x) (%fx<? x 0))
-(define-inline (fxeven? x) (eq? 0 (bitwise-and x 1)))
-(define-inline (fxodd? x) (not (eq? 0 (bitwise-and x 1))))
-(define-inline (fxzero? x) (eq? 0 x))
+(define-inline (fxeven? x) (%eq? 0 (bitwise-and x 1)))
+(define-inline (fxodd? x) (not (%eq? 0 (bitwise-and x 1))))
+(define-inline (fxzero? x) (%eq? 0 x))
 
 (define-inline (fxabs x) (if (%fx<? x 0) (fx- x) x))
 
@@ -132,11 +132,11 @@
 (define-inline (flmin x y) (if (fl< x y) x y))
 
 (define-inline (flfinite? x)
-  (or (not (eq? 2047 (%ieee754-exponent x)))   ; inf or nan
-      (not (eq? 0 (%ieee754-mantissa x)))))    ; nan
+  (or (not (%eq? 2047 (%ieee754-exponent x)))   ; inf or nan
+      (not (%eq? 0 (%ieee754-mantissa x)))))    ; nan
 
 (define-inline (flnan? x)
-  (and (eq? 2047 (%ieee754-exponent x))
-       (not (eq? 0 (%ieee754-mantissa x)))))
+  (and (%eq? 2047 (%ieee754-exponent x))
+       (not (%eq? 0 (%ieee754-mantissa x)))))
 
 (define-inline (fllog x) (%ieee754-log x))
