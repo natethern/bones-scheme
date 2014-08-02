@@ -11,55 +11,8 @@ BONES                                                                     -*- Or
     data by extracting the values as two words.
     - would be bones-specific, via =cond-expand=.
 * TODO test file:copy.scm
-* add f64vectors
-   - FLOATVECTOR_TYPE (#x12)
-   - would need proper alignment on 32-bit systems.
-   - put API into file:fastmath.scm
-   - adapt printer + reader.
-* TODO add more checks
-  - copying of slots and bytes (bounds, types).
-* grass hangs, when built with bones
-  - endless GC during startup.
-  - possibly problems with redefinitions of primitives, ending in some
-    sort of sicrularity.
+* TODO add checks for copying of slots and bytes (bounds, types)
 * TODO add exact development system versions (xcode, mingw64, msvc)
-* potential optimizations
-** we could coalesce allocations inside a lambda
-  - but will probably gain very little.
-** implement basic known procedure optimizations
-  - beta-contraction (needs knowledge about FVs).
-** directly invoke case-lambda bodies
-   - known case-lambda target at call-site could jump to matching case
-** handle redundant moves
-   - keep list of equivalence-sets for registers, and avoid move if
-     dest is known to be equal to src.
-** improve inlining manifest lambdas
-  - don't bind temporaries for arguments that are variables or literals.
-  - not that easy: we have to replace variable-references for the
-    dropped llist-variables.
-    - assignment must disable replacement.
-** unboxing
-  - "($the TYPE EXP)" annotates with type.
-  - "let" can check for "$the" and assign FP-register.
-  - accessing variables in FP-registers needs to move them to normal registers.
-  - requires special intrinsics for FP arguments.
-  - implement primitives as "($typed-case-lambda (((VAR TYPE) ...) BODY ...) ...)"
-    - specially handled in operator position during canonicalization.
-  - have local FA pass ("lfa") that expands $typed-case-lambda according to inferred
-    types and convert "let"-bound flonum vars using a custom binding form
-    - e.g. "($let-float ...)" or something like this.
-* try using libgc as 2nd heap generation
-  - needs write-barrier to record assignments of heap-data into
-    non-heap objects.
-    - then evict recursively.
-  - also, keep GC-count in block header.
-  - tricky to integrate into GC code: we need to mark+scan first, then
-    check GC-counts, then process heap once again (no pointers back
-    into heap are allowed). Or evict + record "inner" slots of evicted
-    data that point to heap objects? and recursive eviction may
-    invalidate forwarding-pointers, etc.
-* configuration form "(export VAR ...)"
-  - makes global externally visible (+ PREFIX)
 * TODO we need FP num/str conversion
   - atof: http://pastebin.com/prYRrseH
     #+BEGIN_SRC asm
@@ -168,8 +121,7 @@ mainCRTStartup:
 
 	ret
   #+END_SRC
-* TODO handling of conditionals is very bad			
-  - branch /inline-test/
+* TODO test and merge /inline-test/
   - reimplement comparison intrinsics, check library code.
   - test, benchmark.
 * TODO implement sexpr-simplification pass
@@ -181,6 +133,55 @@ mainCRTStartup:
     (if (if X FALSE TRUE) Y Z) -> (if X Z Y)
 * TODO port embedded test with shared library to Windows
    - and add to file:scripts/check.bat
+* fix and merge /sigint/
+  - getting more and more hairy: we have to distinguish between
+    a signal inside a syscall and during normal execution. should
+    this ever going to work, it will be quite uggly and full of
+    race conditions.
+  - check correct value of SIGINT on windows/mac
+  - check interrupt handling in general.
+* add f64vectors
+   - FLOATVECTOR_TYPE (#x12)
+   - would need proper alignment on 32-bit systems.
+   - put API into file:fastmath.scm
+   - adapt printer + reader and pp.
+* try using libgc as 2nd heap generation
+  - needs write-barrier to record assignments of heap-data into
+    non-heap objects.
+    - then evict recursively.
+  - also, keep GC-count in block header.
+  - tricky to integrate into GC code: we need to mark+scan first, then
+    check GC-counts, then process heap once again (no pointers back
+    into heap are allowed). Or evict + record "inner" slots of evicted
+    data that point to heap objects? and recursive eviction may
+    invalidate forwarding-pointers, etc.
+* configuration form "(export VAR ...)"
+  - makes global externally visible (+ PREFIX)
+* potential optimizations
+** we could coalesce allocations inside a lambda
+  - but will probably gain very little.
+** implement basic known procedure optimizations
+  - beta-contraction (needs knowledge about FVs).
+** directly invoke case-lambda bodies
+   - known case-lambda target at call-site could jump to matching case
+** handle redundant moves
+   - keep list of equivalence-sets for registers, and avoid move if
+     dest is known to be equal to src.
+** improve inlining manifest lambdas
+  - don't bind temporaries for arguments that are variables or literals.
+  - not that easy: we have to replace variable-references for the
+    dropped llist-variables.
+    - assignment must disable replacement.
+** unboxing
+  - "($the TYPE EXP)" annotates with type.
+  - "let" can check for "$the" and assign FP-register.
+  - accessing variables in FP-registers needs to move them to normal registers.
+  - requires special intrinsics for FP arguments.
+  - implement primitives as "($typed-case-lambda (((VAR TYPE) ...) BODY ...) ...)"
+    - specially handled in operator position during canonicalization.
+  - have local FA pass ("lfa") that expands $typed-case-lambda according to inferred
+    types and convert "let"-bound flonum vars using a custom binding form
+    - e.g. "($let-float ...)" or something like this.
 * issues
 ** "inexact->exact" uses "fisttp", so needs SSE3
 ** i don't fully trust that "integer?" handles all cases correctly

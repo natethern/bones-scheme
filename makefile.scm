@@ -8,7 +8,7 @@
 (define (all) (bones))
 
 (define (clean)
-  (run (rm -f *.o bones bones-x86_64-linux.s)))
+  (run (rm -f *.o bones bones-x86_64-linux.s si si.s)))
 
 (define compiler-sources
   '("bones.scm"
@@ -115,8 +115,8 @@
   (make (("si" ("si.o")
 	  (run (,gcc si.o -o si)))
 	 ("si.o" ("si.s")	;XXX boneslib?
-	  (run (nasm -f ,nasm-format si.s -o si.o)))
-	 ("si.s" ("si.scm" "eval.scm" "version.scm" "alexpand.scm") ;XXX intrinsics, etc?
+	  (run (nasm -f ,nasm-format -g -F dwarf si.s -o si.o)))
+	 ("si.s" ("si.scm" "eval.scm" "version.scm" "alexpand.scm" "pp.scm") ;XXX intrinsics, etc?
 	  (run (./bones si.scm -o si.s))))))
 
 (define (bigbones)
@@ -217,6 +217,9 @@
        (set! ok #f))
      (print (padl " si" 60 #\=))
      (set! ok (and ok (zero? (run* (./si tests/r4rstest.scm)))))
+     (set! ok
+       (and ok
+	    (compile+run "bones/si" "tests/fac" "./si tests/bones-in-si.scm")))
      (print (padl " embedded" 60 #\=))
      (unless (check-embedded) (set! ok #f))
      (print (padl " grond" 60 #\=))
