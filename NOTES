@@ -2,9 +2,6 @@ BONES                                                                     -*- Or
 =====
 
 
-* TODO fix and merge /sigint/
-  - check correct value of SIGINT on windows/mac
-  - check interrupt handling in general.
 * TODO file:tests/raytracer.scm produces wrong output
   - nearly good, but apparently there are some wrong calculations.
 * TODO implement record-handling in file:match.scm
@@ -136,6 +133,13 @@ mainCRTStartup:
     (if (if X FALSE TRUE) Y Z) -> (if X Z Y)
 * TODO port embedded test with shared library to Windows
    - and add to file:scripts/check.bat
+* fix and merge /sigint/
+  - getting more and more hairy: we have to distinguish between
+    a signal inside a syscall and during normal execution. should
+    this ever going to work, it will be quite uggly and full of
+    race conditions.
+  - check correct value of SIGINT on windows/mac
+  - check interrupt handling in general.
 * add f64vectors
    - FLOATVECTOR_TYPE (#x12)
    - would need proper alignment on 32-bit systems.
