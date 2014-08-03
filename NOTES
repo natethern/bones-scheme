@@ -2,6 +2,8 @@ BONES                                                                     -*- Or
 =====
 
 
+* TODO test and merge /inline-test/
+  - test, benchmark.
 * TODO file:tests/raytracer.scm produces wrong output
   - nearly good, but apparently there are some wrong calculations.
 * TODO implement record-handling in file:match.scm
@@ -121,9 +123,6 @@ mainCRTStartup:
 
 	ret
   #+END_SRC
-* TODO test and merge /inline-test/
-  - reimplement comparison intrinsics, check library code.
-  - test, benchmark.
 * TODO implement sexpr-simplification pass
   - match expressions for certain cases.
   - perhaps add "($comment COMMENT EXP)" special form to detect particular
