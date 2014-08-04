@@ -1215,7 +1215,7 @@ maximize_2:
   movsd xmm0, [rax + CELLS(1)]
 .fresult:
   ucomisd xmm0, xmm1
-  if l
+  if b
     movsd xmm0, xmm1
   endif
   movsd [temporary_flonum + CELLS(1)], xmm0
@@ -1253,7 +1253,7 @@ minimize_2:
   movsd xmm0, [rax + CELLS(1)]
 .fresult:
   ucomisd xmm0, xmm1
-  if g
+  if a
     movsd xmm0, xmm1
   endif
   movsd [temporary_flonum + CELLS(1)], xmm0
