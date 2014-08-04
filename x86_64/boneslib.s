@@ -1231,7 +1231,6 @@ maximize_2:
 .l3:
   movsd xmm0, [rax + CELLS(1)]	; rax, rbx = !fixnum
   movsd xmm1, [rbx + CELLS(1)]
-  ucomisd xmm0, xmm1
   jmp .fresult
 
 
@@ -1269,7 +1268,6 @@ minimize_2:
 .l3:
   movsd xmm0, [rax + CELLS(1)]	; rax, rbx = !fixnum
   movsd xmm1, [rbx + CELLS(1)]
-  ucomisd xmm0, xmm1
   jmp .fresult
 
 
