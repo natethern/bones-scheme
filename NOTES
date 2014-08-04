@@ -3,6 +3,7 @@ BONES                                                                     -*- Or
 
 
 * TODO test and merge /inline-test/
+  - check file:x86_64/intrinsics.scm for uses of =$inline-test=.
   - test, benchmark.
 * TODO file:tests/raytracer.scm produces wrong output
   - nearly good, but apparently there are some wrong calculations.
@@ -132,13 +133,6 @@ mainCRTStartup:
     (if (if X FALSE TRUE) Y Z) -> (if X Z Y)
 * TODO port embedded test with shared library to Windows
    - and add to file:scripts/check.bat
-* fix and merge /sigint/
-  - getting more and more hairy: we have to distinguish between
-    a signal inside a syscall and during normal execution. should
-    this ever going to work, it will be quite uggly and full of
-    race conditions.
-  - check correct value of SIGINT on windows/mac
-  - check interrupt handling in general.
 * add f64vectors
    - FLOATVECTOR_TYPE (#x12)
    - would need proper alignment on 32-bit systems.
@@ -204,6 +198,9 @@ mainCRTStartup:
      test returns true (thus appending another ".0")
 ** gcc/clang prints warning when linking compiled code ("PIE disabled")
    - executable still runs, warning currently disabled with "-Wl,-no_pie".
+** do popping of the FPU stack in =flonum_expt= in file:x86_64/boneslib.s right
+   - currently uses =fstp=, but probably should do a combination of
+     =ffree= and =fincstp=.
 ** embedded check doesn't work on Mac OS
    - linker complains when linking embedded2.o with "-bundle".
 * referencess
