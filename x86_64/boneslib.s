@@ -2032,20 +2032,20 @@ flonum_expt:
   else
     fld qword [rax + CELLS(1)]
   endif
-  fyl2x
+  fyl2x				; ST: 1
   ;; faster than adjusting the rounding mode and using x87 integer store
-  fld st0
-  fisttp qword [r11]  ; requires SSE3
-  fild qword [r11]
-  fsub
-  f2xm1
-  fld1
-  fadd
-  fild qword [r11]
+  fld st0			; ST: 2
+  fisttp qword [r11]		; requires SSE3, ST: 1
+  fild qword [r11]		; ST: 2
+  fsub				; ST: 1
+  f2xm1				
+  fld1				; ST: 2
+  fadd				; ST: 1
+  fild qword [r11]		; ST: 2
   fxch
   fscale
-  fstp qword [r11]
-  fincstp
+  fstp qword [r11]		; ST: 1
+  fstp qword [buffer]		; silly, but I don't know to to pop the FPU stack properly
   mov rax, FLONUM | CELLS(1)
   mov [ALLOC], rax
   mov rax, [r11]
