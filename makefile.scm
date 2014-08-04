@@ -308,6 +308,7 @@
     "megalet.scm"
     "nonstd.scm"
     "pp.scm"
+    "sort.scm"
     "r5rs.scm"
     "program.scm"
     "source.scm"
