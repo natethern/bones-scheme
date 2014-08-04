@@ -38,6 +38,6 @@
 	 (let ((fname2 (strip-suffix fname)))
 	   (if (member "nolibc" features) ; hack
 	       (run (ld ,fname -o ,fname2))
-	       (run (bin/musl-gcc ,fname -o ,fname2)))
+	       (run (gcc ,fname -o ,fname2)))
 	   (set! fname fname2)))
        (run (memtime ,(string-append "./" fname)))))))
