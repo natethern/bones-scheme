@@ -2829,6 +2829,8 @@ nalign_base: dq ~ALIGN_BASE
 
 section .bss
 
+align 8
+
 toplevel_rsp: resq 1
 gc_count: resq 1
 buffer: resb 2048
