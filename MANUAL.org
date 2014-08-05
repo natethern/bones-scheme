@@ -1006,6 +1006,8 @@
     - =fastmath.scm= :: Provides numeric operations, specific for
         fixnums (exact integers) and floating-point numbers.
 
+    - =sort.scm= :: An implementation of mergesort.
+
     - =support.scm= :: This is a collection of random utility
         procedures and syntax, used mainly in the compiler, but also
         useful for user code.

@@ -91,7 +91,7 @@
   ($inline "mov rax, [rax + CELLS(1)]; mov r11, 0x000fffffffffffff; and rax, r11; INT2FIX rax" x))
 
 (define-syntax-rule (%ieee754-mask x mask)
-  (let ((f ($allocate #x10 1)))
+  (let ((f ($allocate #x10 8)))
     ($inline "mov r11, [r11 + CELLS(1)]; mov [rax + CELLS(1)], r11" f x) ; copy flonum
     ($inline "sar r11, 1; and [rax + CELLS(1)], r11" f mask)))
 
@@ -102,64 +102,64 @@
   ($inline "fld qword [rax + CELLS(1)]; fisttp qword [rsp - CELLS(1)]; mov rax, [rsp - CELLS(1)]; INT2FIX rax" x))
 
 (define-syntax-rule (%ieee754-round x)
-  (let ((tmp ($allocate #x10 1)))
+  (let ((tmp ($allocate #x10 8)))
     ($inline "fld qword [r11 + CELLS(1)]; frndint; fstp qword [rax + CELLS(1)]" tmp x)))
 
 (define-syntax-rule (%fixnum->ieee754 x)
-  (let ((tmp ($allocate #x10 1)))
+  (let ((tmp ($allocate #x10 8)))
     ($inline "FIX2INT r11; mov [rsp - CELLS(1)], r11; fild qword [rsp - CELLS(1)]; fstp qword [rax + CELLS(1)]" tmp x)))
 
 ;; trigonometric IEEE-754 operations
 (define-syntax-rule (%ieee754-sin x)
-  (let ((r ($allocate #x10 1)))
+  (let ((r ($allocate #x10 8)))
     (if (%fixnum? x)
 	($inline "FIX2INT rax; mov [buffer], rax; fild qword [buffer]; fsin; fstp qword [r11 + CELLS(1)]" x r)
 	($inline "fld qword [rax + CELLS(1)]; fsin; fstp qword [r11 + CELLS(1)]" x r))
     r))
 
 (define-syntax-rule (%ieee754-cos x) 
-  (let ((r ($allocate #x10 1)))
+  (let ((r ($allocate #x10 8)))
     (if (exact? x)
 	($inline "FIX2INT rax; mov [buffer], rax; fild qword [buffer]; fcos; fstp qword [r11 + CELLS(1)]" x r)
 	($inline "fld qword [rax + CELLS(1)]; fcos; fstp qword [r11 + CELLS(1)]" x r))
     r))
 
 (define-syntax-rule (%ieee754-tan x)
-  (let ((r ($allocate #x10 1)))
+  (let ((r ($allocate #x10 8)))
     (if (%fixnum? x)
 	($inline "FIX2INT rax; mov [buffer], rax; fild qword [buffer]; fptan; fstp st0; fstp qword [r11 + CELLS(1)]" x r)
 	($inline "fld qword [rax + CELLS(1)]; fptan; fstp st0; fstp qword [r11 + CELLS(1)]" x r))
     r))
 
 (define-syntax-rule (%ieee754-asin x)
-  (let ((r ($allocate #x10 1)))
+  (let ((r ($allocate #x10 8)))
     (if (%fixnum? x)
 	($inline "FIX2INT rax; mov [buffer], rax; fild qword [buffer]; fld st0; fmul st0, st0; fld1; fsubr; fsqrt; fpatan; fstp qword [r11 + CELLS(1)]" x r)
 	($inline "fld qword [rax + CELLS(1)]; fld st0; fmul st0, st0; fld1; fsubr; fsqrt; fpatan; fstp qword [r11 + CELLS(1)]" x r))
     r))
 
 (define-syntax-rule (%ieee754-acos x)
-  (let ((r ($allocate #x10 1)))
+  (let ((r ($allocate #x10 8)))
     (if (%fixnum? x)
 	($inline "FIX2INT rax; mov [buffer], rax; fild qword [buffer]; fld st0; fmul st0, st0; fld1; fsubr; fsqrt; fxch st1; fpatan; fstp qword [r11 + CELLS(1)]" x r)
 	($inline "fld qword [rax + CELLS(1)]; fld st0; fmul st0, st0; fld1; fsubr; fsqrt; fxch st1; fpatan; fstp qword [r11 + CELLS(1)]" x r))
     r))
 
 (define-syntax-rule (%ieee754-pi) 
-  (let ((n ($allocate #x10 1)))
+  (let ((n ($allocate #x10 8)))
     ($inline "fldpi; fstp qword [rax + CELLS(1)]" n)))
 
 (define-syntax-rule (%ieee754-atan1 x)
-  (let ((r ($allocate #x10 1)))
+  (let ((r ($allocate #x10 8)))
     ($inline "fld qword [r11 + CELLS(1)]; fld1; fpatan; fstp qword [rax + CELLS(1)]" r x)))
 
 (define-syntax-rule (%ieee754-log x)
-  (let ((r ($allocate #x10 1)))
+  (let ((r ($allocate #x10 8)))
     ($inline "fldln2; fld qword [r11 + CELLS(1)]; fyl2x; fstp qword [rax + CELLS(1)]" r (exact->inexact x))))
 
 ;; IEEE-754 square root
 (define-syntax-rule (%ieee754-sqrt x)
-  (let ((r ($allocate #x10 1)))
+  (let ((r ($allocate #x10 8)))
     (if (%fixnum? x)
 	($inline "FIX2INT rax; mov [buffer], rax; fild qword [buffer]; fsqrt; fstp qword [r11 + CELLS(1)]" x r)
 	($inline "fld qword [rax + CELLS(1)]; fsqrt; fstp qword [r11 + CELLS(1)]" x r))

@@ -1218,7 +1218,7 @@ maximize_2:
   movsd xmm0, [rax + CELLS(1)]
 .fresult:
   ucomisd xmm0, xmm1
-  if l
+  if b
     movsd xmm0, xmm1
   endif
   movsd [temporary_flonum + CELLS(1)], xmm0
@@ -1234,7 +1234,6 @@ maximize_2:
 .l3:
   movsd xmm0, [rax + CELLS(1)]	; rax, rbx = !fixnum
   movsd xmm1, [rbx + CELLS(1)]
-  ucomisd xmm0, xmm1
   jmp .fresult
 
 
@@ -1256,7 +1255,7 @@ minimize_2:
   movsd xmm0, [rax + CELLS(1)]
 .fresult:
   ucomisd xmm0, xmm1
-  if g
+  if a
     movsd xmm0, xmm1
   endif
   movsd [temporary_flonum + CELLS(1)], xmm0
@@ -1272,7 +1271,6 @@ minimize_2:
 .l3:
   movsd xmm0, [rax + CELLS(1)]	; rax, rbx = !fixnum
   movsd xmm1, [rbx + CELLS(1)]
-  ucomisd xmm0, xmm1
   jmp .fresult
 
 
@@ -2036,20 +2034,20 @@ flonum_expt:
   else
     fld qword [rax + CELLS(1)]
   endif
-  fyl2x
+  fyl2x				; ST: 1
   ;; faster than adjusting the rounding mode and using x87 integer store
-  fld st0
-  fisttp qword [r11]  ; requires SSE3
-  fild qword [r11]
-  fsub
-  f2xm1
-  fld1
-  fadd
-  fild qword [r11]
+  fld st0			; ST: 2
+  fisttp qword [r11]		; requires SSE3, ST: 1
+  fild qword [r11]		; ST: 2
+  fsub				; ST: 1
+  f2xm1				
+  fld1				; ST: 2
+  fadd				; ST: 1
+  fild qword [r11]		; ST: 2
   fxch
   fscale
-  fstp qword [r11]
-  fincstp
+  fstp qword [r11]		; ST: 1
+  fstp qword [buffer]		; silly, but I don't know to to pop the FPU stack properly
   mov rax, FLONUM | CELLS(1)
   mov [ALLOC], rax
   mov rax, [r11]
@@ -2830,6 +2828,8 @@ nalign_base: dq ~ALIGN_BASE
 
 
 section .bss
+
+align 8
 
 toplevel_rsp: resq 1
 gc_count: resq 1

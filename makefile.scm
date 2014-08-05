@@ -156,8 +156,8 @@
 		     (zero? (run* (nasm -f ,nasm-format ,sname -o ,oname)))
 		     (zero? (cond ((memq 'nolibc bopts)
 				   (run* (ld ,oname -o ,xname)))
-				  ((memq 'glibc bopts)
-				   (run* (gcc ,oname -o ,xname)))
+				  ((memq 'musl bopts)
+				   (run* (,musl-gcc ,oname -o ,xname)))
 				  (else 
 				   (run* (,gcc ,oname -o ,xname)))))
 		     (zero? (run* (/usr/bin/time ,xname ,@runargs))))))
@@ -206,7 +206,7 @@
 	    (lambda (prg)
 	      (let* ((bopts (if (member prg '("r4rstest")) '(-case-insensitive) '()))
 		     (prg (string-append "tests/" prg)))
-		(unless (compile+run "glibc" prg "./bones" '() `(-feature glibc ,@bopts))
+		(unless (compile+run "musl" prg "./bones" '() `(-feature musl ,@bopts))
 		  (set! ok #f))))
 	    '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth")))))
      (unless (compile+run "self-compile" "bones" "./bones"
@@ -290,6 +290,7 @@
     "bones-x86_64-linux.s"
     "bones-x86_64-windows.s"
     "bones-x86_64-mac.s"
+    "bones-autocompile"
     "version.scm"
     "alexpand.scm"
     "all.scm"
@@ -308,6 +309,7 @@
     "megalet.scm"
     "nonstd.scm"
     "pp.scm"
+    "sort.scm"
     "r5rs.scm"
     "program.scm"
     "source.scm"

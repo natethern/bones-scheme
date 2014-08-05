@@ -1,0 +1,41 @@
+#!/bin/sh
+### autocompile-script for bones
+#
+# usage: bones-autocompile [-h] FILENAME ARGUMENT ...
+
+set -e
+
+case "$1" in
+    -h|-help|--help)
+	echo "usage: bones-autocompile [-h] FILENAME ARGUMENT ..."
+	exit;;
+esac
+
+filename=$1
+shift
+cachedir="$BONES_AUTOCOMPILE_CACHE"
+
+if test -z "$cachedir"; then
+    cachedir=~/.bones-autocompile-cache
+fi
+
+if test \! -d "$cachedir"; then
+    mkdir "$cachedir"
+fi
+
+hash=`md5sum "$filename" | sed -e 's/^\([a-f0-9]\+\).*$/\1/'`
+
+if test -z "$hash"; then
+    echo "invalid filename: $filename" >2
+    exit 1
+fi
+
+if test -x "${cachedir}/${hash}"; then
+    exec "${cachedir}/${hash}" "$@"
+fi
+
+filename2=`basename "$filename"`
+bones "$filename" -o "/tmp/${filename2}.s"
+nasm -f elf64 "/tmp/${filename2}.s" -o "/tmp/${filename2}.o"
+gcc "/tmp/${filename2}.o" -o "${cachedir}/${hash}"
+exec "${cachedir}/${hash}" "$@"
