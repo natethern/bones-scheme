@@ -38,7 +38,7 @@
 
 ;; predicate for determining whether a value is a fixnum
 (define-syntax-rule (%fixnum? x)
-  ($inline "test rax, 1; SET_T rax; cmovz rax, FALSE" x))
+  ($inline-test "test rax, 1" "ne" x))
 
 ;; compare identity of two values
 (define-syntax-rule (%eq? x y)
