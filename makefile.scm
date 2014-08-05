@@ -290,6 +290,7 @@
     "bones-x86_64-linux.s"
     "bones-x86_64-windows.s"
     "bones-x86_64-mac.s"
+    "bones-autocompile"
     "version.scm"
     "alexpand.scm"
     "all.scm"
