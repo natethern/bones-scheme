@@ -2520,7 +2520,7 @@ str2num:
     mov bl, [r11]
     test bl, bl
     if z
-      mov rax, FLONUM | 1
+      mov rax, FLONUM | CELLS(1)
       mov [ALLOC], rax
       movsd [ALLOC + CELLS(1)], xmm0
       mov rax, ALLOC
