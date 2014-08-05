@@ -5,6 +5,7 @@ BONES                                                                     -*- Or
 * TODO test and merge /inline-test/
   - check file:x86_64/intrinsics.scm for uses of =$inline-test=.
   - test, benchmark.
+* TODO document file:bones-autocompile
 * TODO file:tests/raytracer.scm produces wrong output
   - nearly good, but apparently there are some wrong calculations.
 * TODO implement record-handling in file:match.scm
