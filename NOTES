@@ -3,7 +3,6 @@ BONES                                                                     -*- Or
 
 
 * TODO test and merge /inline-test/
-  - check file:x86_64/intrinsics.scm for uses of =$inline-test=.
   - test, benchmark.
 * TODO document file:bones-autocompile
 * TODO file:tests/raytracer.scm produces wrong output
@@ -161,11 +160,6 @@ mainCRTStartup:
 ** handle redundant moves
    - keep list of equivalence-sets for registers, and avoid move if
      dest is known to be equal to src.
-** improve inlining manifest lambdas
-  - don't bind temporaries for arguments that are variables or literals.
-  - not that easy: we have to replace variable-references for the
-    dropped llist-variables.
-    - assignment must disable replacement.
 ** unboxing
   - "($the TYPE EXP)" annotates with type.
   - "let" can check for "$the" and assign FP-register.
