@@ -293,8 +293,8 @@
 		 (simple-expression? z))
 	    (match-let (((r1 r2) (translate-inline-arguments (list y z))))
 	      (cond ((memq t temporary-registers)
-		     (generate-conditional-move/cond cnd r2 r1)
-		     (generate-move t r1))
+		     (generate-conditional-move/cond cnd r1 r2)
+		     (generate-move t r2))
 		    (else
 		     (generate-move t r2)
 		     (generate-conditional-move/cond cnd r1 t)))
