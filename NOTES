@@ -198,6 +198,10 @@ mainCRTStartup:
      =ffree= and =fincstp=.
 ** embedded check doesn't work on Mac OS
    - linker complains when linking embedded2.o with "-bundle".
+** smarter handling of inlining manifest lambdas would be beneficial
+   - if arguments are literals or variables, we could replace arguments directly.
+   - but: may not cross lambda-scopes and doesn't work for assigned
+     variables.
 * referencess
   - X86_64:
     - x87: http://www.website.masmforum.com/tutorials/fptute/index.html
