@@ -182,8 +182,10 @@
      (append 
       temporary-registers      ; inline code may clobber any temporary
       (append-map used-registers args)))
-    (('$inline-test _ args ...)
-     temporary-registers)      ; inline code may clobber any temporary
+    (('$inline-test _ _ args ...)
+     (append
+      temporary-registers
+      (append-map used-registers args)))
     (('$allocate _ _ args ...)
      (append
       (take (length args) temporary-registers)
