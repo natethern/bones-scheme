@@ -26,6 +26,9 @@ Release 5:
   "get-environment-variable" returned an invlaid result when the
   variable was not defined.
 
+  Added "$inline-test" form for slightly faster code in conditionals
+  (not overly effective in the moment.)
+
 Release 4:
 
   In the single-argument case "/" did not handle a fixnum argument

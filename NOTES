@@ -2,8 +2,6 @@ BONES                                                                     -*- Or
 =====
 
 
-* TODO test and merge /inline-test/
-  - test, benchmark, merge, update NEWS.
 * TODO document file:bones-autocompile
 * TODO file:tests/raytracer.scm produces wrong output
   - nearly good, but apparently there are some wrong calculations.
