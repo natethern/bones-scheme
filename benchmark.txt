@@ -194,3 +194,32 @@ large heap GC (full): 388 ms
 Exit [0]
 0.00 user, 0.00 system, 0.10 elapsed -- Max VSize = 4164KB, Max RSS = 88KB
 minimal program size: -rwxr-xr-x 1 felix felix 44584 Jul 19 22:56 tests/null
+
+2014-08-08: (inline-test)
+94afb44f715447c48530d72b14c3f34e36b2cbca
+bones:
+6.56user 0.21system 0:06.81elapsed 99%CPU (0avgtext+0avgdata 317344maxresident)k
+0inputs+16outputs (0major+20752minor)pagefaults 0swaps
+-rwxr-xr-x 1 felix felix 726936 Aug  8 14:58 bones
+dynamic:
+done
+Exit [0]
+0.42 user, 0.16 system, 0.60 elapsed -- Max VSize = 102040KB, Max RSS = 78752KB
+-rwxr-xr-x 1 felix felix 226896 Aug  8 14:58 tests/dynamic
+mandelbrot:
+Exit [0]
+6.39 user, 0.03 system, 6.51 elapsed -- Max VSize = 101884KB, Max RSS = 78484KB
+-rwxr-xr-x 1 felix felix 67336 Aug  8 14:58 tests/mandelbrot
+fft:
+Exit [0]
+1.06 user, 0.03 system, 1.10 elapsed -- Max VSize = 102000KB, Max RSS = 78488KB
+-rwxr-xr-x 1 felix felix 186128 Aug  8 14:58 tests/fft
+raytracer:
+Exit [0]
+27.95 user, 0.04 system, 28.15 elapsed -- Max VSize = 101916KB, Max RSS = 78492KB
+-rwxr-xr-x 1 felix felix 97064 Aug  8 14:59 tests/raytracer
+minimal heap usage: 2664
+large heap GC (full): 400 ms
+Exit [0]
+0.00 user, 0.00 system, 0.10 elapsed -- Max VSize = 4164KB, Max RSS = 88KB
+minimal program size: -rwxr-xr-x 1 felix felix 46000 Aug  8 14:59 tests/null
