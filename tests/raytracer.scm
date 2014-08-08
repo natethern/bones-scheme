@@ -199,7 +199,7 @@
 		     (display (integer->char (inexact->exact (truncate (* 255 (min 1 (vector-x p)))))))
 		     (display (integer->char (inexact->exact (truncate (* 255 (min 1 (vector-y p)))))))
 		     (display (integer->char (inexact->exact (truncate (* 255 (min 1 (vector-z p))))))))))))))
-      (call-with-output-file "untitled.ppm" (cut display output <>)))))
+      (call-with-output-file "raytracer.ppm" (cut display output <>)))))
 
 (define (main)
   (let ((spheres
