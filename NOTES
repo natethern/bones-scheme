@@ -3,7 +3,7 @@ BONES                                                                     -*- Or
 
 
 * TODO test and merge /inline-test/
-  - test, benchmark.
+  - test, benchmark, merge, update NEWS.
 * TODO document file:bones-autocompile
 * TODO file:tests/raytracer.scm produces wrong output
   - nearly good, but apparently there are some wrong calculations.
@@ -202,6 +202,77 @@ mainCRTStartup:
    - if arguments are literals or variables, we could replace arguments directly.
    - but: may not cross lambda-scopes and doesn't work for assigned
      variables.
+   - the patch for substitution stuff, in case we might try again
+     #+BEGIN_SRC diff
+       diff --git a/source.scm b/source.scm
+       index 8d73440..88a16f8 100644
+       --- a/source.scm
+       +++ b/source.scm
+       @@ -58,15 +58,6 @@
+            (define (resolve var env)
+              (cond ((assq var env) => cdr)
+                   (else var)))
+       -    (define (substitutable? x)
+       -      (match x
+       -       ((? symbol?) #t)
+       -       (('quote _) #t)
+       -       (_ #f)))
+       -    (define (substitute x env)
+       -      (cond ((symbol? x) (resolve x env))
+       -           ((or (boolean? x) (number? x) (char? x) (string? x) (vector? x)) `(quote ,x))
+       -           (else x)))
+            (define (walk x env)
+              (match x
+               ((or (? boolean?) (? number?) (? char?) (? string?) (? vector?)) `',x)
+       @@ -74,39 +65,34 @@
+               (('quote _) x)
+               ((('lambda llist body ...) args ...)
+                (inc! icount)
+       -        (let loop ((vars llist) (args (map (cut substitute <> env) args)) (bs '()) (ss '()))
+       +        (let loop ((vars llist) (args args) (bs '()))
+                  (cond ((null? vars)
+                         (if (null? args)
+       -                     (walk `(let ,(reverse bs) ,@body) (append ss env))
+       +                     (walk `(let ,(reverse bs) ,@body) env)
+                             (error "too many arguments in manifest `lambda' call" x)))
+                        ((symbol? vars)
+       -                 (walk `(let ,(append (reverse bs) `((,vars (%list ,@args)))) ,@body) (append ss env)))
+       +                 (walk `(let ,(append (reverse bs) `((,vars (%list ,@args)))) ,@body) env))
+                        ((null? args)
+                         (error "too few arguments in manifest `lambda' call" x))
+                        ((pair? vars)
+       -                 (if (substitutable? (car args))
+       -                     (loop (cdr vars) (cdr args) bs (alist-cons (car vars) (car args) ss))
+       -                     (loop (cdr vars) (cdr args) (cons (list (car vars) (car args)) bs) ss)))
+       +                 (loop (cdr vars) (cdr args) (cons (list (car vars) (car args)) bs)))
+                        (else (error "invalid lambda list" llist)))))
+               ((('$case-lambda ('lambda llists . bodies) ...) args ...)
+                (inc! icount)
+                (let loop1 ((llists llists) (bodies bodies))
+                  (when (null? llists)
+                    (error "no matching clause in manifest `case-lambda' call" x))
+       -          (let loop2 ((vars (car llists)) (args (map (cut substitute <> env) args)) (bs '()) (ss '()))
+       +          (let loop2 ((vars (car llists)) (args args) (bs '()))
+                    (cond ((null? vars)
+                           (if (null? args)
+       -                       (walk `(let ,(reverse bs) ,@(car bodies)) (append ss env))
+       +                       (walk `(let ,(reverse bs) ,@(car bodies)) env)
+                               (loop1 (cdr llists) (cdr bodies))))
+                          ((symbol? vars)
+       -                   (walk `(let ,(append (reverse bs) `((,vars (%list ,@args)))) ,@(car bodies)) 
+       -                         (append ss env)))
+       +                   (walk `(let ,(append (reverse bs) `((,vars (%list ,@args)))) ,@(car bodies)) env))
+                          ((null? args)
+                           (loop1 (cdr llists) (cdr bodies)))
+                          ((pair? vars)
+       -                   (if (substitutable? (car args))
+       -                       (loop2 (cdr vars) (cdr args) bs (alist-cons (car vars) (car args) ss))
+       -                       (loop2 (cdr vars) (cdr args) (cons (list (car vars) (car args)) bs) ss)))
+       +                       (loop2 (cdr vars) (cdr args) (cons (list (car vars) (car args)) bs)))
+                          (else (error "invalid lambda list" (car llists)))))))
+               (((or 'letrec* 'let) () body ...)
+                (walk `(begin ,@body) env))
+	 #+END_SRC
 * referencess
   - X86_64:
     - x87: http://www.website.masmforum.com/tutorials/fptute/index.html
