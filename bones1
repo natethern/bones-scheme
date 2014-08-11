@@ -1,4 +1,4 @@
-#!/bin/scheme /grass/16/boot
+#!/bin/scheme /home/felix/.scheme/boot
 ;; bones -*- Scheme -*-
 
 (load "all.scm")
