@@ -11,6 +11,7 @@
 	"megalet.scm"
 	"source.scm"
 	"cp.scm"
+	"simplify.scm"
 	"uv.scm"
 	"cc.scm"
 	"cps.scm"

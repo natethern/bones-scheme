@@ -89,7 +89,12 @@
 	      (code (cp code))
 	      (_ (NB "detecting unused variables"))
 	      (code unused (detect-unused-variables code))
-	      (_ (cond ((option 'dump-unused: options)
+	      (_ (NB "simplification"))
+	      (code (simplify code))
+	      (_ (cond ((option 'dump-simplified: options)
+			(dump-expressions code dumpserial)
+			(stop))
+		       ((option 'dump-unused: options)
 			(for-each 
 			 (lambda (var) (write var) (newline))
 			 unused)

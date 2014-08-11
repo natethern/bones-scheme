@@ -19,6 +19,7 @@
 (load "alexpand.scm")
 (load "source.scm")
 (load "cp.scm")
+(load "simplify.scm")
 (load "uv.scm")
 (load "cc.scm")
 (load "cps.scm")

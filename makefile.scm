@@ -20,6 +20,8 @@
     "alexpand.scm"
     "megalet.scm"
     "source.scm"
+    "cp.scm"
+    "simplify.scm"
     "cc.scm"
     "cps.scm"
     "mangle.scm"
