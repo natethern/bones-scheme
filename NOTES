@@ -2,6 +2,14 @@ BONES                                                                     -*- Or
 =====
 
 
+* TODO perform copy-propagation and inlining in pre-CPS "simplify" pass
+  - see branch /simplify/
+  - seems to break "bones".
+  - needs more testing and performance analysis.
+  - seems to work better moving $inline-test forms into conditional
+    tests, but it is hard to estimate the performance gain.
+  - this also duplicates some functionality of the "cp" pass, but that
+    one may still be useful after CPS.
 * TODO document file:bones-autocompile
 * TODO file:tests/raytracer.scm produces wrong output
   - nearly good, but apparently there are some wrong calculations.
@@ -14,7 +22,7 @@ BONES                                                                     -*- Or
 * TODO test file:copy.scm
 * TODO add checks for copying of slots and bytes (bounds, types)
 * TODO add exact development system versions (xcode, mingw64, msvc)
-* TODO we need FP num/str conversion
+* TODO we need floating-point num/str conversion
   - atof: http://pastebin.com/prYRrseH
     #+BEGIN_SRC asm
 ; atof implementation using SSE
@@ -191,6 +199,13 @@ mainCRTStartup:
      test returns true (thus appending another ".0")
 ** gcc/clang prints warning when linking compiled code ("PIE disabled")
    - executable still runs, warning currently disabled with "-Wl,-no_pie".
+** CPS produces suboptimal forms
+   - e.g.:
+     "(compile '(if ((lambda (x y) ($inline-test "foo" "eq" x y)) a (+)) 9 10))"
+     -> 
+     ($lambda 2 (k1) (%+ ($lambda 4 ...)))
+     ($lambda 4 (t3)
+       (let ((t2 ($inline-test "foo" "eq" a t3))) (if t2 (k1 '9) (k1 '10))))
 ** do popping of the FPU stack in =flonum_expt= in file:x86_64/boneslib.s right
    - currently uses =fstp=, but probably should do a combination of
      =ffree= and =fincstp=.
