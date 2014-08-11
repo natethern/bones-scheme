@@ -11,6 +11,11 @@ case "$1" in
 	exit;;
 esac
 
+case "`uname`" in
+    Darwin) oformat="-f macho64";;
+    *) oformat="-f elf64";;
+esac
+
 filename=$1
 shift
 cachedir="$BONES_AUTOCOMPILE_CACHE"
@@ -36,6 +41,6 @@ fi
 
 filename2=`basename "$filename"`
 bones "$filename" -o "/tmp/${filename2}.s"
-nasm -f elf64 "/tmp/${filename2}.s" -o "/tmp/${filename2}.o"
+nasm $oformat -I/usr/share/bones/ "/tmp/${filename2}.s" -o "/tmp/${filename2}.o"
 gcc "/tmp/${filename2}.o" -o "${cachedir}/${hash}"
 exec "${cachedir}/${hash}" "$@"
