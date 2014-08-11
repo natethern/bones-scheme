@@ -721,3 +721,17 @@
    (case (system-software)
      ((Darwin) (capture (stat "-f" "\"%c\"" ,(qs fn))))
      (else (capture (stat "-c" "\"%Y\"" ,(qs fn)))))))
+
+(define (limited maxdepth exp)
+  (define (walk x d)
+    (if (> d maxdepth)
+	'...
+	(cond ((vector? x) (list->vector (walk (vector->list x) d)))
+	      ((pair? x)
+	       (let loop ((x x) (n maxdepth))
+		 (cond ((null? x) '())
+		       ((zero? n) '(...))
+		       ((pair? x) (cons (walk (car x) (+ d 1)) (loop (cdr x) (- n 1))))
+		       (else x))))
+	      (else x))))
+	(walk exp 1))
