@@ -197,7 +197,7 @@
      (error "CPS-call in non-tail position" x))
     ((op _ ...)
      (error "CPS-call in non-tail position" x))
-    (_ (error "bad expression" x))))
+    (_ (error "RA: invalid expression" x))))
 
 
 ;; return register that holds this value of #f

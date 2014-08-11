@@ -223,7 +223,7 @@
 	 (let ((args fv (mapwalk args e)))
 	   (values `($call ,id ,@args) fv)))
 	((op args ...) (mapwalk x e))
-	(_ (error "bad expression" x))))
+	(_ (error "CC: invalid expression" x))))
     ;; now walk cc'd code and convert closure-ref'd names to indices
     (define (index-walk x cap)
       (match x
@@ -263,7 +263,7 @@
 	 `($call ,id ,@(map (cut index-walk <> cap) args)))
 	((op args ...)
 	 (map (cut index-walk <> cap) x))
-	(_ (error "bad expression" x))))
+	(_ (error "CC: invalid expression" x))))
     (define (refs-vars refs)		; extracts variable names
       (map (match-lambda
 	     (((or '$local-ref '$closure-ref) name) name)

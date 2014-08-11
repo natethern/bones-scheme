@@ -429,7 +429,7 @@
     ((op args ...)
      (translate-call x)
      #f)
-    (_ (error "bad expression" x))))
+    (_ (error "COMPILE: invalid expression" x))))
 
 
 ;; translate store operation on expression, possibly avoiding intermediate
