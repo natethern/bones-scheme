@@ -110,9 +110,11 @@
 ;
 ; - propagates aliases only in the same lambda.
 ; - returns transformed expression and items of alist computed in "cp1", that contain lambda-ids.
+; - inserts "$call" expressions for calls to known lambdas.
 
 (define (cp exp)
-  (let ((vars (cp1 exp)))
+  (let ((vars (cp1 exp))
+	(ccount 0))
     (define (walk x lenv env)
       (match x
 	((? symbol?) 
@@ -120,10 +122,13 @@
 		     (assq x vars)) 
 		=> (match-lambda
 		     ((_ . (? symbol? var))
-		      (if (memq var lenv)
-			  var
-			  x))
-		     ((_ . (and y ('quote _))) y)
+		      (cond ((memq var lenv)
+			     (inc! ccount)
+			     var)
+			    (else x)))
+		     ((_ . (and y ('quote _)))
+		      (inc! ccount)
+		      y)
 		     (_ x)))
 	       (else x)))
 	(('quote _) x)
@@ -175,5 +180,6 @@
 			x)))
 		 (else x))))
 	(_ (error "invalid expression" x))))
-    ;;(pp vars)
-    (walk exp '() '())))
+    (let ((exp (walk exp '() '())))
+      (NB "  propagated " ccount " variable values")
+      exp)))
