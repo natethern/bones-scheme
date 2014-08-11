@@ -25,9 +25,9 @@
 (define-inline (fxarithmetic-shift-left x n) (arithmetic-shift x n))
 (define-inline (fxpositive? x) (%fx>? x 0))
 (define-inline (fxnegative? x) (%fx<? x 0))
-(define-inline (fxeven? x) (eq? 0 (bitwise-and x 1)))
-(define-inline (fxodd? x) (not (eq? 0 (bitwise-and x 1))))
-(define-inline (fxzero? x) (eq? 0 x))
+(define-inline (fxeven? x) (%eq? 0 (bitwise-and x 1)))
+(define-inline (fxodd? x) (not (%eq? 0 (bitwise-and x 1))))
+(define-inline (fxzero? x) (%eq? 0 x))
 
 (define-inline (fxabs x) (if (%fx<? x 0) (fx- x) x))
 
@@ -70,19 +70,19 @@
     ((x) (fl/ 1.0 x))))
 
 (define-inline (fl= x y)
-  ($inline "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1; lea rax, [FALSE + CELLS(2)]; cmovne rax, FALSE" x y))
+  ($inline-test "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1" "eq" x y))
 
 (define-inline (fl> x y)
-  ($inline "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1; lea rax, [FALSE + CELLS(2)]; cmovbe rax, FALSE" x y))
+  ($inline-test "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1" "a" x y))
 
 (define-inline (fl< x y)
-  ($inline "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1; lea rax, [FALSE + CELLS(2)]; cmovae rax, FALSE" x y))
+  ($inline-test "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1" "b" x y))
 
 (define-inline (fl>= x y)
-  ($inline "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1; lea rax, [FALSE + CELLS(2)]; cmovb rax, FALSE" x y))
+  ($inline-test "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1" "ae" x y))
 
 (define-inline (fl<= x y)
-  ($inline "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1; lea rax, [FALSE + CELLS(2)]; cmova rax, FALSE" x y))
+  ($inline-test "movsd xmm0, [rax + CELLS(1)]; movsd xmm1, [r11 + CELLS(1)]; ucomisd xmm0, xmm1" "be" x y))
 
 (define-inline (flround x) (%ieee754-round x))
 
@@ -132,11 +132,11 @@
 (define-inline (flmin x y) (if (fl< x y) x y))
 
 (define-inline (flfinite? x)
-  (or (not (eq? 2047 (%ieee754-exponent x)))   ; inf or nan
-      (not (eq? 0 (%ieee754-mantissa x)))))    ; nan
+  (or (not (%eq? 2047 (%ieee754-exponent x)))   ; inf or nan
+      (not (%eq? 0 (%ieee754-mantissa x)))))    ; nan
 
 (define-inline (flnan? x)
-  (and (eq? 2047 (%ieee754-exponent x))
-       (not (eq? 0 (%ieee754-mantissa x)))))
+  (and (%eq? 2047 (%ieee754-exponent x))
+       (not (%eq? 0 (%ieee754-mantissa x)))))
 
 (define-inline (fllog x) (%ieee754-log x))

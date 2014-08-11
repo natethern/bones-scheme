@@ -150,3 +150,33 @@
 
 (define (generate-procedure-check)
   (emit " CHECK_PROCEDURE\n"))
+
+(define (generate-conditional-set cnd r)
+  (emit " SET_T " r "\n cmov" (inverted-condition cnd) " " r ", FALSE\n"))
+
+(define (generate-conditional-branch/cond cnd r lbl)
+  (emit " j" (inverted-condition cnd) " " lbl "\n"))
+
+(define (generate-conditional-move/cond cnd src dest)
+  (emit " cmov" (real-condition cnd) " " dest ", " src "\n"))
+
+(define (real-condition cnd)
+  (case (symbolify cnd)
+    ((eq) 'e)
+    ((lt) 'l)
+    ((gt) 'g)
+    (else cnd)))
+
+(define (inverted-condition cnd)
+  (case (symbolify cnd)
+    ((eq) 'ne)
+    ((ne) 'e)
+    ((gt) 'le)
+    ((lt) 'ge)
+    ((ge) 'l)
+    ((le) 'g)
+    ((a) 'be)
+    ((b) 'ae)
+    ((ae) 'b)
+    ((be) 'a)
+    (else (error "conditional code not supported for this architecture" cnd))))

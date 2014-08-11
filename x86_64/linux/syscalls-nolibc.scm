@@ -83,3 +83,8 @@
 (define %clocks-per-sec
   (let ((secs ($inline "SYSCALL2 229, 1, buffer; mov rax, [buffer]; INT2FIX rax"))) ; CLOCK_MONOTONIC
     (%fx+ (%fx* secs 1000000000) ($inline "mov rax, [buffer + CELLS(1)]; INT2FIX rax"))))
+
+(define-syntax-rule (%exit code)
+  (%terminate code))
+
+(define-syntax %_exit %exit)

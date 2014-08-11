@@ -1,3 +1,34 @@
+Release 5:
+
+  "return-to-host" failed when compiled with "-feature check".
+
+  Changed embedded entry point name from "bones" to "scheme" (the
+  name-prefix still applies.)
+
+  Added "with-input-from-string" and "with-output-to-string" to
+  "nonstd.scm".
+
+  Characters with code outside 8 bit range are printed in hexadecimal
+  notation.
+
+  Characters with codes in the 8-bit range are pre-allocated so
+  "integer->char" doesn't need to allocate memory for these.
+
+  "exit" and "emergency-exit" invoke exit(3) and _exit(2),
+  respectively.
+
+  Failed checks invoke error-handler instead of simply aborting with
+  an error message.
+
+  Fixed various bugs in the evaluator and added support for showing a
+  call-trace on error. Renamed the standalone interpreter to "si".
+
+  "get-environment-variable" returned an invlaid result when the
+  variable was not defined.
+
+  Added "$inline-test" form for slightly faster code in conditionals
+  (not overly effective in the moment.)
+
 Release 4:
 
   In the single-argument case "/" did not handle a fixnum argument

@@ -178,16 +178,20 @@
       temporary-registers
       (used-registers box)
       (used-registers val)))
-    (('$inline (or ('quote opr) opr) args ...)
+    (('$inline _ args ...)
      (append 
       temporary-registers      ; inline code may clobber any temporary
       (append-map used-registers args)))
-    (('$allocate (or ('quote type) type) (or ('quote size) size) args ...)
+    (('$inline-test _ _ args ...)
+     (append
+      temporary-registers
+      (append-map used-registers args)))
+    (('$allocate _ _ args ...)
      (append
       (take (length args) temporary-registers)
       (append-map used-registers args)))
     (((or '$undefined '$uninitialized)) '())
-    (('$closure-ref i) (list self-register))
+    (('$closure-ref _) (list self-register))
     (('quote _) '())
     (('$call _ ...)
      (error "CPS-call in non-tail position" x))

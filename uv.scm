@@ -5,6 +5,7 @@
 ;
 ; - also removes "let" bindings for unused variables bound to a "pure" (side-efect free) value.
 ; - removes empty "let" expressions.
+; - special cases "%error", as this is invoke from boneslib.s
 
 (define (detect-unused-variables form) ; expects expanded + canonicalized form
   (let ((globals '())
@@ -85,12 +86,15 @@
 	(('$primitive n) x)
 	(('$inline n xs ...)
 	 `($inline ,n ,@(map (cut walk <> env here #f) xs)))
+	(('$inline-test n cnd xs ...)
+	 `($inline-test ,n ,cnd ,@(map (cut walk <> env here #f) xs)))
 	(('$allocate t s xs ...)
 	 `($allocate ,t ,s ,@(map (cut walk <> env here #f) xs)))
 	(('$call id xs ...)
 	 `($call ,id ,@(map (cut walk <> env here #f) xs)))
 	((op args ...) (map (cut walk <> env here #f) x))
 	(_ (error "invalid expression" x))))
+    (used '%error '() #f)
     (let ((form (walk form '() #f #f))
 	  (ucount 0))
       ;; now remove unused global variables iteratively

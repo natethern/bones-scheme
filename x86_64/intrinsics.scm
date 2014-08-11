@@ -38,11 +38,11 @@
 
 ;; predicate for determining whether a value is a fixnum
 (define-syntax-rule (%fixnum? x)
-  ($inline "test rax, 1; SET_T rax; cmovz rax, FALSE" x))
+  ($inline-test "test rax, 1" "ne" x))
 
 ;; compare identity of two values
 (define-syntax-rule (%eq? x y)
-  ($inline "cmp rax, r11; SET_T rax; cmovne rax, FALSE" x y))
+  ($inline-test "cmp rax, r11" "eq" x y))
 
 ;; fixnum arithmetic
 (define-syntax-rule (%fx+ x y)
@@ -65,16 +65,16 @@
 
 ;; fixnum comparisons
 (define-syntax-rule (%fx>? x y)
-  ($inline "cmp rax, r11; SET_T rax; cmovle rax, FALSE" x y))
+  ($inline-test "cmp rax, r11" "gt" x y))
 
 (define-syntax-rule (%fx<? x y)
-  ($inline "cmp rax, r11; SET_T rax; cmovge rax, FALSE" x y))
+  ($inline-test "cmp rax, r11" "lt" x y))
 
 (define-syntax-rule (%fx>=? x y)
-  ($inline "cmp rax, r11; SET_T rax; cmovl rax, FALSE" x y))
+  ($inline-test "cmp rax, r11" "ge" x y))
 
 (define-syntax-rule (%fx<=? x y)
-  ($inline "cmp rax, r11; SET_T rax; cmovg rax, FALSE" x y))
+  ($inline-test "cmp rax, r11" "le" x y))
 
 ;; extract block-size (bytes or cells)
 (define-syntax-rule (%size x)

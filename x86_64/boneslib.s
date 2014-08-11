@@ -101,9 +101,9 @@
 
 %ifdef FEATURE_EMBEDDED
  %ifdef PREFIX
-  %define ENTRYPOINT PREFIX %+ _bones
+  %define ENTRYPOINT PREFIX %+ _scheme
  %else
-  %define ENTRYPOINT bones
+  %define ENTRYPOINT scheme
  %endif
 %endif
 
@@ -698,6 +698,9 @@ terminate:
   FIX2INT rax
   pop rbp
   RESTORE
+%ifdef FEATURE_EMBEDDED
+  mov rax, premature_exit_error_object
+%endif  
   ret
 
 
@@ -1362,6 +1365,7 @@ list_length:
 ;; apply: rcx = k, rdx = proc, rsi... = args -> (k results ...)
 PRIMITIVE apply
   mov rbx, rdx			; proc
+  CHECK_PROCEDURE
   push r11
   cmp r11, NUMBER_OF_ARGUMENT_REGISTERS
   ja .l9
@@ -1405,9 +1409,7 @@ PRIMITIVE apply
 %ifdef FEATURE_CHECK
     cmp r11, MAXIMUM_NUMBER_OF_ARGUMENTS - 2
     if a
-      mov rax, error_msg_6
-      mov r11, error_msg_7 - error_msg_6
-      call write_error_and_exit    
+      call check_apply_limit_failed
     endif
 %endif
     cmp rsi, rdx		; compare current list with '()
@@ -1609,18 +1611,18 @@ call_cc_wrapper:
 
 
 ;; called when WRITE_BARRIER detects a write outside of the heap
-;;XXX later do something sensible here
 write_barrier_trap:
   mov rax, error_msg_1
-  mov r11, error_msg_2 - error_msg_1
-  call write_error_and_exit
+  mov r11, 3
+  jmp invoke_error
 
 
 ;; called when ALLOC > LIMIT right after a GC (reserve is already subtracted from LIMIT)
+;; may fail, if not enough heap is left
 heap_full_trap:
   mov rax, error_msg_2
-  mov r11, error_msg_3 - error_msg_2
-  call write_error_and_exit  
+  mov r11, 3
+  jmp invoke_error
 
 
 ;; write error message and exit: rax = raw string, r11 = length
@@ -2518,7 +2520,7 @@ str2num:
     mov bl, [r11]
     test bl, bl
     if z
-      mov rax, FLONUM | 1
+      mov rax, FLONUM | CELLS(1)
       mov [ALLOC], rax
       movsd [ALLOC + CELLS(1)], xmm0
       mov rax, ALLOC
@@ -2580,7 +2582,33 @@ get_last_error:
 %endif
 
 
+;; lookup char in character-table: rax = code (fixnum) -> rax (char or #f)
+lookup_char:
+  FIX2INT rax
+  cmp rax, 256
+  if b
+    lea r11, [char_table]
+    shl rax, CELL_SHIFT + 1
+    add rax, r11
+    ret
+  endif
+  mov rax, FALSE
+  ret
+
+
+;; invoke "(%error MSG ARGS ...)": rax = error-msg (char *), rsi, ... = irritants, r11 = argc
+invoke_error:
+  mov rsp, [rsp_save]		; just in case error was triggered with stuff on the stack
+  call alloc_zstring
+  mov rdx, rax
+  mov SELF, [____25error]
+  mov rcx, FALSE		; no continuation
+  mov rax, [SELF + CELLS(1)]
+  jmp rax
+
+
 %ifdef FEATURE_CHECK
+
 
 ;; check slot-access: rax = block, r11 = index (fixnum), clobbers r11
 check_slot_access:
@@ -2601,9 +2629,11 @@ check_slot_access:
     endif
   endif
 .fail:
+  mov rsi, rax
+  mov rdi, r11
   mov rax, error_msg_3
-  mov r11, error_msg_4 - error_msg_3  
-  jmp write_error_and_exit
+  mov r11, 5
+  jmp invoke_error
 
 
 ;; check byte-access: rax = block, r11 = index (fixnum), clobbers r11
@@ -2625,9 +2655,11 @@ check_byte_access:
     endif
   endif
 .fail:
+  mov rsi, rax
+  mov rdi, r11
   mov rax, error_msg_4
-  mov r11, error_msg_5 - error_msg_4
-  jmp write_error_and_exit    
+  mov r11, 5
+  jmp invoke_error
 
 
 ;; check procedure: SELF = block
@@ -2643,16 +2675,30 @@ check_procedure:
     ret
   endif
 .fail:
+  mov rsi, SELF
   mov rax, error_msg_5
-  mov r11, error_msg_6 - error_msg_5
-  jmp write_error_and_exit
+  mov r11, 4
+  jmp invoke_error
 
 
-;; argc check failed
+;; argc check failed: r11 = argc, SELF = procedure
 check_argc_failed:
+  mov rsi, SELF
+  mov rdi, r11
+  INT2FIX rdi
   mov rax, error_msg_7
-  mov r11, error_msg_8 - error_msg_7
-  jmp write_error_and_exit
+  mov r11, 5
+  jmp invoke_error
+
+;; argc-limit check in "apply" failed: r11 = argc, SELF = procedure
+check_apply_limit_failed:
+  mov rsi, SELF
+  mov rdi, r11
+  INT2FIX rdi
+  mov rax, error_msg_6
+  mov r11, 5
+  jmp invoke_error
+
 
 %endif
 
@@ -2689,6 +2735,24 @@ terminate_closure:
   dq CLOSURE | 1
   dq terminate
 
+%ifdef FEATURE_EMBEDDED
+premature_exit_error_object:
+  dq RECORD | 6
+  dq error_object_symbol, FIX(1), premature_exit_error_msg, null, false, false
+premature_exit_error_msg:
+  dq STRING | (.msg2 - .msg1)
+.msg1:
+  db `premature exit in embedded code`
+.msg2:
+;; note: this is not eq? to (string->symbol "error-object")
+error_object_symbol:
+  dq SYMBOL | 1
+  dq error_object_string
+error_object_string:
+  dq STRING | 12
+  db `error-object`
+%endif
+
 temporary_flonum: dq FLONUM | CELLS(1), 0
 flonum_0: dq FLONUM | CELLS(1), __float64__(0.0)
 flonum_1: dq FLONUM | CELLS(1), __float64__(1.0)
@@ -2698,17 +2762,17 @@ ieee754_ninf: dq FLONUM | CELLS(1), 0xfff0000000000000
 argc: dq 0
 saved_k: dq 0
 
-error_msg_1: db `store to non-heap data detected\n`
-error_msg_2: db `out of memory\n`
-error_msg_3: db `invalid slot access\n`
-error_msg_4: db `invalid byte access\n`
-error_msg_5: db `call of non procedure\n`
-error_msg_6: db `apply: too many arguments\n`
-error_msg_7: db `wrong number of arguments\n`
+error_msg_1: db "store to non-heap data detected", 0
+error_msg_2: db "out of memory", 0
+error_msg_3: db "invalid slot access", 0
+error_msg_4: db "invalid byte access", 0
+error_msg_5: db "call of non procedure", 0
+error_msg_6: db "apply: too many arguments", 0
+error_msg_7: db "wrong number of arguments", 0
 error_msg_8:
 
-gc_log_format: db `[GC #%d, reserve: %d bytes ...`, 0
-gc_log_format2: db ` remaining: %d bytes]\n`, 0
+gc_log_format: db "[GC #%d, reserve: %d bytes ...", 0
+gc_log_format2: db " remaining: %d bytes]", 10, 0
 
 random_numbers:
   db 98,6,85,150,36,23,112,164,135,207,169,5,26,64,165,219
@@ -2727,6 +2791,15 @@ random_numbers:
   db 3,14,204,72,21,41,56,66,28,193,40,217,25,54,179,117
   db 238,87,240,155,180,170,242,212,191,163,78,218,137,194,175,110
   db 43,119,224,71,122,142,42,160,104,48,247,103,15,11,138,239
+
+align 8
+
+char_table:
+  %assign i 0
+  %rep 256
+    dq CHAR | 1, FIX(i)
+    %assign i i + 1
+  %endrep
 
 %ifdef FEATURE_LLP64
 dcvt: db "%lld", 0
@@ -2755,6 +2828,8 @@ nalign_base: dq ~ALIGN_BASE
 
 
 section .bss
+
+align 8
 
 toplevel_rsp: resq 1
 gc_count: resq 1

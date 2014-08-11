@@ -1,8 +1,12 @@
 ;;;; simple raytracer example from www.scratchapixel.com, ported from C++ to Scheme
 
 
+(cond-expand
+  (chicken (use ports))
+  (else))
+
 (define pi 3.141592653589793)
-(define ninf (string->number "+inf"))
+(define ninf (string->number "+inf.0"))
 
 
 (define (vector-x v) (vector-ref v 0))
@@ -184,16 +188,18 @@
 	       (raydir (normalize (vector xx yy -1))))
 	  (vector-set! image pixel (trace (vector 0 0 0) raydir spheres 0))
 	  (set! pixel (+ pixel 1)))))
-    (with-output-to-file "untitled.ppm"
-      (lambda ()
-	(for-each display `("P6\n" ,width #\space ,height "\n255\n"))
-	(let ((size (* width height)))
-	  (do ((i 0 (+ i 1)))
-	      ((>= i size))
-	    (let ((p (vector-ref image i)))
-	      (display (integer->char (inexact->exact (truncate (* 255 (min 1 (vector-x p)))))))
-	      (display (integer->char (inexact->exact (truncate (* 255 (min 1 (vector-y p)))))))
-	      (display (integer->char (inexact->exact (truncate (* 255 (min 1 (vector-z p))))))))))))))
+    (let ((output
+	   (with-output-to-string
+	     (lambda ()
+	       (for-each display `("P6\n" ,width #\space ,height "\n255\n"))
+	       (let ((size (* width height)))
+		 (do ((i 0 (+ i 1)))
+		     ((>= i size))
+		   (let ((p (vector-ref image i)))
+		     (display (integer->char (inexact->exact (truncate (* 255 (min 1 (vector-x p)))))))
+		     (display (integer->char (inexact->exact (truncate (* 255 (min 1 (vector-y p)))))))
+		     (display (integer->char (inexact->exact (truncate (* 255 (min 1 (vector-z p))))))))))))))
+      (call-with-output-file "raytracer.ppm" (cut display output <>)))))
 
 (define (main)
   (let ((spheres

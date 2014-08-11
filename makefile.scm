@@ -8,7 +8,7 @@
 (define (all) (bones))
 
 (define (clean)
-  (run (rm -f *.o bones bones-x86_64-linux.s)))
+  (run (rm -f *.o bones bones-x86_64-linux.s si si.s)))
 
 (define compiler-sources
   '("bones.scm"
@@ -44,10 +44,11 @@
     (else (error "can't determine nasm format for this system"))))
 
 (define gcc
-  (or (file-exists? "bin/musl-gcc")
-      (case (system-software)
-	((Darwin) "gcc -Wl,-no_pie")
-	(else "gcc"))))
+  (case (system-software)
+    ((Darwin) "gcc -Wl,-no_pie")
+    (else "gcc")))
+
+(define musl-gcc (file-exists? "bin/musl-gcc"))
 
 (define shared-option
   (case (system-software)
@@ -109,14 +110,14 @@
      (make (("bones" ("bones-x86_64-mac.o")
              (run (,gcc bones-x86_64-mac.o -o bones))))))))
 
-(define (bonesi)
+(define (si)
   (bones)
-  (make (("bonesi" ("bonesi.o")
-	  (run (,gcc bonesi.o -o bonesi)))
-	 ("bonesi.o" ("bonesi.s")	;XXX boneslib?
-	  (run (nasm -f ,nasm-format bonesi.s -o bonesi.o)))
-	 ("bonesi.s" ("bonesi.scm" "eval.scm" "version.scm" "alexpand.scm") ;XXX intrinsics, etc?
-	  (run (./bones bonesi.scm -o bonesi.s))))))
+  (make (("si" ("si.o")
+	  (run (,gcc si.o -o si)))
+	 ("si.o" ("si.s" "bones")
+	  (run (nasm -f ,nasm-format -g -F dwarf si.s -o si.o)))
+	 ("si.s" ("si.scm" "eval.scm" "version.scm" "alexpand.scm" "pp.scm") ;XXX intrinsics, etc?
+	  (run (./bones si.scm -o si.s))))))
 
 (define (bigbones)
   (bones)
@@ -155,8 +156,8 @@
 		     (zero? (run* (nasm -f ,nasm-format ,sname -o ,oname)))
 		     (zero? (cond ((memq 'nolibc bopts)
 				   (run* (ld ,oname -o ,xname)))
-				  ((memq 'glibc bopts)
-				   (run* (gcc ,oname -o ,xname)))
+				  ((memq 'musl bopts)
+				   (run* (,musl-gcc ,oname -o ,xname)))
 				  (else 
 				   (run* (,gcc ,oname -o ,xname)))))
 		     (zero? (run* (/usr/bin/time ,xname ,@runargs))))))
@@ -167,6 +168,7 @@
 
 (define (check)
   (bones)
+  (si)
   (run (mkdir -p tmp))
   (print
    (let ((ok #t))
@@ -198,22 +200,29 @@
             (unless (compile+run "nolibc" prg "./bones" '() '(-feature nolibc))
               (set! ok #f))))
         '("fac" "tak" #;"r4rstest" "dynamic" "forth"))
-       (unless (string=? "gcc" gcc)
-	 (for-each
-	  (lambda (prg)
-	    (let* ((bopts (if (member prg '("r4rstest")) '(-case-insensitive) '()))
-		   (prg (string-append "tests/" prg)))
-	      (unless (compile+run "glibc" prg "./bones" '() `(-feature glibc ,@bopts))
-		(set! ok #f))))
-	  '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth"))))
+       (when musl-gcc
+	 (fluid-let ((gcc musl-gcc))
+	   (for-each
+	    (lambda (prg)
+	      (let* ((bopts (if (member prg '("r4rstest")) '(-case-insensitive) '()))
+		     (prg (string-append "tests/" prg)))
+		(unless (compile+run "musl" prg "./bones" '() `(-feature musl ,@bopts))
+		  (set! ok #f))))
+	    '("fac" "tak" "mandelbrot" "r4rstest" "r5rs_pitfalls" "dynamic" "compiler" "forth")))))
      (unless (compile+run "self-compile" "bones" "./bones"
 			  `(bones.scm -o tmp/bones.s -feature ,target-feature)
 			  `(-feature ,target-feature))
        (set! ok #f))
      (unless (zero? (run* (cmp ,(symbol-append 'bones-x86_64- target-feature '.s) tmp/bones.s)))
        (set! ok #f))
+     (print (padl " si" 60 #\=))
+     (set! ok (and ok (zero? (run* (./si tests/r4rstest.scm)))))
+     (set! ok
+       (and ok
+	    (compile+run "bones/si" "tests/fac" "./si tests/bones-in-si.scm")))
      (print (padl " embedded" 60 #\=))
      (unless (check-embedded) (set! ok #f))
+     (print (padl " grond" 60 #\=))
      (unless (check-grond) (set! ok #f))
      (if ok
 	 "\n\nall checks succeeded."
@@ -281,6 +290,7 @@
     "bones-x86_64-linux.s"
     "bones-x86_64-windows.s"
     "bones-x86_64-mac.s"
+    "bones-autocompile"
     "version.scm"
     "alexpand.scm"
     "all.scm"
@@ -299,6 +309,7 @@
     "megalet.scm"
     "nonstd.scm"
     "pp.scm"
+    "sort.scm"
     "r5rs.scm"
     "program.scm"
     "source.scm"
@@ -306,7 +317,7 @@
     "fastmath.scm"
     "copy.scm"
     "support.scm"
-    "bonesi.scm"
+    "si.scm"
     "eval.scm"
     "x86_64/fastmath.scm"
     "x86_64/intrinsics.scm"
@@ -346,6 +357,10 @@
 	 ("MANUAL.txt" ("MANUAL.org")
 	  (run (emacs --script scripts/makeascii.el))))
     '("MANUAL.html" "MANUAL.txt")))
+
+(define (upload)
+  (run (upload -d bones MANUAL.html NEWS bones.tar.gz bones.zip)))
+
 
 (define (-n)
   (run-dry-run #t))

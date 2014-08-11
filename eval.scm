@@ -30,12 +30,10 @@
        ($case-lambda (lambda llist . body) ...))
      (define-syntax cut
        (syntax-rules (<> <...>)
-	 ;; construct fixed- or variable-arity procedure:
 	 ((_ "1" (slot-name ...) (proc arg ...))
 	  (lambda (slot-name ...) (proc arg ...)))
 	 ((_ "1" (slot-name ...) (proc arg ...) <...>)
 	  (lambda (slot-name ... . rest-slot) (apply proc arg ... rest-slot)))
-	 ;; process one slot-or-expr
 	 ((_ "1" (slot-name ...)   (position ...)      <>  . se)
 	  (cut "1" (slot-name ... x) (position ... x)        . se))
 	 ((_ "1" (slot-name ...)   (position ...)      nse . se)
@@ -122,9 +120,47 @@
 			      body))))))
 	 (syntax-rules ()
 	   ((_ bindings body ...)
-	    (bind-param bindings () () () (begin body ...))))))))
+	    (bind-param bindings () () () (begin body ...))))))
+     (define-syntax-rule (handle-exceptions var handler body ...)
+       ((call-with-current-continuation
+	 (lambda (k)
+	   (parameterize ((current-exception-handler
+			   (lambda (var) (k (lambda () handler)))))
+	     (call-with-values (lambda () body ...)
+	       (lambda results
+		 (k (lambda () (apply values results))))))))))
+     (define-syntax cond-expand
+       (syntax-rules (and or not else si)
+	 ((cond-expand) (error 'cond-expand "no matching clause"))
+	 ((cond-expand (si body ...) . more-clauses)
+	  (begin body ...))
+	 ((cond-expand (else body ...)) (begin body ...))
+	 ((cond-expand ((and) body ...) more-clauses ...) (begin body ...))
+	 ((cond-expand ((and req1 req2 ...) body ...) more-clauses ...)
+	  (cond-expand
+	    (req1 (cond-expand
+		    ((and req2 ...) body ...)
+		    more-clauses ...))
+	    more-clauses ...))
+	 ((cond-expand ((or) body ...) more-clauses ...) 
+	  (cond-expand more-clauses ...))
+	 ((cond-expand ((or req1 req2 ...) body ...) more-clauses ...)
+	  (cond-expand
+	    (req1 (begin body ...))
+	    (else
+	     (cond-expand
+	       ((or req2 ...) body ...)
+	       more-clauses ...))))
+	 ((cond-expand ((not req) body ...) more-clauses ...)
+	  (cond-expand
+	    (req (cond-expand more-clauses ...))
+	    (else body ...)))
+	 ((cond-expand (feature-id body ...) more-clauses ...)
+	  (cond-expand more-clauses ...))))))
+
 
 (define eval-unbound-value (list 'unbound))
+(define eval-potentially-unbound #f)
 (define expand expand-syntax)
 
 (define eval-environment
@@ -194,14 +230,17 @@
      force
      truncate round floor ceiling
      open-input-string open-output-string get-output-string
+     with-input-from-string with-output-to-string
      current-second
      get-environment-variable
      current-jiffy jiffies-per-second
-     current-process-id 
+     current-process-id command-line
      system
      read-string write-string
      print
      reclaim free
+     file-exists? delete-file
+     current-directory
      open-append-output-file
      make-parameter make-disjoint-type
      expand
@@ -209,228 +248,310 @@
      make-bytevector bytevector-copy!)))
 
 
+(define eval-trace (make-parameter #f))
+(define eval-trace-buffer '())
+(define eval-trace-buffer-end '())
+(define eval-trace-buffer-len 0)
+(define eval-trace-buffer-max 20)
+
+(define (fragment exp maxdepth)
+  (define (walk x d)
+    (if (> d maxdepth)
+	'...
+	(cond ((vector? x) (list->vector (walk (vector->list x) d)))
+	      ((pair? x)
+	       (let loop ((x x) (n maxdepth))
+		 (cond ((null? x) '())
+		       ((zero? n) '(...))
+		       ((pair? x) (cons (walk (car x) (+ d 1)) (loop (cdr x) (- n 1))))
+		       (else x))))
+	      (else x))))
+  (walk exp 1))
+
+(define (eval-print-trace-buffer . port)
+  (when (pair? eval-trace-buffer)
+    (let ((out (optional port (current-error-port))))
+      (display "\nCall trace:\n" out)
+      (for-each
+       (lambda (exp)
+	 (display "\n  " out)
+	 (write (fragment exp 10) out) )
+       eval-trace-buffer)
+      (display "   <---\n\n" out))))
+
+
 (define (eval x)
+  (let ((evtrace (eval-trace)))
 
-  (define (posq x lst)
-    (let loop ((i 0) (lst lst))
-      (cond ((null? lst) #f)
-	    ((eq? x (car lst)) i)
-	    (else (loop (+ i 1) (cdr lst))))))
+    (define (posq x lst)
+      (let loop ((i 0) (lst lst))
+	(cond ((null? lst) #f)
+	      ((eq? x (car lst)) i)
+	      (else (loop (+ i 1) (cdr lst))))))
 
-  (define (lookup var e)
-    (let loop ((i 0) (e e))
-      (cond ((null? e) #f)
-	    ((posq var (car e)) => (cut cons i <>))
-	    (else (loop (+ i 1) (cdr e))))))
+    (define (lookup var e)
+      (let loop ((i 0) (e e))
+	(cond ((null? e) #f)
+	      ((posq var (car e)) => (cut cons i <>))
+	      (else (loop (+ i 1) (cdr e))))))
 
-  (define (findcell var)
-    (or (assq var eval-environment) 
-	(let ((a (cons var eval-unbound-value)))
-	  (set! eval-environment (cons a eval-environment))
-	  a)))
+    (define (findcell var)
+      (or (assq var eval-environment) 
+	  (let ((a (cons var eval-unbound-value)))
+	    (set! eval-environment (cons a eval-environment))
+	    a)))
 
-  (define (parse-lambda-list llist)	; -> vars argc rest
-    (let loop ((ll llist) (vars '()))
-      (cond ((null? ll) 
-	     (values (reverse vars) (length vars) #f))
-	    ((symbol? ll) 
-	     (values (reverse (cons ll vars)) (length vars) ll))
-	    ((pair? ll) 
-	     (loop (cdr ll) (cons (car ll) vars)))
-	    (else (error "invalid lambda-list" llist)))))
+    (define (parse-lambda-list llist)	; -> vars argc rest
+      (let loop ((ll llist) (vars '()))
+	(cond ((null? ll) 
+	       (values (reverse vars) (length vars) #f))
+	      ((symbol? ll) 
+	       (values (reverse (cons ll vars)) (length vars) ll))
+	      ((pair? ll) 
+	       (loop (cdr ll) (cons (car ll) vars)))
+	      (else (error "invalid lambda-list" llist)))))
 
-  (define (list->vector/rest args argc)
-    (let ((vec (make-vector (+ argc 1))))
-      (do ((i 0 (+ i 1))
-	   (args args (cdr args)))
-	  ((>= i argc) 
-	   (vector-set! vec i args)
-	   vec)
-	(vector-set! vec i (car args)))))
+    (define (list->vector/rest args argc)
+      (let ((vec (make-vector (+ argc 1))))
+	(do ((i 0 (+ i 1))
+	     (args args (cdr args)))
+	    ((>= i argc) 
+	     (vector-set! vec i args)
+	     vec)
+	  (vector-set! vec i (car args)))))
 
-  (define (compile x e)
-    (match x
+    (define (trace exp)
+      (cond ((not evtrace))
+	    ((eq? eval-trace-buffer-len 0)
+	     (set! eval-trace-buffer-len 1)
+	     (set! eval-trace-buffer (list exp))
+	     (set! eval-trace-buffer-end eval-trace-buffer))
+	    (else
+	     (if (eq? eval-trace-buffer-len eval-trace-buffer-max)
+		 (set! eval-trace-buffer (cdr eval-trace-buffer))
+		 (set! eval-trace-buffer-len (%fx+ eval-trace-buffer-len 1)))
+	     (let ((n (list exp)))
+	       (set-cdr! eval-trace-buffer-end n)
+	       (set! eval-trace-buffer-end n)))))
 
-      ((? symbol?)
-       (cond ((lookup x e) =>
-	      (match-lambda 
-		((i . j)
-		 (lambda (v)
-		   (vector-ref (list-ref v i) j)))))
-	     (else
-	      (let ((cell (findcell x)))
-		;; no need to check bound-ness if already bound
-		(if (eq? (cdr cell) eval-unbound-value)
-		    (lambda (v)
-		      (let ((val (cdr cell)))
-			(if (eq? val eval-unbound-value)
-			    (error "unbound variable" x)
-			    val)))
-		    (let ((val (cdr cell)))
-		      (lambda (v) val)))))))
+    (define (compile x e)
+      (match x
 
-      ((or (? number?)
-	   (? string?)
-	   (? char?)
-	   (? vector?)
-	   (? bytevector?)
-	   (? boolean?))
-       (lambda (v) x))
-
-      (('quote c) 
-       (lambda (v) c))
-
-      (('$uninitialized) ; produced by alexpand's expansion of "letrec"
-       (lambda (v) (void)))
-
-      (('set! var x)
-       (let ((x (compile x e)))
-	 (cond ((lookup var e) =>
+	((? symbol?)
+	 (cond ((lookup x e) =>
 		(match-lambda 
 		  ((i . j)
-		   (lambda (v) (vector-set! (list-ref v i) j (x v))))))
+		   (lambda (v)
+		     (vector-ref (list-ref v i) j)))))
 	       (else
-		(let ((cell (findcell var)))
-		  (lambda (v) (set-cdr! cell (x v))))))))
+		(let ((cell (findcell x)))
+		  ;; no need to check bound-ness if already bound
+		  (cond ((eq? (cdr cell) eval-unbound-value)
+			 (when (and eval-potentially-unbound
+				    (not (assq x eval-potentially-unbound)))
+			   (set! eval-potentially-unbound (cons cell eval-potentially-unbound)))
+			 (lambda (v)
+			   (let ((val (cdr cell)))
+			     (if (eq? val eval-unbound-value)
+				 (error "unbound variable" x)
+				 val))))
+			(else (lambda (v) (cdr cell))))))))
 
-      (('if x y)
-       (let ((x (compile x e))
-	     (y (compile y e)))
-	 (lambda (v)
-	   (if (x v) (y v)))))
+	((or (? number?)
+	     (? string?)
+	     (? char?)
+	     (? vector?)
+	     (? bytevector?)
+	     (? boolean?))
+	 (lambda (v) x))
 
-      (('if x y z)
-       (let ((x (compile x e))
-	     (y (compile y e))
-	     (z (compile z e)))
-	 (lambda (v)
-	   (if (x v) (y v) (z v)))))
+	(('quote c) 
+	 (lambda (v) c))
 
-      (('begin) void)
+	(('$uninitialized) ; produced by alexpand's expansion of "letrec"
+	 (lambda (v) (void)))
 
-      (('begin x) (compile x e))
+	(('set! var x)
+	 (let ((x (compile x e)))
+	   (cond ((lookup var e) =>
+		  (match-lambda 
+		    ((i . j)
+		     (lambda (v)
+		       (vector-set! (list-ref v i) j (x v))
+		       (void)))))
+		 (else
+		  (let ((cell (findcell var)))
+		    (lambda (v)
+		      (set-cdr! cell (x v))
+		      (void)))))))
 
-      (('begin x more ...)
-       (let ((x (compile x e))
-	     (more (compile `(begin ,@more) e)))
-	 (lambda (v)
-	   (x v)
-	   (more v))))
+	(('if x y)
+	 (let ((x (compile x e))
+	       (y (compile y e)))
+	   (lambda (v)
+	     (if (x v) (y v)))))
 
-      (('define var x)
-       (let* ((x (compile x e))
-	      (cell (findcell var)))
-	 (lambda (v) (set-cdr! cell (x v)))))
+	(('if x y z)
+	 (let ((x (compile x e))
+	       (y (compile y e))
+	       (z (compile z e)))
+	   (lambda (v)
+	     (if (x v) (y v) (z v)))))
 
-      (('letrec* ((vars vals) ...) body ...)
-       (let* ((e (cons vars e))
-	      (vals (map (cut compile <> e) vals))
-	      (body (compile `(begin ,@body) e))
-	      (n (length vars)))
-	 (lambda (v)
-	   (let* ((v0 (make-vector n (void)))
-		  (v (cons v0 v)))
-	     (do ((i 0 (+ i 1))
-		  (vals vals (cdr vals)))
-		 ((>= i n))
-	       (vector-set! v0 i ((car vals) v)))
-	     (body v)))))
+	(('begin) void)
 
-      (('lambda llist body ...)
-       (call-with-values (cut parse-lambda-list llist)
-	 (lambda (vars argc rest)
-	   (let* ((e (if (null? vars) e (cons vars e)))
-		  (body (compile `(begin ,@body) e)))
-	     (case argc
-	       ((0) 
-		(if rest
-		    (lambda (v)
-		      (lambda r (body (cons (vector r) v))))
-		    (lambda (v) 
-		      (lambda () (body v)))))
-	       ((1)
-		(if rest
-		    (lambda (v)
-		      (lambda (a . r) (body (cons (vector a r) v))))
-		    (lambda (v)
-		      (lambda (a) (body (cons (vector a) v))))))
-	       ((2)
-		(if rest
-		    (lambda (v)
-		      (lambda (a1 a2 . r) (body (cons (vector a1 a2 r) v))))
-		    (lambda (v)
-		      (lambda (a1 a2) (body (cons (vector a1 a2) v))))))
-	       ((3)
-		(if rest
-		    (lambda (v)
-		      (lambda (a1 a2 a3 . r) (body (cons (vector a1 a2 a3 r) v))))
-		    (lambda (v)
-		      (lambda (a1 a2 a3) (body (cons (vector a1 a2 a3) v))))))
-	       ((4)
-		(if rest
-		    (lambda (v)
-		      (lambda (a1 a2 a3 a4 . r) (body (cons (vector a1 a2 a3 a4 r) v))))
-		    (lambda (v)
-		      (lambda (a1 a2 a3 a4) (body (cons (vector a1 a2 a3 a4) v))))))
-	       (else
-		(if rest
-		    (lambda (v)
-		      (lambda args
-			(body (cons (list->vector/rest args argc) v))))
-		    (lambda (v)
-		      (lambda args
-			(body (cons (list->vector args) v)))))))))))
+	(('begin x) (compile x e))
 
-      ((op args ...)
-       (let ((n (length x))
-	     (x (map (cut compile <> e) x)))
-	 (case n
-	   ((1)
-	    (let ((op (car x)))
-	      (lambda (v) ((op v)))))
-	   ((2)
-	    (let ((op (car x))
-		  (a1 (cadr x)))
-	      (lambda (v) ((op v) (a1 v)))))
-	   ((3)
-	    (let ((op (car x))
-		  (a1 (cadr x))
-		  (a2 (caddr x)))
-	      (lambda (v) ((op v) (a1 v) (a2 v)))))
-	   ((4)
-	    (let ((op (car x))
-		  (a1 (cadr x))
-		  (a2 (caddr x))
-		  (a3 (cadddr x)))
-	      (lambda (v) ((op v) (a1 v) (a2 v) (a3 v)))))
-	   (else
-	    (let ((op (car x))
-		  (args (cdr x)))
-	      (lambda (v)
-		(apply (op v) (map (lambda (a) (a v)) args))))))))
+	(('begin x more ...)
+	 (let ((x (compile x e))
+	       (more (compile `(begin ,@more) e)))
+	   (lambda (v)
+	     (x v)
+	     (more v))))
 
-      (_ (error "invalid expression" x))))
+	(('define var x)
+	 (let* ((x (compile x e))
+		(cell (findcell var)))
+	   (lambda (v) 
+	     (set-cdr! cell (x v))
+	     (void))))
 
-  ((compile (expand-syntax x) '()) '()))
+	(('letrec* ((vars vals) ...) body ...)
+	 (let* ((e (cons vars e))
+		(vals (map (cut compile <> e) vals))
+		(body (compile `(begin ,@body) e))
+		(n (length vars)))
+	   (lambda (v)
+	     (let* ((v0 (make-vector n (void)))
+		    (v (cons v0 v)))
+	       (do ((i 0 (+ i 1))
+		    (vals vals (cdr vals)))
+		   ((>= i n))
+		 (vector-set! v0 i ((car vals) v)))
+	       (body v)))))
+
+	(('lambda llist body ...)
+	 (call-with-values (cut parse-lambda-list llist)
+	   (lambda (vars argc rest)
+	     (let* ((e (if (null? vars) e (cons vars e)))
+		    (body (compile `(begin ,@body) e)))
+	       (case argc
+		 ((0) 
+		  (if rest
+		      (lambda (v)
+			(lambda r (body (cons (vector r) v))))
+		      (lambda (v) 
+			(lambda () (body v)))))
+		 ((1)
+		  (if rest
+		      (lambda (v)
+			(lambda (a . r) (body (cons (vector a r) v))))
+		      (lambda (v)
+			(lambda (a) (body (cons (vector a) v))))))
+		 ((2)
+		  (if rest
+		      (lambda (v)
+			(lambda (a1 a2 . r) (body (cons (vector a1 a2 r) v))))
+		      (lambda (v)
+			(lambda (a1 a2) (body (cons (vector a1 a2) v))))))
+		 ((3)
+		  (if rest
+		      (lambda (v)
+			(lambda (a1 a2 a3 . r) (body (cons (vector a1 a2 a3 r) v))))
+		      (lambda (v)
+			(lambda (a1 a2 a3) (body (cons (vector a1 a2 a3) v))))))
+		 ((4)
+		  (if rest
+		      (lambda (v)
+			(lambda (a1 a2 a3 a4 . r) (body (cons (vector a1 a2 a3 a4 r) v))))
+		      (lambda (v)
+			(lambda (a1 a2 a3 a4) (body (cons (vector a1 a2 a3 a4) v))))))
+		 (else
+		  (if rest
+		      (lambda (v)
+			(lambda args
+			  (body (cons (list->vector/rest args argc) v))))
+		      (lambda (v)
+			(lambda args
+			  (body (cons (list->vector args) v)))))))))))
+
+	(('$case-lambda ('lambda llists . bodies) ...)
+	 ;;XXX this can probably be done more efficiently
+	 (let ((bodies (map (lambda (llist body)
+			      (compile `(lambda ,llist ,@body) e))
+			    llists bodies))
+	       (tests (map (lambda (llist)
+			     (call-with-values (cut parse-lambda-list llist)
+			       (lambda (vars argc rest)
+				 (lambda (args)
+				   (let loop ((i 0) (args args))
+				     (cond ((>= i argc) (or rest (null? args)))
+					   ((null? args) #f)
+					   (else (loop (+ i 1) (cdr args)))))))))
+			   llists)))
+	   (lambda (v)
+	     (lambda args
+	       (let loop ((tests tests) (bodies bodies))
+		 (cond ((null? tests) (error 'case-lambda "no matching case" args))
+		       (((car tests) args) (apply ((car bodies) v) args))
+		       (else (loop (cdr tests) (cdr bodies)))))))))
+
+	((op args ...)
+	 (let ((n (length x))
+	       (y (map (cut compile <> e) x)))
+	   (case n
+	     ((1)
+	      (let ((op (car y)))
+		(lambda (v) (trace x) ((op v)))))
+	     ((2)
+	      (let ((op (car y))
+		    (a1 (cadr y)))
+		(lambda (v) (trace x) ((op v) (a1 v)))))
+	     ((3)
+	      (let ((op (car y))
+		    (a1 (cadr y))
+		    (a2 (caddr y)))
+		(lambda (v) (trace x) ((op v) (a1 v) (a2 v)))))
+	     ((4)
+	      (let ((op (car y))
+		    (a1 (cadr y))
+		    (a2 (caddr y))
+		    (a3 (cadddr y)))
+		(lambda (v) (trace x) ((op v) (a1 v) (a2 v) (a3 v)))))
+	     (else
+	      (let ((op (car y))
+		    (args (cdr y)))
+		(lambda (v)
+		  (trace x)
+		  (apply (op v) (map (lambda (a) (a v)) args))))))))
+
+	(_ (error "invalid expression" x))))
+
+    ((compile (expand-syntax x) '()) '())))
 
 
 (define-values (load load-verbose)
-  (let ((load
-	 (lambda (filename evproc verbose)
-	   (let ((in (open-input-file filename)))
-	     (dynamic-wind
-		 void
-		 (lambda ()
-		   (let loop ()
-		     (let ((x (read in)))
-		       (unless (eof-object? x)
-			 (when verbose 
-			   (newline)
-			   (write x)
-			   (newline))
-			 (evproc x)
-			 (loop)))))
-		 (cut close-input-port in))))))
+  (let ((home (get-environment-variable "HOME")))
+    (define (load filename evproc verbose)
+      (let* ((filename (if (and (positive? (string-length filename))
+				(char=? #\~ (string-ref filename 0)))
+			   (string-append home (substring filename 1))
+			   filename))
+	     (in (open-input-file filename)))
+	(dynamic-wind
+	    void
+	    (lambda ()
+	      (let loop ()
+		(let ((x (read in)))
+		  (unless (eof-object? x)
+		    (when verbose 
+		      (newline)
+		      (write x)
+		      (newline))
+		    (evproc x)
+		    (loop))))
+	      (void))
+	    (cut close-input-port in))))
     (values
      (case-lambda
        ((filename ev) (load filename ev #f))
@@ -444,13 +565,35 @@
   (embedded (eval `(define return-to-host ',return-to-host)))
   (else))
 
-(eval
- `(begin
-    (define load-verbose ',load-verbose)
-    (define load ',load)
-    (define oblist ',(lambda () eval-environment))))
+(define (eval-quit-hook result) (exit))
+
+(define eval-repl-level 0)
+
+(define (quit . result) (eval-quit-hook (optional result (void))))
+
+(define repl-prompt 
+  (make-parameter 
+   (lambda () (string-append (make-string eval-repl-level #\>) " "))))
+
+(define repl-print (make-parameter (lambda (x) (write x) (newline))))
 
 (define (repl)
+  (define (report-unbound)
+    (let loop ((cells eval-potentially-unbound) (ub '()))
+      (match cells
+	(() 
+	 (when (pair? ub)
+	   (let ((out (current-error-port)))
+	     (display "Warning: the following global variables are currently unbound:\n\n" out)
+	     (for-each
+	      (lambda (a)
+		(display "  " out)
+		(display (car a) out)
+		(newline out))
+	      ub)
+	     (newline out))))
+	(((and a (_ . val)) . more)
+	 (loop more (if (eq? eval-unbound-value val) (cons a ub) ub))))))
   (define (eval-form x return)
     (parameterize ((current-exception-handler
 		    (lambda (exn)
@@ -459,33 +602,57 @@
 			(cond ((error-object? exn)
 			       (display "Error: " out)
 			       (display (error-object-message exn) out)
+			       (newline out)
 			       (for-each
 				(lambda (x)
 				  (newline out)
-				  (write x out)
+				  (write (fragment x 10) out)
 				  (newline out))
 				(error-object-irritants exn)))
 			      (else
 			       (display "Unhandled excception: " out)
 			       (write exn out)
 			       (newline out)))
+			(when (eval-trace) (eval-print-trace-buffer))
 			(return #f)))))
-      (eval x)))
-  (call/cc
-   (lambda (exit)
-     (do () (#f)
-       (display "> ")
-       (let ((x (read)))
-	 (when (eof-object? x) (exit #f))
-	 (call/cc
-	  (lambda (return)
-	    (call-with-values (cut eval-form x return)
-	      (lambda results
-		(for-each
-		 (lambda (x)
-		   (write x) 
-		   (newline))
-		 results)))))))
-     (newline))))
+      (set! eval-trace-buffer '())
+      (set! eval-trace-buffer-end '())
+      (set! eval-trace-buffer-len 0)
+      (set! eval-potentially-unbound '())
+      (begin0
+	(eval x)
+	(report-unbound))))
+  (let ((rpt (repl-prompt))
+	(rp (repl-print)))
+    (call/cc
+     (lambda (exit)
+       (fluid-let ((eval-potentially-unbound eval-potentially-unbound)
+		   (eval-quit-hook
+		    (case-lambda 
+		      (() (exit (void)))
+		      ((result) (exit result))))
+		   (eval-repl-level (+ eval-repl-level 1)))
+	 (do () (#f)
+	   (display (rpt))
+	   (let ((x (read)))
+	     (when (eof-object? x) (exit #f))
+	     (call/cc
+	      (lambda (return)
+		(call-with-values (cut eval-form x return)
+		  (lambda results
+		    (unless (and (= 1 (length results))
+				 (eq? (void) (car results)))
+		      (for-each rp results))))))))
+	 (newline))))))
+
+(eval
+ `(begin
+    (define load-verbose ',load-verbose)
+    (define load ',load)
+    (define quit ',quit)
+    (define repl ',repl)
+    (define repl-prompt ',repl-prompt)
+    (define repl-print ',repl-print)
+    (define oblist ',(lambda () eval-environment))))
 
 )

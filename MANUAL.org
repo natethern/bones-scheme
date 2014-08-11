@@ -1,4 +1,4 @@
-/Release 4/
+/Release 5/
 
 * Introduction
 
@@ -54,7 +54,7 @@
 
   To run programs compiled with BONES (and to run the compiler
   itself), an x86_64 system is required, with support for SSE2 and
-  SSE3 instructions. Currently the the compiler runs under the Linux,
+  SSE3 instructions. Currently the compiler runs under the Linux,
   Mac OS X and Windows operating systems.
 
   BONES has been successfully tested on the following systems:
@@ -161,7 +161,7 @@
   The =bones= executable can be moved anywhere you desire, but assumes
   that some supporting files are in the directory where it is invoked.
   You can use the =-L= command-line option (described below) to set
-  the the directory where the supporting files are located. The default
+  the directory where the supporting files are located. The default
   search path contains the following directories:
 
   - The current directory (".")
@@ -778,6 +778,16 @@
         from =PORT=, the /end-of-file/ object is returned. =PORT=
         defaults to the value of =(current-input-port)=.
 
+    - =(with-output-to-string STRING THUNK)= :: Calls the
+        zero-argument procedure =THUNK= with the current output port
+        temporarily bound to a string output port on =STRING= and
+        returns the accumulated output from that port as a string.
+
+    - =(with-input-from-string STRING THUNK)= :: Calls the
+        zero-argument procedure =THUNK= with the current input port
+        temporarily bound to a string input port on =STRING= and
+        returns the result.
+
     - =(write-string STRING [PORT])= :: Writes the characters in =STRING= to =PORT=,
         which defaults to the current output port.
 
@@ -834,11 +844,12 @@
     - =(emergency-exit [CODE])= :: Terminates the current program
         immediately.  Still pending =dynamic-wind= thunks are not
         invoked. =CODE= is the exit code of the process and defaults
-        to 0.
+        to 0. Invokes the =_exit(2)= library/system call.
 
     - =(exit [CODE])= :: Terminates the process with the process
        status =CODE= (or 0, if not given). Pending =dynamic-wind=
-       "after" thunks will be executed.
+       "after" thunks will be executed. Invokes the =exit(3)=
+       library/system call.
 
     - =(return-to-host RESULT)= :: Suspends the currently running
         program and returns =RESULT= to the caller. This procedure is
@@ -995,6 +1006,12 @@
     - =fastmath.scm= :: Provides numeric operations, specific for
         fixnums (exact integers) and floating-point numbers.
 
+    - =sort.scm= :: An implementation of mergesort.
+
+    - =support.scm= :: This is a collection of random utility
+        procedures and syntax, used mainly in the compiler, but also
+        useful for user code.
+
 ** The Evaluator
 
    The library file =eval.scm= contains an evaluator for Scheme
@@ -1017,25 +1034,43 @@
 
    - =(eval FORM)= :: Evaluates =FORM= and returns its result(s).
 
+   - =(eval-trace [FLAG])= :: Parameter that enables maintaining a
+       "call-trace", which can be printed in an error
+       situation. Defaults to =#f=.
+
    - =(load FILENAME [EVALPROC])= :: Reads expressions from the file
        given by =FILENAME= (a string) and evaluates them. If
        =EVALPROC= is given then each expression is passed to this
-       procedure instead of =eval=.
+       procedure instead of =eval=. If =FILENAME= starts with "~"
+       (tilde), then the remaining part will be appended to the value
+       of the environment-variable =HOME=.
 
    - =(load-verbose FILENAME [EVALPROC])= :: Like =load=, but each
        expression is printed to the current output port before it is
        evaluated.
 
-   - =(repl)= :: Start an interactive read-eval-print loop until EOF is
-       read from the current input-port.
+   - =(oblist)= :: Returns an association list containing all global
+       variables currently defined in the evaluator where each element
+       of the list is of the form =(VARIABLENAME . VALUE)=.
+
+   - =(quit [RESULT])= :: Exit the currently running read-eval-print loop
+       and return =RESULT=, which defaults to an unspecified value.
+
+   - =(repl)= :: Start an interactive read-eval-print loop until EOF
+       is read from the current input-port. Returns the value given to
+       =quit=.
+
+   All these procedures are also available in interpreted code.
 
    Note that error-checking is still minimal, even for evaluated code.
 
    The evaluator is also available as a standalone interpreter, in the
-   file =bonesi.scm=, which can be compiled and linked like any other
-   Scheme program. When invoked without arguments, =bonesi= will start
-   a REPL, otherwise it will try to load the first argument given on
-   the command-line and exit.
+   file =si.scm=, ("Scheme interpreter") which can be compiled and
+   linked like any other Scheme program. When invoked without
+   arguments, =si= will start a REPL, otherwise it will try to load
+   and evaluate the file given in the first command-line argument and
+   exit. See the source-code for =si= for more information about using
+   and customizing the interpreter.
 
 * Compiler Details
 
@@ -1088,14 +1123,18 @@
 
    4. The program is CPS-transformed.
 
-   5. Next, unused local variables are identified and marked. A later
+   5. /Copy-propagation/ (replacement of known variables with their
+      values) is done. This pass also detects variables that are known
+      to be bound to distinct procedures.
+
+   6. Next, unused local variables are identified and marked. A later
       pass will remove these variables if they are bound to
       expressions that are free of side-effects.
 
-   6. The program is /closure converted/, that is, closure-allocations
+   7. The program is /closure converted/, that is, closure-allocations
       are made explicit.
 
-   7. Assembly code is generated from the results of the previous
+   8. Assembly code is generated from the results of the previous
       passes.
 
 ** Register Usage
@@ -1541,7 +1580,7 @@
   having this signature:
 
   #+BEGIN_SRC c
-  BONES_X bones(BONES_X argument);
+  BONES_X scheme(BONES_X argument);
   #+END_SRC
 
   where =BONES_X= is a generic type designating a Scheme value.  
@@ -1550,7 +1589,7 @@
   threads, because it refers to static data buffers and variables.  It
   is possible to combine multiple programs by using the
   =-DPREFIX=<prefix>= option when assembling each compiled program. In
-  this case the entry-point will be named =<prefix>_bones=. Every
+  this case the entry-point will be named =<prefix>_scheme=. Every
   entry-point refers to a self-contained Scheme environment and thus
   can be run in a separate thread, if desired.
 
@@ -1610,11 +1649,16 @@
 
   - Checking attempts to modify immutable data (literals).
 
+  Failed checks invoke the exception handler, and thus can be caught.
+  In certain fatal situations, for example, when the heap is full or
+  corrupted, the error-processing machinery may not be able to exit
+  with a meaningful message.
+
   Access to undefined ("unbound") variables will produce linker
   errors, where the variable name will be mangled, by prefixing it
   with "___" (three underscores) and replacing non-alphanumeric
-  characters with "_XX" with "XX" being the hexadecimal character code
-  of the character.
+  characters with "_XX". "XX" in this case is the hexadecimal
+  code of the character.
 
 * Bugs and Limitations
 
@@ -1759,16 +1803,15 @@
 
     The pretty-printer (=pp.scm=) is
 
-    Copyright (c) 1991, Marc Feeley
-    Author: Marc Feeley (feeley@iro.umontreal.ca)
-    Distribution restrictions: none
+    Copyright (c) 1991, Marc Feeley,
+    Author: Marc Feeley, Distribution restrictions: none
 
     The pattern-matching package was written by Alex Shinn and
     is in the public domain.
 
     The syntax-expander (=alexpand.scm=) is
 
-      Copyright 2002-2004 Al Petrofsky <alexpander@petrofsky.org>
+      Copyright 2002-2004 Al Petrofsky
 
       Redistribution and use in source and binary forms, with or without
       modification, are permitted provided that the following conditions
