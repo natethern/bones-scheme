@@ -1123,14 +1123,18 @@
 
    4. The program is CPS-transformed.
 
-   5. Next, unused local variables are identified and marked. A later
+   5. /Copy-propagation/ (replacement of known variables with their
+      values) is done. This pass also detects variables that are known
+      to be bound to distinct procedures.
+
+   6. Next, unused local variables are identified and marked. A later
       pass will remove these variables if they are bound to
       expressions that are free of side-effects.
 
-   6. The program is /closure converted/, that is, closure-allocations
+   7. The program is /closure converted/, that is, closure-allocations
       are made explicit.
 
-   7. Assembly code is generated from the results of the previous
+   8. Assembly code is generated from the results of the previous
       passes.
 
 ** Register Usage
