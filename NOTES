@@ -11,10 +11,6 @@ BONES                                                                     -*- Or
   - this also duplicates some functionality of the "cp" pass, but that
     one may still be useful after CPS.
 * TODO document file:bones-autocompile
-* TODO file:tests/raytracer.scm produces wrong output
-  - nearly good, but apparently there are some wrong calculations.
-* TODO implement record-handling in file:match.scm
-  - =is-a?=, =slot-ref=, =slot-set!=
 * TODO work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values as two words.
