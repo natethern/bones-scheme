@@ -30,20 +30,32 @@
   (for-each
    (match-lambda
      ((l . name)
-      (emit l ": dq CLOSURE | 1\n dq " name "\n")))
+      (generate-label l)
+      (generate-defword (typecode 'CLOSURE 1) name)))
    primitives))
 
 (define (generate-section name)
   (emit " section " name "\n"))
 
-(define (generate-defword . vals)
+(define (generate-defword val1 . vals)
   (emit " dq ")
-  (for-each emit vals)
+  (emit val1)
+  (for-each (cut emit #\, <>) vals)
   (emit "\n"))
 
-(define (generate-defbyte . vals)
+(define (generate-defbyte val1 . vals)
   (emit " db ")
-  (for-each emit vals)
+  (emit val1)
+  (for-each (cut emit #\, <>) vals)
+  (emit "\n"))
+
+(define (generate-defstring str)
+  (emit " db ")
+  (let ((len (string-length str)))
+    (do ((i 0 (add1 i)))
+	((>= i len))
+      (unless (zero? i) (emit ", "))
+      (emit (char->integer (string-ref str i)))))
   (emit "\n"))
 
 (define (generate-deffloat val)
@@ -61,7 +73,7 @@
   (emit "\n"))
 
 (define (generate-closure-alloc n id)
-  (emit " mov rax, CLOSURE | " (add1 n) "\n mov [ALLOC], rax\n")
+  (emit " mov rax, " (typecode 'CLOSURE (add1 n)) "\n mov [ALLOC], rax\n")
   (if enable-pic
       (emit " lea rax, [f_" id "]\n"
 	    " mov qword [ALLOC + " (cells 1) "], rax\n")
@@ -180,3 +192,9 @@
     ((ae) 'b)
     ((be) 'a)
     (else (error "conditional code not supported for this architecture" cnd))))
+
+(define (generate-label name)
+  (emit name ":\n"))
+
+(define (generate-instruction instr)
+  (emit " " instr "\n"))
