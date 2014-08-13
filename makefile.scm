@@ -39,11 +39,16 @@
   '("x86_64/intrinsics.scm"
     "x86_64.scm"))
 
-(define nasm-format
+(define nasm-output-format
   (case (system-software)
     ((Linux) 'elf64)
     ((Darwin) 'macho64)
     (else (error "can't determine nasm format for this system"))))
+
+(define nasm-debug-format
+  (case (system-software)
+    ((Linux) "-g -D dwarf")
+    (else "")))
 
 (define gcc
   (case (system-software)
@@ -117,7 +122,7 @@
   (make (("si" ("si.o")
 	  (run (,gcc si.o -o si)))
 	 ("si.o" ("si.s" "bones")
-	  (run (nasm -f ,nasm-format -g -F dwarf si.s -o si.o)))
+	  (run (nasm -f ,nasm-output-format ,nasm-debug-format si.s -o si.o)))
 	 ("si.s" ("si.scm" "eval.scm" "version.scm" "alexpand.scm" "pp.scm") ;XXX intrinsics, etc?
 	  (run (./bones si.scm -o si.s))))))
 
@@ -128,12 +133,12 @@
 	       (append compiler-sources compiler-sources-x86_64
 		       '("x86_64/linux/syscalls.scm"))
 	       (lambda ()
-		 (run (./bones bones.scm -feature check -o tmp/bigbones.s -feature linux))))))
+		 (run (./bones bones.scm -feature check -o tmp/bigbones.s -feature ,target-feature))))))
   (make (("bigbones" ("tmp/bigbones.o")
 	  (run (,gcc tmp/bigbones.o -o bigbones)))
 	 ("tmp/bigbones.o" ("bones-x86_64-linux.s" 
 			    "x86_64/boneslib.s")
-	  (run (nasm -f ,nasm-format -g -F dwarf -DTOTAL_HEAP_SIZE=500_000_000 tmp/bigbones.s
+	  (run (nasm -f ,nasm-output-format ,nasm-debug-format -DTOTAL_HEAP_SIZE=500_000_000 tmp/bigbones.s
 		     -o tmp/bigbones.o))))))
 
 (define (backup)
@@ -155,7 +160,7 @@
 	   (xname (string-append "tmp/" name)))
       (print (padl (string-append " " title) 60 #\=) ": " fname)
       (let ((ok (and (zero? (run* (,cmplr ,(string-append fname ".scm") -o ,sname ,@bopts)))
-		     (zero? (run* (nasm -f ,nasm-format ,sname -o ,oname)))
+		     (zero? (run* (nasm -f ,nasm-output-format ,sname -o ,oname)))
 		     (zero? (cond ((memq 'nolibc bopts)
 				   (run* (ld ,oname -o ,xname)))
 				  ((memq 'musl bopts)
@@ -233,8 +238,8 @@
 (define (check-embedded)
   (bones)
   (let ((r (and (zero? (run* (./bones tests/embedded.scm -o tmp/embedded.s -feature pic -feature embedded)))
-		(zero? (run* (nasm -f ,nasm-format tmp/embedded.s -o tmp/embedded1.o -DPREFIX=my)))
-		(zero? (run* (nasm -f ,nasm-format tmp/embedded.s -o tmp/embedded2.o -DPREFIX=my_other)))
+		(zero? (run* (nasm -f ,nasm-output-format tmp/embedded.s -o tmp/embedded1.o -DPREFIX=my)))
+		(zero? (run* (nasm -f ,nasm-output-format tmp/embedded.s -o tmp/embedded2.o -DPREFIX=my_other)))
 		(zero? (run* (gcc -g -I. tmp/embedded2.o ,shared-option -o tmp/embedded2.so)))
 		(zero? (run* (gcc -g -I. tests/embedded.c tmp/embedded1.o -o tmp/embedded -ldl)))
 		(zero? (run* (tmp/embedded))))))
@@ -247,7 +252,7 @@
   (run (mkdir -p tmp))
   (let ((r (and (zero? (run* (memtime ./bigbones tests/grond.scm -feature check -comment 
 				      -o tmp/grond.s)))
-		(zero? (run* (memtime nasm -f ,nasm-format -g -F dwarf tmp/grond.s -o tmp/grond.o
+		(zero? (run* (memtime nasm -f ,nasm-output-format ,nasm-debug-format tmp/grond.s -o tmp/grond.o
 				      -DTOTAL_HEAP_SIZE=500_000_000
 				      -DENABLE_GC_LOGGING)))
 		(zero? (run* (,gcc tmp/grond.o -o tmp/grond)))
