@@ -1845,7 +1845,7 @@ mark:
   if nz
     not rdx			; extract forwarding pointer
     and rbx, rdx
-    mov [rax], rbx ; write forwarding pointer to address olding object-ptr
+    mov [rax], rbx ; write forwarding pointer to address holding object-ptr
     ret
   endif
   push rcx
