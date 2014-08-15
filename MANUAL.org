@@ -527,9 +527,21 @@
 
 ** Extensions to R5RS
 
+*** Section 2.1
+
+    The special notation =|...|= can be used to enter symbols
+    containing otherwise illegal identifiers, for example =|x y|=
+    would designate the symbol containing the characters =#\x?=,
+    =#\space= and =#\y=. =write= will print such symbols using this
+    notation. The =|= (vertical bar) character itself can be escaped
+    using =\= (backslash).
+
 *** Section 2.2
 
     Expression-comments of the form =#;= are supported as in R7RS.
+
+    The character-sequence =#!= is treated like =;= and ignores the
+    rest of the line.
 
 *** Section 4.2.2
 
