@@ -2,6 +2,7 @@ BONES                                                                     -*- Or
 =====
 
 
+* TODO test and merge /backend/
 * TODO document file:bones-autocompile
 * TODO work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
