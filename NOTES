@@ -2,14 +2,6 @@ BONES                                                                     -*- Or
 =====
 
 
-* TODO perform copy-propagation and inlining in pre-CPS "simplify" pass
-  - see branch /simplify/
-  - seems to break "bones".
-  - needs more testing and performance analysis.
-  - seems to work better moving $inline-test forms into conditional
-    tests, but it is hard to estimate the performance gain.
-  - this also duplicates some functionality of the "cp" pass, but that
-    one may still be useful after CPS.
 * TODO document file:bones-autocompile
 * TODO work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
