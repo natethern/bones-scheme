@@ -22,7 +22,8 @@
 ; Definitions of the record procedures.
 
 (define-inline (make-record size name)
-  (let ((r (%allocate-block #x0a (arithmetic-shift size 8) #f size #t #f)))
+  (let* ((size (%fx+ size 2))
+	 (r (%allocate-block #x0a (arithmetic-shift size 8) #f size #t #f)))
     (%slot-set! r 0 name)
     (%slot-set! r 1 %record-type-id-counter)
     (set! %record-type-id-counter (%fx+ %record-type-id-counter 1))
