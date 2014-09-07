@@ -245,7 +245,8 @@
      make-parameter make-disjoint-type
      expand
      bytevector bytevector? bytevector-length bytevector-u8-ref bytevector-u8-set!
-     make-bytevector bytevector-copy!)))
+     make-bytevector bytevector-copy!
+     interrupt? interrupt-number catch-interrupt check-interrupts)))
 
 
 (define eval-trace (make-parameter #f))
@@ -439,40 +440,60 @@
 		 ((0) 
 		  (if rest
 		      (lambda (v)
-			(lambda r (body (cons (vector r) v))))
+			(lambda r
+			  (%interrupt-hook)
+			  (body (cons (vector r) v))))
 		      (lambda (v) 
 			(lambda () (body v)))))
 		 ((1)
 		  (if rest
 		      (lambda (v)
-			(lambda (a . r) (body (cons (vector a r) v))))
+			(lambda (a . r)
+			  (%interrupt-hook)
+			  (body (cons (vector a r) v))))
 		      (lambda (v)
-			(lambda (a) (body (cons (vector a) v))))))
+			(lambda (a)
+			  (%interrupt-hook)
+			  (body (cons (vector a) v))))))
 		 ((2)
 		  (if rest
 		      (lambda (v)
-			(lambda (a1 a2 . r) (body (cons (vector a1 a2 r) v))))
+			(lambda (a1 a2 . r)
+			  (%interrupt-hook)
+			  (body (cons (vector a1 a2 r) v))))
 		      (lambda (v)
-			(lambda (a1 a2) (body (cons (vector a1 a2) v))))))
+			(lambda (a1 a2)
+			  (%interrupt-hook)
+			  (body (cons (vector a1 a2) v))))))
 		 ((3)
 		  (if rest
 		      (lambda (v)
-			(lambda (a1 a2 a3 . r) (body (cons (vector a1 a2 a3 r) v))))
+			(lambda (a1 a2 a3 . r)
+			  (%interrupt-hook)
+			  (body (cons (vector a1 a2 a3 r) v))))
 		      (lambda (v)
-			(lambda (a1 a2 a3) (body (cons (vector a1 a2 a3) v))))))
+			(lambda (a1 a2 a3)
+			  (%interrupt-hook)
+			  (body (cons (vector a1 a2 a3) v))))))
 		 ((4)
 		  (if rest
 		      (lambda (v)
-			(lambda (a1 a2 a3 a4 . r) (body (cons (vector a1 a2 a3 a4 r) v))))
+			(lambda (a1 a2 a3 a4 . r)
+			  (%interrupt-hook)
+			  (body (cons (vector a1 a2 a3 a4 r) v))))
 		      (lambda (v)
-			(lambda (a1 a2 a3 a4) (body (cons (vector a1 a2 a3 a4) v))))))
+			(lambda (a1 a2 a3 a4)
+			  (%interrupt-hook)
+			  (body (cons (vector a1 a2 a3 a4) v))))))
 		 (else
 		  (if rest
 		      (lambda (v)
 			(lambda args
+			  (%interrupt-hook)
 			  (body (cons (list->vector/rest args argc) v))))
 		      (lambda (v)
 			(lambda args
+			  (%interrupt-hook)
 			  (body (cons (list->vector args) v)))))))))))
 
 	(('$case-lambda ('lambda llists . bodies) ...)
@@ -491,6 +512,7 @@
 			   llists)))
 	   (lambda (v)
 	     (lambda args
+	       (%interrupt-hook)
 	       (let loop ((tests tests) (bodies bodies))
 		 (cond ((null? tests) (error 'case-lambda "no matching case" args))
 		       (((car tests) args) (apply ((car bodies) v) args))
@@ -594,34 +616,6 @@
 	     (newline out))))
 	(((and a (_ . val)) . more)
 	 (loop more (if (eq? eval-unbound-value val) (cons a ub) ub))))))
-  (define (eval-form x return)
-    (parameterize ((current-exception-handler
-		    (lambda (exn)
-		      (let ((out (current-error-port)))
-			(newline out)
-			(cond ((error-object? exn)
-			       (display "Error: " out)
-			       (display (error-object-message exn) out)
-			       (newline out)
-			       (for-each
-				(lambda (x)
-				  (newline out)
-				  (write (fragment x 10) out)
-				  (newline out))
-				(error-object-irritants exn)))
-			      (else
-			       (display "Unhandled excception: " out)
-			       (write exn out)
-			       (newline out)))
-			(when (eval-trace) (eval-print-trace-buffer))
-			(return #f)))))
-      (set! eval-trace-buffer '())
-      (set! eval-trace-buffer-end '())
-      (set! eval-trace-buffer-len 0)
-      (set! eval-potentially-unbound '())
-      (begin0
-	(eval x)
-	(report-unbound))))
   (let ((rpt (repl-prompt))
 	(rp (repl-print)))
     (call/cc
@@ -634,15 +628,43 @@
 		   (eval-repl-level (+ eval-repl-level 1)))
 	 (do () (#f)
 	   (display (rpt))
-	   (let ((x (read)))
-	     (when (eof-object? x) (exit #f))
-	     (call/cc
-	      (lambda (return)
-		(call-with-values (cut eval-form x return)
-		  (lambda results
-		    (unless (and (= 1 (length results))
-				 (eq? (void) (car results)))
-		      (for-each rp results))))))))
+	   (call/cc
+	    (lambda (return)
+	      (parameterize ((current-exception-handler
+			      (lambda (exn)
+				(let ((out (current-error-port)))
+				  (newline out)
+				  (cond ((error-object? exn)
+					 (display "Error: " out)
+					 (display (error-object-message exn) out)
+					 (newline out)
+					 (for-each
+					  (lambda (x)
+					    (newline out)
+					    (write (fragment x 10) out)
+					    (newline out))
+					  (error-object-irritants exn)))
+					(else
+					 (display "Unhandled excception: " out)
+					 (write exn out)
+					 (newline out)))
+				  (when (eval-trace) (eval-print-trace-buffer))
+				  (return #f)))))
+		(set! eval-trace-buffer '())
+		(set! eval-trace-buffer-end '())
+		(set! eval-trace-buffer-len 0)
+		(set! eval-potentially-unbound '())
+		(let ((x (read)))
+		  (when (eof-object? x) (exit #f))
+		  (call-with-values 
+		      (lambda ()
+			(begin0
+			  (eval x)
+			  (report-unbound)))
+		    (lambda results
+		      (unless (and (= 1 (length results))
+				   (eq? (void) (car results)))
+			(for-each rp results)))))))))
 	 (newline))))))
 
 (eval

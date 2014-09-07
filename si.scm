@@ -15,6 +15,7 @@
 
   (eval-trace #t)
   (repl-print pp)
+  (catch-interrupt)
 
   (let ((bootfile
 	 (or (get-environment-variable "SI_BOOT_FILE")

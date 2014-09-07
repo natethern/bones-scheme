@@ -907,6 +907,39 @@
         object raised by encountering invalid syntax in an invocation
         of =read= or false otherwise.
 
+**** Interrupts
+
+    /Interrupts/ are exceptions triggered by POSIX signals like
+    =SIGINT=. Note that checking for pending signals is only done in
+    certain situations: after a garbage collection has taken place, when
+    a I/O operation was performed or when explicitly tested by calling
+    =(check-interrupts)=. 
+
+    The interpreter (=si=) inserts interrupt checks at the start of
+    every user-visible =lambda= form, so no explicit checks are
+    necessary in interpreted code.
+
+    - =(catch-interrupt [NUMBER [MODE]])= :: Establishes a handler for
+         the signal with the given number (which defaults to the value
+         for =SIGINT=, i.e. user interrupts). If the signal is
+         subsequently triggered, an =interrupt= error-object will be
+         raised as an exception. If =MODE= is given, then it should be
+         a boolean indicating whether the signal should be ignored
+         (=#f=) or the default action should take place (=#t=).  Using
+         this procedure is only needed in long-running computations
+         that do little allocation and no I/O operations, when you
+         quickly want to be informed about pending interrupts.
+
+    - =(check-interrupts)= :: Explicitly checks for pending interrupts
+         triggered by signals.
+
+    - =(interrupt? OBJECT)= :: Returns true if =OBJECT= is an error
+        object raised by a signal (e.g. a user-interrupt triggered by
+        pressing Ctrl-C) or false otherwise.
+
+    - =(interrupt-number ERROROBJECT)= :: Returns the number of the
+         signal that caused the interrupt designated by =ERROROBJECT=.
+
 **** Numeric Operations
 
     - =(finite? NUMBER)= :: Returns =#t= if =NUMBER= is not positive
@@ -1749,7 +1782,11 @@
 
   The actual implementation of library- and system-calls are located
   in =<ARCH>/<OS>/syscalls.scm= and =<ARCH>/<OS>/syscalls-nolibc.scm=,
-  respectively, depending on the compilation mode. 
+  respectively, depending on the compilation mode. The operations here
+  use OS-dependent constants, defined in =<ARCH>/<OS>/constants.scm=,
+  which needs to be generated and added manually. To generate this
+  file, compile and run the C program =constants.c=, which produces
+  the file when executed.
 
   All compile-time features, defined using the =-feature= option or
   the =provide= program-specification clause are also defined in

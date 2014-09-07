@@ -2,10 +2,16 @@ BONES                                                                     -*- Or
 =====
 
 
-* TODO add simple support for signals
-  - just install signal handler and set global vector-element, if triggered.
-  - needs explicit polling
-    - si: poll at lambda-entry for SIGINT
+* TODO add support for signals
+  - sigaction_buzf needs to be adapted for Windows + Mac (BSD?)
+* TODO minimal OpenBSD port
+  - use =__errno=
+  - own configuration directory?
+  - add distribution (.s) file?
+  - other BSDs, too?
+  - ack Alex Shendi in NEWS.
+* TODO check syscall (nolibc-mode) for %clock (was 227, but should be 228)
+  - already corrected, but needs to be tested
 * TODO test and merge /backend/
 * TODO document file:bones-autocompile
 * TODO work around nasm-limitation in =__float64__= literals

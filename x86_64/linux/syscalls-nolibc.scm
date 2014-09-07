@@ -91,3 +91,13 @@
   (%terminate code))
 
 (define-syntax %_exit %exit)
+
+(define-syntax-rule (%sigaction num m)
+  (begin
+    ($inline 
+     "test rax, 1; if z; mov rax, signal_handler; else; FIX2INT rax; endif; mov [sigaction_handler], rax"
+     (cond ((%eq? m #f) %SIG_IGN)
+	   ((%eq? m #t) %SIG_DFL)
+	   (else #f)))			; use signal_handler
+    ($inline "FIX2INT rax; FIX2INT r11; SYSCALL4 13, rax, sigaction_buf, 0, r11; INT2FIX rax" 
+	     num 8)))			; sizeof(unsigned[2]), taken from musl sources of sigaction(2)

@@ -5,7 +5,11 @@
 ;
 ; - also removes "let" bindings for unused variables bound to a "pure" (side-efect free) value.
 ; - removes empty "let" expressions.
-; - special cases "%error", as this is invoke from boneslib.s
+; - special cases "%error" and "%interrupt-hook", as these is invoke from boneslib.s
+
+
+(define implicitly-retained-globals '(%error %interrupt-hook))
+
 
 (define (detect-unused-variables form) ; expects expanded + canonicalized form
   (let ((globals '())

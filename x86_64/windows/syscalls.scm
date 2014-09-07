@@ -64,3 +64,12 @@
 
 (define-syntax-rule (%_exit code)
   ($inline "FIX2INT rax; LIBCALL1 _exit, rax" code))
+
+(define-syntax-rule (%sigaction num m)
+  (begin
+    ($inline 
+     "test rax, 1; if z; mov rax, signal_handler; else; FIX2INT rax; endif; mov [sigaction_handler], rax"
+     (cond ((%eq? m #f) %SIG_IGN)
+	   ((%eq? m #t) %SIG_DFL)
+	   (else #f)))			; use signal_handler
+    ($inline "FIX2INT rax; LIBCALL3 sigaction, rax, sigaction_buf, 0; cdqe; INT2FIX rax" num)))
