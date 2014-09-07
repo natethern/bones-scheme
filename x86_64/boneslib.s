@@ -573,8 +573,8 @@
   mov rdi, %2
   mov rsi, %3
   mov rdx, %4
-  mov r10, %5
-  mov r8, %6
+  mov r8, %5
+  mov r9, %6
   ALIGN_STACK
   mov rax, %1
   syscall
