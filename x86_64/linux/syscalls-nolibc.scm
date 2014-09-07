@@ -11,16 +11,19 @@
   ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); SYSCALL3 0, r11, rax, r15; INT2FIX rax" buf fd n))
 
 (define-syntax-rule (%open-input-file name)
-  ;; flags: O_RDONLY
-  ($inline "call copy_to_buffer; SYSCALL3 2, buffer, 0, 0; INT2FIX rax" name))
+  ($inline "call copy_to_buffer; FIX2INT r11; SYSCALL3 2, buffer, r11, 0; INT2FIX rax" name %O_RDONLY))
 
 (define-syntax-rule (%open-output-file name)
-  ;; flags: O_WRONLY|O_CREAT|O_TRUNC, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-  ($inline "call copy_to_buffer; SYSCALL3 2, buffer, 577, 420; INT2FIX rax" name))
+  ($inline "call copy_to_buffer; FIX2INT r11; FIX2INT r15; SYSCALL3 2, buffer, r11, r15; INT2FIX rax" 
+	   name
+	   (%bitwise-ior %O_WRONLY (%bitwise-ior %O_CREAT %O_TRUNC))
+	   (%bitwise-ior %S_IRUSR (%bitwise-ior %S_IWUSR (%bitwise-ior %S_IRGRP %S_IROTH)))))
 
 (define-syntax-rule (%open-append-file name)
-  ;; open-flags: O_WRONLY|O_CREAT|O_APPEND, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-  ($inline "call copy_to_buffer; SYSCALL3 2, buffer, 1089, 420; INT2FIX rax" name))
+  ($inline "call copy_to_buffer; FIX2INT r11; FIX2INT r15; SYSCALL3 2, buffer, r11, r15; INT2FIX rax" 
+	   name
+	   (%bitwise-ior %O_WRONLY (%bitwise-ior %O_CREAT %O_APPEND))
+	   (%bitwise-ior %S_IRUSR (%bitwise-ior %S_IWUSR (%bitwise-ior %S_IRGRP %S_IROTH)))))
 
 (define-syntax-rule (%getcwd)
   ($inline "SYSCALL2 79, buffer, 1024; test rax, rax; if z; mov rax, FALSE; else; mov rax, buffer; CALL alloc_zstring; endif"))
@@ -47,7 +50,7 @@
       ($inline "mov r11, stat_buffer; lea rax, [buffer]; mov [r11 + CELLS(2)], rax; xor rax, rax; mov [r11 + CELLS(3)], rax")
       ($inline "SYSCALL3 59, system_sh, stat_buffer, [envp]; INT2FIX rax"))
     (define (waitid pid)
-      ($inline "FIX2INT rax; SYSCALL5 247, 0, rax, buffer, 4, 0; INT2FIX rax" pid)) ; WEXITED
+      ($inline "FIX2INT rax; FIX2INT r11; SYSCALL5 247, 0, rax, buffer, r11, 0; INT2FIX rax" pid %WEXITED))
     (define (status) 
       ($inline "mov eax, [buffer + 6 * 4]; INT2FIX rax"))
     (let ((pid (fork)))
@@ -77,11 +80,11 @@
   ($inline "SYSCALL1 201, 0; INT2FIX rax"))
 
 (define-syntax-rule (%clock)
-  (let ((secs ($inline "SYSCALL2 227, 1, buffer; mov rax, [buffer]; INT2FIX rax"))) ; CLOCK_MONOTONIC
+  (let ((secs ($inline "FIX2INT rax; SYSCALL2 228, rax, buffer; mov rax, [buffer]; INT2FIX rax" %CLOCK_MONOTONIC)))
     (%fx+ (%fx* secs 1000000000) ($inline "mov rax, [buffer + CELLS(1)]; INT2FIX rax"))))
 
 (define %clocks-per-sec
-  (let ((secs ($inline "SYSCALL2 229, 1, buffer; mov rax, [buffer]; INT2FIX rax"))) ; CLOCK_MONOTONIC
+  (let ((secs ($inline "FIX2INT rax; SYSCALL2 229, rax, buffer; mov rax, [buffer]; INT2FIX rax" %CLOCK_MONOTONIC)))
     (%fx+ (%fx* secs 1000000000) ($inline "mov rax, [buffer + CELLS(1)]; INT2FIX rax"))))
 
 (define-syntax-rule (%exit code)

@@ -1,4 +1,4 @@
-;;;; system-calls for linux (actually library-calls)
+;;;; system-calls for Mac (actually library-calls)
 
 
 (define-syntax-rule (%close fd)
@@ -11,16 +11,19 @@
   ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); LIBCALL3 read, r11, rax, r15; INT2FIX rax" buf fd n))
 
 (define-syntax-rule (%open-input-file name)
-  ;; flags: O_RDONLY
-  ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 0, 0; INT2FIX rax" name))
+  ($inline "CALL copy_to_buffer; FIX2INT r11; LIBCALL3 open, buffer, r11, 0; INT2FIX rax" name %O_RDONLY))
 
 (define-syntax-rule (%open-output-file name)
-  ;; flags: O_WRONLY|O_CREAT|O_TRUNC, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-  ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 1537, 420; INT2FIX rax" name))
+  ($inline "CALL copy_to_buffer; FIX2INT r11; FIX2INT r15; LIBCALL3 open, buffer, r11, r15; INT2FIX rax" 
+	   name
+	   (%bitwise-ior %O_WRONLY (%bitwise-ior %O_CREAT %O_TRUNC))
+	   (%bitwise-ior %S_IRUSR (%bitwise-ior %S_IWUSR (%bitwise-ior %S_IRGRP %S_IROTH)))))
 
 (define-syntax-rule (%open-append-file name)
-  ;; open-flags: O_WRONLY|O_CREAT|O_APPEND, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-  ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 521, 420; INT2FIX rax" name))
+  ($inline "CALL copy_to_buffer; FIX2INT r11; FIX2INT r15; LIBCALL3 open, buffer, r11, r15; INT2FIX rax" 
+	   name
+	   (%bitwise-ior %O_WRONLY (%bitwise-ior %O_CREAT %O_APPEND))
+	   (%bitwise-ior %S_IRUSR (%bitwise-ior %S_IWUSR (%bitwise-ior %S_IRGRP %S_IROTH)))))
 
 (define-syntax-rule (%time)
   ($inline "LIBCALL1 time, 0; INT2FIX rax"))

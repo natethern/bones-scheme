@@ -70,6 +70,7 @@
 
 
 (define (bones-x86_64-linux.s)
+  (constants)
   (make/proc
    (list (list "bones-x86_64-linux.s"
 	       (append compiler-sources compiler-sources-x86_64
@@ -82,7 +83,8 @@
   (make/proc
    (list (list "bones-x86_64-windows.s"
 	       (append compiler-sources compiler-sources-x86_64
-		       '("x86_64/windows/syscalls.scm"))
+		       '("x86_64/windows/syscalls.scm"
+			 "x86_64/windows/constants.scm"))
 	       (lambda ()
 		 (run (./bones bones.scm -o bones-x86_64-windows.s -feature windows)))))))
 
@@ -92,7 +94,8 @@
   (make/proc
    (list (list "bones-x86_64-mac.s"
 	       (append compiler-sources compiler-sources-x86_64
-		       '("x86_64/mac/syscalls.scm"))
+		       '("x86_64/mac/syscalls.scm"
+			 "x86_64/windows/constants.scm"))
 	       (lambda ()
 		 (run (./bones bones.scm -o bones-x86_64-mac.s -feature mac)))))))
 
@@ -326,12 +329,16 @@
     "support.scm"
     "si.scm"
     "eval.scm"
+    "constants.c"
     "x86_64/fastmath.scm"
     "x86_64/intrinsics.scm"
     "x86_64/boneslib.s"
+    "x86_64/linux/constants.scm"
     "x86_64/linux/syscalls.scm"
     "x86_64/linux/syscalls-nolibc.scm"
     "x86_64/mac/syscalls.scm"
+    "x86_64/mac/constants.scm"
+    "x86_64/windows/constants.scm"
     "x86_64/windows/syscalls.scm"))
 
 (define (dist)
@@ -367,6 +374,20 @@
 
 (define (upload)
   (run (upload -d bones MANUAL.html NEWS bones.tar.gz bones.zip)))
+
+(define (constants)
+  (let ((cfile (case (system-software)
+		 ((Darwin) "x86_64/mac/constants.scm")
+		 ((Linux) "x86_64/linux/constants.scm")
+		 (else (error "unknown system software")))))
+    (make/proc (list (list cfile '("constants")
+			   (lambda ()
+			     (run (echo "';;; ' `uname`" > ,cfile))
+			     (run (./constants >> ,cfile))
+			     (run (cat ,cfile))))
+		     (list "constants" '("constants.c")
+			   (lambda () 
+			     (run (,gcc constants.c -o constants))))))))
 
 
 (define (-n)

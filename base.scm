@@ -32,6 +32,7 @@
 (cond-expand
   (linux
    (provide file-ports file-system process-environment time jiffy-clock lp64)
+   (files "x86_64/linux/constants.scm")
    (cond-expand
      (x86_64
       (cond-expand
@@ -40,13 +41,15 @@
      (else (error "unsupported architecture for linux"))))
   (mac
    (provide file-ports file-system process-environment time jiffy-clock lp64 pic)
+   (files "x86_64/mac/constants.scm")
    (cond-expand
      (x86_64 (files "x86_64/mac/syscalls.scm")) ; "mac" symlinks to "linux", BTW
      (else (error "unsupported architecture for mac"))))
   (windows
    (provide file-ports file-system time jiffy-clock file-system
 	    process-environment pic llp64)
-   (files "x86_64/windows/syscalls.scm"))
+   (files "x86_64/windows/constants.scm"
+	  linux"x86_64/windows/syscalls.scm"))
   (else (error "no operating system selected")))
 
 ;; some SRFI-features that are provided via libraries
