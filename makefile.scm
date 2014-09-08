@@ -78,6 +78,15 @@
 	       (lambda ()
 		 (run (./bones1 bones.scm -o bones-x86_64-linux.s -feature linux)))))))
 
+(define (bones-x86_64-bsd.s)
+  (constants)
+  (make/proc
+   (list (list "bones-x86_64-bsd.s"
+	       (append compiler-sources compiler-sources-x86_64
+		       '("x86_64/bsd/syscalls.scm"))
+	       (lambda ()
+		 (run (./bones1 bones.scm -o bones-x86_64-bsd.s -feature bsd)))))))
+
 (define (bones-x86_64-windows.s)
   (bones)
   (make/proc
@@ -139,8 +148,7 @@
 		 (run (./bones bones.scm -feature check -o tmp/bigbones.s -feature ,target-feature))))))
   (make (("bigbones" ("tmp/bigbones.o")
 	  (run (,gcc tmp/bigbones.o -o bigbones)))
-	 ("tmp/bigbones.o" ("bones-x86_64-linux.s" 
-			    "x86_64/boneslib.s")
+	 ("tmp/bigbones.o" ("bones-x86_64-linux.s" "x86_64/boneslib.s")
 	  (run (nasm -f ,nasm-output-format ,nasm-debug-format -DTOTAL_HEAP_SIZE=500_000_000 tmp/bigbones.s
 		     -o tmp/bigbones.o))))))
 
@@ -298,6 +306,7 @@
 (define distfiles
   '("MANUAL.txt"
     "bones-x86_64-linux.s"
+    "bones-x86_64-bsd.s"
     "bones-x86_64-windows.s"
     "bones-x86_64-mac.s"
     "bones-autocompile"
@@ -338,6 +347,8 @@
     "x86_64/linux/syscalls-nolibc.scm"
     "x86_64/mac/syscalls.scm"
     "x86_64/mac/constants.scm"
+    "x86_64/bsd/syscalls.scm"
+    "x86_64/bsd/constants.scm"
     "x86_64/windows/constants.scm"
     "x86_64/windows/syscalls.scm"))
 
@@ -346,12 +357,14 @@
   (let* ((date (capture (date +%Y-%m-%d)))
 	 (arch (string-append "bones-" date)))
     (bones-x86_64-linux.s)
+    (bones-x86_64-bsd.s)
     (bones-x86_64-windows.s)
     (bones-x86_64-mac.s)
     (run (rm -fr ,arch bones.tar.gz bones.zip))
     (run (mkdir -p
 		,(string-append arch "/x86_64")
 		,(string-append arch "/x86_64/linux")
+		,(string-append arch "/x86_64/bsd")
 		,(string-append arch "/x86_64/mac")
 		,(string-append arch "/x86_64/windows")))
     (for-each

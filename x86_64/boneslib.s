@@ -2578,6 +2578,8 @@ num2str:
 %ifndef FEATURE_NOLIBC
  %ifdef  FEATURE_WINDOWS
   %define GET_ERRNO_LOCATION  _errno
+ %elifdef FEATURE_BSD
+  %define GET_ERRNO_LOCATION  __errno
  %elifdef FEATURE_MAC
   %define GET_ERRNO_LOCATION  __error
  %else
@@ -2873,6 +2875,12 @@ sigaction_buf:
 sigaction_handler: resq 1
 %ifdef FEATURE_LINUX
 		   resb 152 - CELLS(1)
+%elifdef FEATURE_BSD
+		   resb 16 - CELLS(1)
+%elifdef FEATURE_MAC
+ %error sigaction-buffer not yet implemented for Mac OS
+%elifdef FEATURE_WINDOWS
+ %error sigaction-buffer not yet implemented for Windows
 %else
  %error sigaction-buffer not yet implemented for this platform
 %endif
