@@ -114,6 +114,15 @@
     gcc bones.o -o bones
     #+END_SRC
 
+  - For Free/Net/OpenBSD:
+
+    #+BEGIN_SRC sh
+    tar xfz bones.tar.gz
+    cd bones-<date>
+    nasm -f elf64 bones-x86_64-bsd.s -o bones.o
+    gcc bones.o -o bones
+    #+END_SRC
+
   - For Windows:
 
     Unzip the archive and enter the following commands in a command
