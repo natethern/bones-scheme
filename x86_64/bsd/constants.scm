@@ -7,7 +7,6 @@
 (define-syntax %O_CREAT 512)
 (define-syntax %O_TRUNC 1024)
 (define-syntax %O_APPEND 8)
-(define-syntax %WEXITED 4)
 (define-syntax %S_IRUSR 256)
 (define-syntax %S_IWUSR 128)
 (define-syntax %S_IRGRP 32)

@@ -24,7 +24,6 @@ int main()
   printf("(define-syntax %%O_CREAT %d)\n", O_CREAT);
   printf("(define-syntax %%O_TRUNC %d)\n", O_TRUNC);
   printf("(define-syntax %%O_APPEND %d)\n", O_APPEND);
-  printf("(define-syntax %%WEXITED %d)\n", WEXITED);
 #ifdef _WIN32
   printf("(define-syntax %%O_BINARY %d)\n", O_BINARY);
   printf("(define-syntax %%_S_IREAD %d)\n", _S_IREAD);
@@ -37,6 +36,7 @@ int main()
   printf("(define-syntax %%S_IROTH %d)\n", S_IROTH);
 #endif
 #ifdef __linux__
+  printf("(define-syntax %%WEXITED %d)\n", WEXITED);
   printf("(define-syntax %%CLOCK_MONOTONIC %d)\n", CLOCK_MONOTONIC);
 #endif
   printf(";; sigaction-size: %ld\n", sizeof(struct sigaction));
