@@ -323,6 +323,8 @@
     "x86_64.scm"
     "cps.scm"
     "mangle.scm"
+    "simplify.scm"
+    "cp.scm"
     "main.scm"
     "match.scm"
     "megalet.scm"
