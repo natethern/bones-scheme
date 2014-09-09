@@ -2,14 +2,11 @@ BONES                                                                     -*- Or
 =====
 
 
-* TODO add support for signals
-  - sigaction_buzf needs to be adapted for Windows + Mac (BSD?)
+* TODO add support for signals on Mac and Windows
 * TODO minimal OpenBSD port
-  - use =__errno=
-  - own configuration directory?
-  - add distribution (.s) file?
-  - other BSDs, too?
+  - send to Alex and ask for testing.
   - ack Alex Shendi in NEWS.
+  - document in manual.
 * TODO check syscall (nolibc-mode) for %clock (was 227, but should be 228)
   - already corrected, but needs to be tested
 * TODO test and merge /backend/
