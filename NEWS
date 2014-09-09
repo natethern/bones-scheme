@@ -1,3 +1,21 @@
+Release 6:
+
+  The system has been ported to OpenBSD and should also run on FreeBSD
+  and NetBSD. Many thanks to Alexander Shendi for helping with this.
+
+  Fixed a bug in the Mac variant of "get-environment-variable".
+
+  Basic handling of POSIX signals has been added, which allows
+  catching user-interrupts (among other things).
+
+  Fixed a bug in the Linux/nolibc -implementation of "current-jiffy".
+
+  Fixed a bug with the "check" feature, which caused a segmentation
+  fault due to an uninitialized runtime variable.
+
+  Fixed a bug in the SRFI-9 implementation (records.scm), reported by
+  Alexander Shendi.
+
 Release 5:
 
   "return-to-host" failed when compiled with "-feature check".
