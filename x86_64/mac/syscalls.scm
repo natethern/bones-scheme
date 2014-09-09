@@ -30,7 +30,7 @@
 
 (define-syntax-rule (%getenv str)
   ($inline 
-   "CALL copy_to_buffer; LIBCALL1 getenv, buffer; test rax, rax; if z; mov rax, FALSE; endif; CALL alloc_zstring" 
+   "CALL copy_to_buffer; LIBCALL1 getenv, buffer; test rax, rax; if z; mov rax, FALSE; else; CALL alloc_zstring; endif" 
    str))
 
 (define-syntax-rule (%clock)
