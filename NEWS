@@ -16,6 +16,10 @@ Release 6:
   Fixed a bug in the SRFI-9 implementation (records.scm), reported by
   Alexander Shendi.
 
+  Fixed a bug in the Linux/nolibc implementation of "system".
+
+  "current-jiffy" uses now platform-specific high-resolution timers.
+
 Release 5:
 
   "return-to-host" failed when compiled with "-feature check".
