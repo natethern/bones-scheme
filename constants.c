@@ -38,6 +38,8 @@ int main()
 #ifdef __linux__
   printf("(define-syntax %%WEXITED %d)\n", WEXITED);
   printf("(define-syntax %%CLOCK_MONOTONIC %d)\n", CLOCK_MONOTONIC);
+#elif defined(__unix__)
+  printf("(define-syntax %%CLOCK_REALTIME %d)\n", CLOCK_REALTIME);
 #endif
   printf(";; sigaction-size: %ld\n", sizeof(struct sigaction));
   printf(";; sigaction-handler-offset: %ld\n", (char *)&sa.sa_handler - (char *)&sa);
