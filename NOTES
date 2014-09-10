@@ -2,11 +2,11 @@ BONES                                                                     -*- Or
 =====
 
 
+* TODO find out value of =CLOCK_REALTIME= on bsd
+  - is -lrt needed?
+* TODO test new implementation of =%clock= and =%clocks-per-sec= on Win/Mac
 * TODO add support for signals on Mac and Windows
-* TODO minimal OpenBSD port
-  - send to Alex and ask for testing.
-  - ack Alex Shendi in NEWS.
-  - document in manual.
+  - need sigaction-size and sigaction-buf settings in file:x86_64/boneslib.s
 * TODO check syscall (nolibc-mode) for %clock (was 227, but should be 228)
   - already corrected, but needs to be tested
 * TODO test and merge /backend/
