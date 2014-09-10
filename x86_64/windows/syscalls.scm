@@ -36,7 +36,10 @@
    str))
 
 (define-syntax-rule (%clock)
-  ($inline "LIBCALL0 clock; INT2FIX rax"))
+  ($inline "push rax; mov r11, rsp; LIBCALL1 QueryPerformanceCounter, r11; pop rax; INT2FIX rax"))
+
+(define-syntax-rule (%clocks-per-sec)
+  ($inline "push rax; mov r11, rsp; LIBCALL1 QueryPerformanceFrequency, r11; pop rax; INT2FIX rax"))
 
 (define-syntax-rule (%getcwd)
   ($inline "LIBCALL2 _getcwd, buffer, 1024; test rax, rax; if z; mov rax, FALSE; else; mov rax, buffer; CALL alloc_zstring; endif"))

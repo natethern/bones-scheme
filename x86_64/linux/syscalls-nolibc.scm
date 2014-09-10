@@ -50,7 +50,7 @@
       ($inline "mov r11, stat_buffer; lea rax, [buffer]; mov [r11 + CELLS(2)], rax; xor rax, rax; mov [r11 + CELLS(3)], rax")
       ($inline "SYSCALL3 59, system_sh, stat_buffer, [envp]; INT2FIX rax"))
     (define (waitid pid)
-      ($inline "FIX2INT rax; FIX2INT r11; SYSCALL5 247, 0, rax, buffer, r11, 0; INT2FIX rax" pid %WEXITED))
+      ($inline "FIX2INT rax; SYSCALL4 61, rax, buffer, 0, 0; INT2FIX rax" pid))
     (define (status) 
       ($inline "mov eax, [buffer + 6 * 4]; INT2FIX rax"))
     (let ((pid (fork)))
@@ -83,7 +83,7 @@
   (let ((secs ($inline "FIX2INT rax; SYSCALL2 228, rax, buffer; mov rax, [buffer]; INT2FIX rax" %CLOCK_MONOTONIC)))
     (%fx+ (%fx* secs 1000000000) ($inline "mov rax, [buffer + CELLS(1)]; INT2FIX rax"))))
 
-(define %clocks-per-sec
+(define-syntax-rule (%clocks-per-sec)
   (let ((secs ($inline "FIX2INT rax; SYSCALL2 229, rax, buffer; mov rax, [buffer]; INT2FIX rax" %CLOCK_MONOTONIC)))
     (%fx+ (%fx* secs 1000000000) ($inline "mov rax, [buffer + CELLS(1)]; INT2FIX rax"))))
 

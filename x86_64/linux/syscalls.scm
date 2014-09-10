@@ -34,7 +34,12 @@
    str))
 
 (define-syntax-rule (%clock)
-  ($inline "LIBCALL0 clock; INT2FIX rax"))
+  (let ((secs ($inline "FIX2INT rax; LIBCALL2 clock_gettime, rax, buffer; mov rax, [buffer]; INT2FIX rax" %CLOCK_MONOTONIC)))
+    (%fx+ (%fx* secs 1000000000) ($inline "mov rax, [buffer + CELLS(1)]; INT2FIX rax"))))
+
+(define-syntax-rule (%clocks-per-sec)
+  (let ((secs ($inline "FIX2INT rax; LIBCALL2 clock_getres, rax, buffer; mov rax, [buffer]; INT2FIX rax" %CLOCK_MONOTONIC)))
+    (%fx+ (%fx* secs 1000000000) ($inline "mov rax, [buffer + CELLS(1)]; INT2FIX rax"))))
 
 (define-syntax-rule (%getcwd)
   ($inline "LIBCALL2 getcwd, buffer, 1024; test rax, rax; if z; mov rax, FALSE; else; CALL alloc_zstring; endif"))
@@ -71,5 +76,3 @@
 	   ((%eq? m #t) %SIG_DFL)
 	   (else #f)))			; use signal_handler
     ($inline "FIX2INT rax; LIBCALL3 sigaction, rax, sigaction_buf, 0; INT2FIX rax" num)))
-
-(define-syntax %clocks-per-sec 1000000)
