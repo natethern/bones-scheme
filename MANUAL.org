@@ -112,7 +112,7 @@
     tar xfz bones.tar.gz
     cd bones-<date>
     nasm -f elf64 bones-x86_64-linux.s -o bones.o
-    gcc bones.o -o bones
+    gcc bones.o -o bones -lrt
     #+END_SRC
 
   - For Free/Net/OpenBSD:
@@ -265,6 +265,9 @@
    #+BEGIN_SRC sh
    gcc <OBJECTFILENAME> -o <PROGRAMFILENAME>
    #+END_SRC
+
+   Note that on Linux you'll need to add =-lrt= to the linker
+   invocation.
 
    On Windows the =link= program from Microsoft Viusal Studio can be
    used:
