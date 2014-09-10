@@ -55,6 +55,11 @@
     ((Darwin) "gcc -Wl,-no_pie")
     (else "gcc")))
 
+(define libs
+  (case (system-software)
+    ((Linux) '("-lrt"))
+    (else '())))
+
 (define musl-gcc (file-exists? "bin/musl-gcc"))
 
 (define shared-option
@@ -123,16 +128,16 @@
     ((Linux)
      (bones-x86_64-linux.o)
      (make (("bones" ("bones-x86_64-linux.o")
-             (run (,gcc bones-x86_64-linux.o -o bones))))))
+             (run (,gcc bones-x86_64-linux.o -o bones ,@libs))))))
     ((Darwin) 
      (bones-x86_64-mac.o)
      (make (("bones" ("bones-x86_64-mac.o")
-             (run (,gcc bones-x86_64-mac.o -o bones))))))))
+             (run (,gcc bones-x86_64-mac.o -o bones ,@libs))))))))
 
 (define (si)
   (bones)
   (make (("si" ("si.o")
-	  (run (,gcc si.o -o si)))
+	  (run (,gcc si.o -o si ,@libs)))
 	 ("si.o" ("si.s" "bones")
 	  (run (nasm -f ,nasm-output-format ,nasm-debug-format si.s -o si.o)))
 	 ("si.s" ("si.scm" "eval.scm" "version.scm" "alexpand.scm" "pp.scm") ;XXX intrinsics, etc?
@@ -147,7 +152,7 @@
 	       (lambda ()
 		 (run (./bones bones.scm -feature check -o tmp/bigbones.s -feature ,target-feature))))))
   (make (("bigbones" ("tmp/bigbones.o")
-	  (run (,gcc tmp/bigbones.o -o bigbones)))
+	  (run (,gcc tmp/bigbones.o -o bigbones ,@libs)))
 	 ("tmp/bigbones.o" ("bones-x86_64-linux.s" "x86_64/boneslib.s")
 	  (run (nasm -f ,nasm-output-format ,nasm-debug-format -DTOTAL_HEAP_SIZE=500_000_000 tmp/bigbones.s
 		     -o tmp/bigbones.o))))))
@@ -177,7 +182,7 @@
 				  ((memq 'musl bopts)
 				   (run* (,musl-gcc ,oname -o ,xname)))
 				  (else 
-				   (run* (,gcc ,oname -o ,xname)))))
+				   (run* (,gcc ,oname -o ,xname ,@libs)))))
 		     (zero? (run* (/usr/bin/time ,xname ,@runargs))))))
 	(unless ok
 	  (print "\n" fname " FAILED.\n"))
@@ -251,8 +256,8 @@
   (let ((r (and (zero? (run* (./bones tests/embedded.scm -o tmp/embedded.s -feature pic -feature embedded)))
 		(zero? (run* (nasm -f ,nasm-output-format tmp/embedded.s -o tmp/embedded1.o -DPREFIX=my)))
 		(zero? (run* (nasm -f ,nasm-output-format tmp/embedded.s -o tmp/embedded2.o -DPREFIX=my_other)))
-		(zero? (run* (gcc -g -I. tmp/embedded2.o ,shared-option -o tmp/embedded2.so)))
-		(zero? (run* (gcc -g -I. tests/embedded.c tmp/embedded1.o -o tmp/embedded -ldl)))
+		(zero? (run* (gcc -g -I. tmp/embedded2.o ,shared-option -o tmp/embedded2.so ,@libs)))
+		(zero? (run* (gcc -g -I. tests/embedded.c tmp/embedded1.o -o tmp/embedded -ldl ,@libs)))
 		(zero? (run* (tmp/embedded))))))
     (unless r
       (print "embedding check failed."))
@@ -266,7 +271,7 @@
 		(zero? (run* (memtime nasm -f ,nasm-output-format ,nasm-debug-format tmp/grond.s -o tmp/grond.o
 				      -DTOTAL_HEAP_SIZE=500_000_000
 				      -DENABLE_GC_LOGGING)))
-		(zero? (run* (,gcc tmp/grond.o -o tmp/grond)))
+		(zero? (run* (,gcc tmp/grond.o -o tmp/grond ,@libs)))
 		(zero? (run* (memtime tmp/grond tests/mandelbrot.scm -ignore-fixnum-overflow -verbose 
 				      -clone-size-limit 10))))))
     (unless r
@@ -402,7 +407,7 @@
 			     (run (cat ,cfile))))
 		     (list "constants" '("constants.c")
 			   (lambda () 
-			     (run (,gcc constants.c -o constants))))))))
+			     (run (,gcc constants.c -o constants ,@libs))))))))
 
 
 (define (-n)
