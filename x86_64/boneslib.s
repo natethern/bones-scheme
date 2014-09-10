@@ -568,20 +568,6 @@
   RESTORE
 %endmacro
 
-%macro SYSCALL5 6
-  SAVE
-  mov rdi, %2
-  mov rsi, %3
-  mov rdx, %4
-  mov r8, %5
-  mov r9, %6
-  ALIGN_STACK
-  mov rax, %1
-  syscall
-  RESTORE_STACK
-  RESTORE
-%endmacro
-
 
 ;; vector access check: %1 = block, %2 = index (fixnum)
 %macro CHECK_SLOT_ACCESS 2
