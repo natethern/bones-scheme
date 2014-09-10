@@ -66,6 +66,7 @@
   | openSUSE 13.1 (Bottle) Linux 3.15.1-2.g3289da4-default x86_64                 | 2.09.10 | gcc 4.8.1      | glibc 2.18  |
   | Windows 7 Professional                                                        |         |                |             |
   | Mac OS 10.8.5                                                                 | 2.11.05 | clang-503.0.38 |             |
+  | OpenBSD 5.5 (GENERIC.MP) #315                                                 |         | gcc 4.2.1      |             |
 
 * Requirements
 
