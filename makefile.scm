@@ -266,13 +266,13 @@
 (define (check-grond)
   (bigbones)
   (run (mkdir -p tmp))
-  (let ((r (and (zero? (run* (memtime ./bigbones tests/grond.scm -feature check -comment 
+  (let ((r (and (zero? (run* (/usr/bin/time ./bigbones tests/grond.scm -feature check -comment 
 				      -o tmp/grond.s)))
-		(zero? (run* (memtime nasm -f ,nasm-output-format ,nasm-debug-format tmp/grond.s -o tmp/grond.o
+		(zero? (run* (/usr/bin/time nasm -f ,nasm-output-format ,nasm-debug-format tmp/grond.s -o tmp/grond.o
 				      -DTOTAL_HEAP_SIZE=500_000_000
 				      -DENABLE_GC_LOGGING)))
 		(zero? (run* (,gcc tmp/grond.o -o tmp/grond ,@libs)))
-		(zero? (run* (memtime tmp/grond tests/mandelbrot.scm -ignore-fixnum-overflow -verbose 
+		(zero? (run* (/usr/bin/time tmp/grond tests/mandelbrot.scm -ignore-fixnum-overflow -verbose 
 				      -clone-size-limit 10))))))
     (unless r
       (print "building or running grond failed."))
