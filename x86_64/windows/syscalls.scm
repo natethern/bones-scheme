@@ -54,7 +54,7 @@
   ($inline "CALL copy_to_buffer; LIBCALL2 _stat, buffer, stat_buffer; cdqe; test rax, rax; SET_T rax; cmovnz rax, FALSE" str))
 
 (define-syntax-rule (%getpid)
-  ($inline "LIBCALL0 getpid; cdqe; INT2FIX rax"))
+  ($inline "LIBCALL0 _getpid; cdqe; INT2FIX rax"))
 
 (define-syntax-rule (%system cmd)
   ($inline "CALL copy_to_buffer; LIBCALL1 system, buffer; cdqe; INT2FIX rax" cmd))
