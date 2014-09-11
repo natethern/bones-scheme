@@ -74,5 +74,3 @@
 	   ((%eq? m #t) %SIG_DFL)
 	   (else #f)))			; use signal_handler
     ($inline "FIX2INT rax; LIBCALL3 sigaction, rax, sigaction_buf, 0; INT2FIX rax" num)))
-
-(define-syntax %clocks-per-sec 1000000)
