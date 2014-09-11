@@ -25,7 +25,7 @@
   ($inline "CALL copy_to_buffer; FIX2INT r11; FIX2INT r15; LIBCALL3 _open, buffer, r11, r15; cdqe; INT2FIX rax" 
 	   name
 	   (%bitwise-ior %O_WRONLY (%bitwise-ior %O_CREAT (%bitwise-ior %O_APPEND %O_BINARY)))
-	   (%bitwise-ior %_S_IREAD $_S_SWRITE)))
+	   (%bitwise-ior %_S_IREAD %_S_IWRITE)))
 
 (define-syntax-rule (%time)
   ($inline "LIBCALL1 time, 0; INT2FIX rax"))
