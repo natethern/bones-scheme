@@ -2864,7 +2864,7 @@ sigaction_handler: resq 1
 %elifdef FEATURE_BSD
 		   resb 16 - CELLS(1)
 %elifdef FEATURE_MAC
- %error sigaction-buffer not yet implemented for Mac OS
+                   resb 16 - CELLS(1)
 %elifdef FEATURE_WINDOWS
  %error sigaction-buffer not yet implemented for Windows
 %else
