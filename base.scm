@@ -56,7 +56,7 @@
    (provide file-ports file-system time jiffy-clock file-system
 	    process-environment pic llp64)
    (files "x86_64/windows/constants.scm"
-	  linux"x86_64/windows/syscalls.scm"))
+	  "x86_64/windows/syscalls.scm"))
   (else (error "no operating system selected")))
 
 ;; some SRFI-features that are provided via libraries

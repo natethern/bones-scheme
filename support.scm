@@ -699,13 +699,21 @@
 	  (read-file tmp read-line))
 	...)))))
 
-(define system-software
-  (let ((s (string->symbol (capture (uname)))))
-    (lambda () s)))
+(define (system-software)
+  (let ((s #f))
+    (lambda ()
+      (or s 
+	  (let ((ss (string->symbol (capture (uname)))))
+	    (set! s ss)
+	    s)))))
 
 (define system-architecture
-  (let ((s (string->symbol (capture (uname "-m")))))
-    (lambda () s)))
+  (let ((s #f))
+    (lambda ()
+      (or s 
+	  (let ((sa (string->symbol (capture (uname "-m")))))
+	    (set! s sa)
+	    s)))))
 
 (define (file-executable? fn)
   (zero? (run* (test "-x" ,(qs fn)))))
