@@ -70,7 +70,7 @@
 (define target-feature
   (case (system-software)
     ((Linux) 'linux)
-    ((Darwin) 'Darwin)
+    ((Darwin) 'mac)
     (else (error "can't determine target format for this system"))))
 
 
