@@ -75,7 +75,6 @@
 
 
 (define (bones-x86_64-linux.s)
-  (constants)
   (make/proc
    (list (list "bones-x86_64-linux.s"
 	       (append compiler-sources compiler-sources-x86_64
@@ -84,7 +83,6 @@
 		 (run (./bones1 bones.scm -o bones-x86_64-linux.s -feature linux)))))))
 
 (define (bones-x86_64-bsd.s)
-  (constants)
   (make/proc
    (list (list "bones-x86_64-bsd.s"
 	       (append compiler-sources compiler-sources-x86_64
