@@ -2,13 +2,6 @@ BONES                                                                     -*- Or
 =====
 
 
-* TODO find out value of =CLOCK_REALTIME= on bsd
-  - is -lrt needed?
-* TODO test new implementation of =%clock= and =%clocks-per-sec= on Win/Mac
-* TODO add support for signals on Mac and Windows
-  - need sigaction-size and sigaction-buf settings in file:x86_64/boneslib.s
-* TODO check syscall (nolibc-mode) for %clock (was 227, but should be 228)
-  - already corrected, but needs to be tested
 * TODO test and merge /backend/
 * TODO document file:bones-autocompile
 * TODO work around nasm-limitation in =__float64__= literals
@@ -182,6 +175,8 @@ mainCRTStartup:
 ** do popping of the FPU stack in =flonum_expt= in file:x86_64/boneslib.s right
    - currently uses =fstp=, but probably should do a combination of
      =ffree= and =fincstp=.
+** SIGINT-handling not working on Windows
+   - according to msdn this is just normal.
 ** embedded check doesn't work on Mac OS
    - linker complains when linking embedded2.o with "-bundle".
    - needs probably some terrible magic specific to shared libraries.
