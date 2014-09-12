@@ -12,5 +12,6 @@
 (define-syntax %S_IRGRP 32)
 (define-syntax %S_IWGRP 16)
 (define-syntax %S_IROTH 4)
+(define-syntax %CLOCK_REALTIME 0)	; just guessing
 ;; sigaction-size: 16
 ;; sigaction-handler-offset: 0
