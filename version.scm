@@ -1,2 +1,2 @@
-(define bones-version 6)
+(define bones-version 7)
 
