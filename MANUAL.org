@@ -1,4 +1,4 @@
-/Release 6/
+/Release 7/
 
 * Introduction
 
@@ -933,6 +933,9 @@
     The interpreter (=si=) inserts interrupt checks at the start of
     every user-visible =lambda= form, so no explicit checks are
     necessary in interpreted code.
+
+    On Windows, =SIGINT= can not be caught, due to limitations of its
+    signal handling facilities.
 
     - =(catch-interrupt [NUMBER [MODE]])= :: Establishes a handler for
          the signal with the given number (which defaults to the value
