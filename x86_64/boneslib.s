@@ -568,20 +568,6 @@
   RESTORE
 %endmacro
 
-%macro SYSCALL5 6
-  SAVE
-  mov rdi, %2
-  mov rsi, %3
-  mov rdx, %4
-  mov r10, %5
-  mov r8, %6
-  ALIGN_STACK
-  mov rax, %1
-  syscall
-  RESTORE_STACK
-  RESTORE
-%endmacro
-
 
 ;; vector access check: %1 = block, %2 = index (fixnum)
 %macro CHECK_SLOT_ACCESS 2
@@ -1832,6 +1818,16 @@ reclaim:
   mov r9, [gcsave + 6 * CELLS(1)]
   mov r10, [gcsave + 7 * CELLS(1)]
   mov r12, [gcsave + 8 * CELLS(1)]
+  ;; check whether interrupts are pending
+  mov r15, [pending_signals]
+  test r15, r15
+  if nz
+    mov SELF, [____25interrupt_2dhook]
+    mov rcx, FALSE		; no continuation
+    mov rax, [SELF + CELLS(1)]
+    mov r11, 2
+    jmp rax
+  endif
   ;; continue with procedure call
   jmp rax
 
@@ -2568,6 +2564,8 @@ num2str:
 %ifndef FEATURE_NOLIBC
  %ifdef  FEATURE_WINDOWS
   %define GET_ERRNO_LOCATION  _errno
+ %elifdef FEATURE_BSD
+  %define GET_ERRNO_LOCATION  __errno
  %elifdef FEATURE_MAC
   %define GET_ERRNO_LOCATION  __error
  %else
@@ -2598,7 +2596,7 @@ lookup_char:
 
 ;; invoke "(%error MSG ARGS ...)": rax = error-msg (char *), rsi, ... = irritants, r11 = argc
 invoke_error:
-  mov rsp, [rsp_save]		; just in case error was triggered with stuff on the stack
+  mov rsp, [toplevel_rsp]		; just in case error was triggered with stuff on the stack
   call alloc_zstring
   mov rdx, rax
   mov SELF, [____25error]
@@ -2701,6 +2699,17 @@ check_apply_limit_failed:
 
 
 %endif
+
+;; global generic signal handler
+signal_handler:
+  push rcx
+  mov rcx, rdi
+  mov rax, 1
+  dec rcx
+  shl rax, cl
+  or [pending_signals], rax
+  pop rcx
+  ret
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2822,6 +2831,7 @@ mark_bit: dq MARK_BIT
 special_bit: dq SPECIAL_BIT
 align_base: dq ALIGN_BASE
 nalign_base: dq ~ALIGN_BASE
+pending_signals: dq 0
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2845,6 +2855,19 @@ saved_ALLOC: resq 1
 saved_LIMIT: resq 1
 rsp_save: resq 1
 stat_buffer: resb 1024
+
+align 8
+sigaction_buf:
+sigaction_handler: resq 1
+%ifdef FEATURE_LINUX
+		   resb 152 - CELLS(1)
+%elifdef FEATURE_BSD
+		   resb 16 - CELLS(1)
+%elifdef FEATURE_MAC
+                   resb 16 - CELLS(1)
+%elifndef FEATURE_WINDOWS
+ %error sigaction-buffer not yet implemented for this platform
+%endif
 
 
 section .text

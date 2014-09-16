@@ -206,3 +206,11 @@
 ;; get number of remaining space in active half of heap
 (define-syntax-rule (%free)
   ($inline "mov rax, [fromspace_end]; sub rax, ALLOC; INT2FIX rax"))
+
+;; check whether signals are pending
+(define-syntax-rule (%check-interrupts)
+  ($inline "mov rax, [pending_signals]; INT2FIX rax"))
+
+;; clear a pending interrupt
+(define-syntax-rule (%clear-interrupt num)
+  ($inline "mov r11, 1; push rcx; mov rcx, rax; FIX2INT rcx; dec rcx; shl r11, cl; pop rcx; not r11; and [pending_signals], r11" num))

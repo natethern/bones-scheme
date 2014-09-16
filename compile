@@ -1,5 +1,5 @@
 #!/bin/scheme /grass/16/boot
-;; run .scm, .s or .o file -*- Scheme -*-
+;; compile .scm, .s or .o file -*- Scheme -*-
 
 (require 'sh 'match)
 
@@ -28,7 +28,8 @@
        (when (string=? "scm" (suffix fname))
 	 (let ((fname2 (replace-suffix "s" fname)))
 	   (run (,compiler ,fname -o ,fname2 -comment
-			   ,@(append-map (cut list '-feature <>) features)))
+			   ,@(append-map (cut list '-feature <>) features)
+			   ,@args))
 	   (set! fname fname2)))
        (when (string=? "s" (suffix fname))
 	 (let ((fname2 (replace-suffix "o" fname)))
@@ -39,5 +40,4 @@
 	   (if (member "nolibc" features) ; hack
 	       (run (ld ,fname -o ,fname2))
 	       (run (gcc ,fname -o ,fname2 -lrt)))
-	   (set! fname fname2)))
-       (run (memtime ,(string-append "./" fname)))))))
+	   (set! fname fname2)))))))

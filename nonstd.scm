@@ -190,7 +190,7 @@
 (cond-expand
   (jiffy-clock
    (define-inline (current-jiffy) (%clock))
-   (define-inline (jiffies-per-second) %clocks-per-sec))
+   (define-inline (jiffies-per-second) (%clocks-per-sec)))
   (else))
 
 

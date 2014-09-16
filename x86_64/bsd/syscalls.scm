@@ -1,4 +1,4 @@
-;;;; system-calls for Linux (actually library-calls)
+;;;; system-calls for *BSD (actually library-calls)
 
 
 (define-syntax-rule (%close fd)
@@ -14,7 +14,7 @@
   ($inline "CALL copy_to_buffer; FIX2INT r11; LIBCALL3 open, buffer, r11, 0; INT2FIX rax" name %O_RDONLY))
 
 (define-syntax-rule (%open-output-file name)
-  ($inline "CALL copy_to_buffer; FIX2INT r11; FIX2INT r15; LIBCALL3 open, buffer, r11, r15; INT2FIX rax"
+  ($inline "CALL copy_to_buffer; FIX2INT r11; FIX2INT r15; LIBCALL3 open, buffer, r11, r15; INT2FIX rax" 
 	   name
 	   (%bitwise-ior %O_WRONLY (%bitwise-ior %O_CREAT %O_TRUNC))
 	   (%bitwise-ior %S_IRUSR (%bitwise-ior %S_IWUSR (%bitwise-ior %S_IRGRP %S_IROTH)))))
@@ -34,11 +34,11 @@
    str))
 
 (define-syntax-rule (%clock)
-  (let ((secs ($inline "FIX2INT rax; LIBCALL2 clock_gettime, rax, buffer; mov rax, [buffer]; INT2FIX rax" %CLOCK_MONOTONIC)))
+  (let ((secs ($inline "FIX2INT rax; LIBCALL2 clock_gettime, rax, buffer; mov rax, [buffer]; INT2FIX rax" %CLOCK_REALTIME)))
     (%fx+ (%fx* secs 1000000000) ($inline "mov rax, [buffer + CELLS(1)]; INT2FIX rax"))))
 
 (define-syntax-rule (%clocks-per-sec)
-  (let ((secs ($inline "FIX2INT rax; LIBCALL2 clock_getres, rax, buffer; mov rax, [buffer]; INT2FIX rax" %CLOCK_MONOTONIC)))
+  (let ((secs ($inline "FIX2INT rax; LIBCALL2 clock_getres, rax, buffer; mov rax, [buffer]; INT2FIX rax" %CLOCK_REALTIME)))
     (%fx+ (%fx* secs 1000000000) ($inline "mov rax, [buffer + CELLS(1)]; INT2FIX rax"))))
 
 (define-syntax-rule (%getcwd)

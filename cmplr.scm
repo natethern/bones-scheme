@@ -29,6 +29,7 @@
   (cond-expand 
     (windows 'default-windows)
     (mac 'default-mac)
+    (bsd 'default-bsd)
     (else 'default-linux)))
 
 

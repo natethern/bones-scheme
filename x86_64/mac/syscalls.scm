@@ -1,4 +1,4 @@
-;;;; system-calls for linux (actually library-calls)
+;;;; system-calls for Mac (actually library-calls)
 
 
 (define-syntax-rule (%close fd)
@@ -11,27 +11,33 @@
   ($inline "FIX2INT r11; FIX2INT r15; add rax, CELLS(1); LIBCALL3 read, r11, rax, r15; INT2FIX rax" buf fd n))
 
 (define-syntax-rule (%open-input-file name)
-  ;; flags: O_RDONLY
-  ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 0, 0; INT2FIX rax" name))
+  ($inline "CALL copy_to_buffer; FIX2INT r11; LIBCALL3 open, buffer, r11, 0; INT2FIX rax" name %O_RDONLY))
 
 (define-syntax-rule (%open-output-file name)
-  ;; flags: O_WRONLY|O_CREAT|O_TRUNC, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-  ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 1537, 420; INT2FIX rax" name))
+  ($inline "CALL copy_to_buffer; FIX2INT r11; FIX2INT r15; LIBCALL3 open, buffer, r11, r15; INT2FIX rax" 
+	   name
+	   (%bitwise-ior %O_WRONLY (%bitwise-ior %O_CREAT %O_TRUNC))
+	   (%bitwise-ior %S_IRUSR (%bitwise-ior %S_IWUSR (%bitwise-ior %S_IRGRP %S_IROTH)))))
 
 (define-syntax-rule (%open-append-file name)
-  ;; open-flags: O_WRONLY|O_CREAT|O_APPEND, mode: S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-  ($inline "CALL copy_to_buffer; LIBCALL3 open, buffer, 521, 420; INT2FIX rax" name))
+  ($inline "CALL copy_to_buffer; FIX2INT r11; FIX2INT r15; LIBCALL3 open, buffer, r11, r15; INT2FIX rax" 
+	   name
+	   (%bitwise-ior %O_WRONLY (%bitwise-ior %O_CREAT %O_APPEND))
+	   (%bitwise-ior %S_IRUSR (%bitwise-ior %S_IWUSR (%bitwise-ior %S_IRGRP %S_IROTH)))))
 
 (define-syntax-rule (%time)
   ($inline "LIBCALL1 time, 0; INT2FIX rax"))
 
 (define-syntax-rule (%getenv str)
   ($inline 
-   "CALL copy_to_buffer; LIBCALL1 getenv, buffer; test rax, rax; if z; mov rax, FALSE; endif; CALL alloc_zstring" 
+   "CALL copy_to_buffer; LIBCALL1 getenv, buffer; test rax, rax; if z; mov rax, FALSE; else; CALL alloc_zstring; endif" 
    str))
 
 (define-syntax-rule (%clock)
-  ($inline "LIBCALL0 clock; INT2FIX rax"))
+  ($inline "LIBCALL0 mach_absolute_time; INT2FIX rax"))
+
+(define-syntax-rule (%clocks-per-sec)
+  ($inline "push rax; mov r11, rax; LIBCALL1 mach_timebase_info, r11; mov eax, dword [r11]; div dword [r11+4]; INT2FIX rax"))
 
 (define-syntax-rule (%getcwd)
   ($inline "LIBCALL2 getcwd, buffer, 1024; test rax, rax; if z; mov rax, FALSE; else; CALL alloc_zstring; endif"))
@@ -60,4 +66,11 @@
 (define-syntax-rule (%_exit code)
   ($inline "FIX2INT rax; LIBCALL1 _exit, rax" code))
 
-(define-syntax %clocks-per-sec 1000000)
+(define-syntax-rule (%sigaction num m)
+  (begin
+    ($inline 
+     "test rax, 1; if z; mov rax, signal_handler; else; FIX2INT rax; endif; mov [sigaction_handler], rax"
+     (cond ((%eq? m #f) %SIG_IGN)
+	   ((%eq? m #t) %SIG_DFL)
+	   (else #f)))			; use signal_handler
+    ($inline "FIX2INT rax; LIBCALL3 sigaction, rax, sigaction_buf, 0; INT2FIX rax" num)))

@@ -55,6 +55,11 @@
     ((Darwin) "gcc -Wl,-no_pie")
     (else "gcc")))
 
+(define libs
+  (case (system-software)
+    ((Linux) '("-lrt"))
+    (else '())))
+
 (define musl-gcc (file-exists? "bin/musl-gcc"))
 
 (define shared-option
@@ -65,7 +70,7 @@
 (define target-feature
   (case (system-software)
     ((Linux) 'linux)
-    ((Darwin) 'Darwin)
+    ((Darwin) 'mac)
     (else (error "can't determine target format for this system"))))
 
 
@@ -77,12 +82,21 @@
 	       (lambda ()
 		 (run (./bones1 bones.scm -o bones-x86_64-linux.s -feature linux)))))))
 
+(define (bones-x86_64-bsd.s)
+  (make/proc
+   (list (list "bones-x86_64-bsd.s"
+	       (append compiler-sources compiler-sources-x86_64
+		       '("x86_64/bsd/syscalls.scm"))
+	       (lambda ()
+		 (run (./bones1 bones.scm -o bones-x86_64-bsd.s -feature bsd)))))))
+
 (define (bones-x86_64-windows.s)
   (bones)
   (make/proc
    (list (list "bones-x86_64-windows.s"
 	       (append compiler-sources compiler-sources-x86_64
-		       '("x86_64/windows/syscalls.scm"))
+		       '("x86_64/windows/syscalls.scm"
+			 "x86_64/windows/constants.scm"))
 	       (lambda ()
 		 (run (./bones bones.scm -o bones-x86_64-windows.s -feature windows)))))))
 
@@ -92,7 +106,8 @@
   (make/proc
    (list (list "bones-x86_64-mac.s"
 	       (append compiler-sources compiler-sources-x86_64
-		       '("x86_64/mac/syscalls.scm"))
+		       '("x86_64/mac/syscalls.scm"
+			 "x86_64/windows/constants.scm"))
 	       (lambda ()
 		 (run (./bones bones.scm -o bones-x86_64-mac.s -feature mac)))))))
 
@@ -111,16 +126,16 @@
     ((Linux)
      (bones-x86_64-linux.o)
      (make (("bones" ("bones-x86_64-linux.o")
-             (run (,gcc bones-x86_64-linux.o -o bones))))))
+             (run (,gcc bones-x86_64-linux.o -o bones ,@libs))))))
     ((Darwin) 
      (bones-x86_64-mac.o)
      (make (("bones" ("bones-x86_64-mac.o")
-             (run (,gcc bones-x86_64-mac.o -o bones))))))))
+             (run (,gcc bones-x86_64-mac.o -o bones ,@libs))))))))
 
 (define (si)
   (bones)
   (make (("si" ("si.o")
-	  (run (,gcc si.o -o si)))
+	  (run (,gcc si.o -o si ,@libs)))
 	 ("si.o" ("si.s" "bones")
 	  (run (nasm -f ,nasm-output-format ,nasm-debug-format si.s -o si.o)))
 	 ("si.s" ("si.scm" "eval.scm" "version.scm" "alexpand.scm" "pp.scm") ;XXX intrinsics, etc?
@@ -135,9 +150,8 @@
 	       (lambda ()
 		 (run (./bones bones.scm -feature check -o tmp/bigbones.s -feature ,target-feature))))))
   (make (("bigbones" ("tmp/bigbones.o")
-	  (run (,gcc tmp/bigbones.o -o bigbones)))
-	 ("tmp/bigbones.o" ("bones-x86_64-linux.s" 
-			    "x86_64/boneslib.s")
+	  (run (,gcc tmp/bigbones.o -o bigbones ,@libs)))
+	 ("tmp/bigbones.o" ("bones-x86_64-linux.s" "x86_64/boneslib.s")
 	  (run (nasm -f ,nasm-output-format ,nasm-debug-format -DTOTAL_HEAP_SIZE=500_000_000 tmp/bigbones.s
 		     -o tmp/bigbones.o))))))
 
@@ -166,7 +180,7 @@
 				  ((memq 'musl bopts)
 				   (run* (,musl-gcc ,oname -o ,xname)))
 				  (else 
-				   (run* (,gcc ,oname -o ,xname)))))
+				   (run* (,gcc ,oname -o ,xname ,@libs)))))
 		     (zero? (run* (/usr/bin/time ,xname ,@runargs))))))
 	(unless ok
 	  (print "\n" fname " FAILED.\n"))
@@ -240,8 +254,8 @@
   (let ((r (and (zero? (run* (./bones tests/embedded.scm -o tmp/embedded.s -feature pic -feature embedded)))
 		(zero? (run* (nasm -f ,nasm-output-format tmp/embedded.s -o tmp/embedded1.o -DPREFIX=my)))
 		(zero? (run* (nasm -f ,nasm-output-format tmp/embedded.s -o tmp/embedded2.o -DPREFIX=my_other)))
-		(zero? (run* (gcc -g -I. tmp/embedded2.o ,shared-option -o tmp/embedded2.so)))
-		(zero? (run* (gcc -g -I. tests/embedded.c tmp/embedded1.o -o tmp/embedded -ldl)))
+		(zero? (run* (gcc -g -I. tmp/embedded2.o ,shared-option -o tmp/embedded2.so ,@libs)))
+		(zero? (run* (gcc -g -I. tests/embedded.c tmp/embedded1.o -o tmp/embedded -ldl ,@libs)))
 		(zero? (run* (tmp/embedded))))))
     (unless r
       (print "embedding check failed."))
@@ -250,13 +264,13 @@
 (define (check-grond)
   (bigbones)
   (run (mkdir -p tmp))
-  (let ((r (and (zero? (run* (memtime ./bigbones tests/grond.scm -feature check -comment 
+  (let ((r (and (zero? (run* (/usr/bin/time ./bigbones tests/grond.scm -feature check -comment 
 				      -o tmp/grond.s)))
-		(zero? (run* (memtime nasm -f ,nasm-output-format ,nasm-debug-format tmp/grond.s -o tmp/grond.o
+		(zero? (run* (/usr/bin/time nasm -f ,nasm-output-format ,nasm-debug-format tmp/grond.s -o tmp/grond.o
 				      -DTOTAL_HEAP_SIZE=500_000_000
 				      -DENABLE_GC_LOGGING)))
-		(zero? (run* (,gcc tmp/grond.o -o tmp/grond)))
-		(zero? (run* (memtime tmp/grond tests/mandelbrot.scm -ignore-fixnum-overflow -verbose 
+		(zero? (run* (,gcc tmp/grond.o -o tmp/grond ,@libs)))
+		(zero? (run* (/usr/bin/time tmp/grond tests/mandelbrot.scm -ignore-fixnum-overflow -verbose 
 				      -clone-size-limit 10))))))
     (unless r
       (print "building or running grond failed."))
@@ -295,6 +309,7 @@
 (define distfiles
   '("MANUAL.txt"
     "bones-x86_64-linux.s"
+    "bones-x86_64-bsd.s"
     "bones-x86_64-windows.s"
     "bones-x86_64-mac.s"
     "bones-autocompile"
@@ -311,6 +326,8 @@
     "x86_64.scm"
     "cps.scm"
     "mangle.scm"
+    "simplify.scm"
+    "cp.scm"
     "main.scm"
     "match.scm"
     "megalet.scm"
@@ -326,12 +343,18 @@
     "support.scm"
     "si.scm"
     "eval.scm"
+    "constants.c"
     "x86_64/fastmath.scm"
     "x86_64/intrinsics.scm"
     "x86_64/boneslib.s"
+    "x86_64/linux/constants.scm"
     "x86_64/linux/syscalls.scm"
     "x86_64/linux/syscalls-nolibc.scm"
     "x86_64/mac/syscalls.scm"
+    "x86_64/mac/constants.scm"
+    "x86_64/bsd/syscalls.scm"
+    "x86_64/bsd/constants.scm"
+    "x86_64/windows/constants.scm"
     "x86_64/windows/syscalls.scm"))
 
 (define (dist)
@@ -339,12 +362,14 @@
   (let* ((date (capture (date +%Y-%m-%d)))
 	 (arch (string-append "bones-" date)))
     (bones-x86_64-linux.s)
+    (bones-x86_64-bsd.s)
     (bones-x86_64-windows.s)
     (bones-x86_64-mac.s)
     (run (rm -fr ,arch bones.tar.gz bones.zip))
     (run (mkdir -p
 		,(string-append arch "/x86_64")
 		,(string-append arch "/x86_64/linux")
+		,(string-append arch "/x86_64/bsd")
 		,(string-append arch "/x86_64/mac")
 		,(string-append arch "/x86_64/windows")))
     (for-each
@@ -367,6 +392,20 @@
 
 (define (upload)
   (run (upload -d bones MANUAL.html NEWS bones.tar.gz bones.zip)))
+
+(define (constants)
+  (let ((cfile (case (system-software)
+		 ((Darwin) "x86_64/mac/constants.scm")
+		 ((Linux) "x86_64/linux/constants.scm")
+		 (else (error "unknown system software")))))
+    (make/proc (list (list cfile '("constants")
+			   (lambda ()
+			     (run (echo "';;; ' `uname`" > ,cfile))
+			     (run (./constants >> ,cfile))
+			     (run (cat ,cfile))))
+		     (list "constants" '("constants.c")
+			   (lambda () 
+			     (run (,gcc constants.c -o constants ,@libs))))))))
 
 
 (define (-n)

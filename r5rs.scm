@@ -339,6 +339,7 @@
 (cond-expand
   ((or file-ports file-system)
    (define (%file-error loc . args)
+     (%interrupt-hook)
      (raise (%make-error-object 'file loc (%errno-string) args))))
   (else))
 
@@ -1109,6 +1110,17 @@
 	 (%make-error-object #f loc msg args)
 	 msg))))
 
+(define (%interrupt-hook)
+  (let ((n (%check-interrupts)))
+    (unless (%eq? n 0)
+      (let loop ((m 1) (i 1))
+	(cond ((%eq? 0 n))
+	      ((%eq? 0 (bitwise-and n m))
+	       (loop (arithmetic-shift m 1) (%fx+ i 1)))
+	      (else
+	       (%clear-interrupt i)
+	       (raise (%make-error-object 'interrupt #f "interrupt" (list i)))))))))
+
 (define-syntax error %error)
 
 (define-syntax current-exception-handler
@@ -1121,6 +1133,20 @@
 
 (define-inline (read-error? x)
   (and (error-object? x) (%eq? 'read (%slot-ref x 5))))
+
+(define-inline (interrupt? x)
+  (and (error-object? x) (%eq? 'interrupt (%slot-ref x 5))))
+
+(define-inline (interrupt-number x)
+  (car (error-object-irritants x)))
+
+(define-inline (check-interrupts) (%interrupt-hook))
+
+(define-syntax catch-interrupt
+  (case-lambda
+    (() (%sigaction %SIGINT 0))
+    ((num) (%sigaction num 0))
+    ((num mode) (%sigaction %SIGINT mode))))
 
 
 (define case-sensitive

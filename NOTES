@@ -2,6 +2,7 @@ BONES                                                                     -*- Or
 =====
 
 
+* TODO test and merge /backend/
 * TODO document file:bones-autocompile
 * TODO work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
@@ -118,8 +119,7 @@ mainCRTStartup:
 
 	ret
   #+END_SRC
-* DONE implement sexpr-simplification pass
-  - figure out more simplifications
+* TODO figure out more simplifications
 * TODO port embedded test with shared library to Windows
    - and add to file:scripts/check.bat
 * add f64vectors
@@ -127,16 +127,6 @@ mainCRTStartup:
    - would need proper alignment on 32-bit systems.
    - put API into file:fastmath.scm
    - adapt printer + reader and pp.
-* try using libgc as 2nd heap generation
-  - needs write-barrier to record assignments of heap-data into
-    non-heap objects.
-    - then evict recursively.
-  - also, keep GC-count in block header.
-  - tricky to integrate into GC code: we need to mark+scan first, then
-    check GC-counts, then process heap once again (no pointers back
-    into heap are allowed). Or evict + record "inner" slots of evicted
-    data that point to heap objects? and recursive eviction may
-    invalidate forwarding-pointers, etc.
 * configuration form "(export VAR ...)"
   - makes global externally visible (+ PREFIX)
 * potential optimizations
@@ -185,6 +175,8 @@ mainCRTStartup:
 ** do popping of the FPU stack in =flonum_expt= in file:x86_64/boneslib.s right
    - currently uses =fstp=, but probably should do a combination of
      =ffree= and =fincstp=.
+** SIGINT-handling not working on Windows
+   - according to msdn this is just normal.
 ** embedded check doesn't work on Mac OS
    - linker complains when linking embedded2.o with "-bundle".
    - needs probably some terrible magic specific to shared libraries.
