@@ -553,7 +553,7 @@
 		(generate-padding 4))
 	       (else (generate-align word-size))) ; assumes word-size == 8
 	 (generate-label l)
-	 (generate-defword (typeocde 'FLONUM (cells 1)))
+	 (generate-defword (typecode 'FLONUM (cells 1)))
 	 (cond ((nan? c) (generate-defword "0x7ff0000000000001"))
 	       ((not (finite? c))
 		(generate-defword
