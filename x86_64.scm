@@ -2,6 +2,7 @@
 
 
 (define fixnum-range '(-4611686018427387904 . 4611686018427387903))
+;; (define fixnum-range '(-1073741824 . 1073741823))
 (define temporary-registers '(rax r11 r15))
 (define argument-registers '(SELF rcx rdx rsi rdi r8 r9 r10 r12))
 (define word-size 8)			; bytes
