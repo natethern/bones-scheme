@@ -501,7 +501,7 @@
 	 ((null? llists))
        (let ((vars argc rest (parse-lambda-list (car llists)))
 	     (next (string-append "f_c_" (number->string id) "_" (number->string (add1 i)))))
-	 (when (or (not rest) (positive? argc)) ; single rest arg doesn't need to be check
+	 (when (or (not rest) (positive? argc)) ; single rest arg doesn't need to be checked
 	   (if (null? (cdr llists))
 	       (when enable-checks
 		 (generate-argc-check (add1 argc) rest next))
