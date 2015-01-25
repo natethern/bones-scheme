@@ -2036,46 +2036,76 @@ fixnum_expt:
 
 
 ;; compute flonum (expt rax r11) -> rax
-;; adapted from http://stackoverflow.com/questions/4638473/how-to-powreal-real-in-x86
+
+%ifndef FEATURE_NOLIBC
 flonum_expt:
-  test r11, 1
-  if nz
-    FIX2INT r11
-    mov [temporary_flonum + CELLS(1)], r11
-    fild qword [temporary_flonum + CELLS(1)]
-  else
-    fld qword [r11 + CELLS(1)]
-  endif
-  lea r11, [temporary_flonum + CELLS(1)]
-  test rax, 1
-  if nz
-    FIX2INT rax
-    mov [r11], rax
-    fild qword [r11]
-  else
-    fld qword [rax + CELLS(1)]
-  endif
-  fyl2x				; ST: 1
-  ;; faster than adjusting the rounding mode and using x87 integer store
-  fld st0			; ST: 2
-  fisttp qword [r11]		; requires SSE3, ST: 1
-  fild qword [r11]		; ST: 2
-  fsub				; ST: 1
-  f2xm1				
-  fld1				; ST: 2
-  fadd				; ST: 1
-  fild qword [r11]		; ST: 2
-  fxch
-  fscale
-  fstp qword [r11]		; ST: 1
-  fstp qword [buffer]		; silly, but I don't know to to pop the FPU stack properly
-  mov rax, FLONUM | CELLS(1)
-  mov [ALLOC], rax
-  mov rax, [r11]
-  mov [ALLOC + CELLS(1)], rax
-  mov rax, ALLOC
-  add ALLOC, CELLS(2)
-  ret
+   test r11, 1
+   if nz
+     FIX2INT r11
+     cvtsi2sd xmm1, r11
+   else
+     movsd xmm1, [r11 + CELLS(1)]
+   endif
+   test rax, 1
+   if nz
+     FIX2INT rax
+     cvtsi2sd xmm0, rax
+   else
+     movsd xmm0, [rax + CELLS(1)]
+   endif
+   LIBCALL2_f pow, xmm0, xmm1
+   mov rax, FLONUM | CELLS(1)
+   mov [ALLOC], rax
+   movsd [ALLOC + CELLS(1)], xmm0
+   mov rax, ALLOC
+   add ALLOC, CELLS(2)
+   ret   
+%endif
+
+
+;; BROKEN:
+;
+;; adapted from http://stackoverflow.com/questions/4638473/how-to-powreal-real-in-x86
+; flonum_expt:
+;   test r11, 1
+;   if nz
+;     FIX2INT r11
+;     mov [temporary_flonum + CELLS(1)], r11
+;     fild qword [temporary_flonum + CELLS(1)]
+;   else
+;     fld qword [r11 + CELLS(1)]
+;   endif
+;   lea r11, [temporary_flonum + CELLS(1)]
+;   test rax, 1
+;   if nz
+;     FIX2INT rax
+;     mov [r11], rax
+;     fild qword [r11]
+;   else
+;     fld qword [rax + CELLS(1)]
+;   endif
+;   ;;XXX this doesn't work, if the first argument is negative
+;   fyl2x				; ST: 1
+;   ;; faster than adjusting the rounding mode and using x87 integer store
+;   fld st0			; ST: 2
+;   fisttp qword [r11]		; requires SSE3, ST: 1
+;   fild qword [r11]		; ST: 2
+;   fsub				; ST: 1
+;   f2xm1				
+;   fld1				; ST: 2
+;   fadd				; ST: 1
+;   fild qword [r11]		; ST: 2
+;   fxch
+;   fscale
+;   fstp qword [r11]		; ST: 1
+;   fstp qword [buffer]		; silly, but I don't know to to pop the FPU stack properly
+;   mov rax, FLONUM | CELLS(1)
+;   mov [ALLOC], rax
+;   mov rax, [r11]
+;   mov [ALLOC + CELLS(1)], rax
+;   mov rax, ALLOC
+;   add ALLOC, CELLS(2)
+;   ret
 
 
 ;; compare two objects structurally: rax, r11 = args -> rax (bool), clobbers r15
