@@ -2,7 +2,43 @@ BONES                                                                     -*- Or
 =====
 
 
-* TODO test and merge /backend/
+* DONE Test fix for flonum-expt on OS X and Windows
+  - and make new release.
+* TODO Propery integrate use as Xen microkernel
+  - or any OS-less platform.
+  - code used for test:
+    #+BEGIN_SRC scheme
+(program
+ (provide ieee754 nolibc embedded)
+ (code
+
+  (define-syntax define-syntax-rule
+    (syntax-rules
+	___ ()
+	((_ (name args ___) rule)
+	 (define-syntax name
+	   (syntax-rules ()
+	     ((_ args ___) rule))))))
+
+  (define-syntax-rule (%exit code)
+    (%terminate code))
+  
+  (define-syntax %_exit %exit))
+ 
+ (files "x86_64/intrinsics.scm"
+	"r5rs.scm"
+	"nonstd.scm")
+ (code
+
+  (define-syntax-rule (printk str)
+    ($inline "CALL copy_to_buffer; LIBCALL1 printk1, buffer; INT2FIX rax" str))
+
+  (printk "BONES!\n")
+  (printk (number->string (* 7 4)))))
+    #+END_SRC
+* TODO loading "megalet" and "match" into si hangs when using match
+  - strangely, this doesn't happen in grass.
+  - may be caused by different handling of =letrec*= (CPS-transform)
 * TODO document file:bones-autocompile
 * TODO work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
@@ -12,6 +48,7 @@ BONES                                                                     -*- Or
 * TODO add checks for copying of slots and bytes (bounds, types)
 * TODO add exact development system versions (xcode, mingw64, msvc)
 * TODO we need floating-point num/str conversion
+  - same goes for flonum-expt.
   - atof: http://pastebin.com/prYRrseH
     #+BEGIN_SRC asm
 ; atof implementation using SSE
