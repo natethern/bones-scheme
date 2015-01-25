@@ -386,7 +386,7 @@
 %endif
 
 
-;; call C function with 0-3 arguments
+;; call C function with 0-4 arguments
 %macro LIBCALL0 1
   extern MANGLE(%1)
   SAVE
