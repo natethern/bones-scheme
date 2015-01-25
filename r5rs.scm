@@ -707,7 +707,7 @@
      (define number->string
        (let ((buffer (make-string buflen)))
 	 (lambda (num . base)
-	   (cond ((inexact? num) (%error "sorry, float->string conversion is not implemented, yet"))
+	   (cond ((inexact? num) (%error "sorry, float->string conversion is not implemented in `nolibc' mode"))
 		 ((%eq? num 0) "0")
 		 (else
 		  (let ((neg (negative? num))
