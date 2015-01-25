@@ -57,7 +57,7 @@
 
 (define libs
   (case (system-software)
-    ((Linux) '("-lrt"))
+    ((Linux) '("-lrt" "-lm"))
     (else '())))
 
 (define musl-gcc (file-exists? "bin/musl-gcc"))
