@@ -680,6 +680,7 @@
     (define load ',load)
     (define quit ',quit)
     (define repl ',repl)
+    (define eval ',eval)
     (define repl-prompt ',repl-prompt)
     (define repl-print ',repl-print)
     (define oblist ',(lambda () eval-environment))))
