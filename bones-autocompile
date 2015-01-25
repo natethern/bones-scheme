@@ -21,7 +21,7 @@ shift
 cachedir="$BONES_AUTOCOMPILE_CACHE"
 
 if test -z "$cachedir"; then
-    cachedir=~/.bones-autocompile-cache
+    cachedir=~/.autocompile-cache
 fi
 
 if test \! -d "$cachedir"; then
