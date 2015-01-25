@@ -112,7 +112,7 @@
     tar xfz bones.tar.gz
     cd bones-<date>
     nasm -f elf64 bones-x86_64-linux.s -o bones.o
-    gcc bones.o -o bones -lrt
+    gcc bones.o -o bones -lrt -lm
     #+END_SRC
 
   - For Free/Net/OpenBSD:
@@ -270,7 +270,7 @@
    gcc <OBJECTFILENAME> -o <PROGRAMFILENAME>
    #+END_SRC
 
-   Note that on Linux you'll need to add =-lrt= to the linker
+   Note that on Linux you'll need to add =-lrt -lm= to the linker
    invocation.
 
    On Windows the =link= program from Microsoft Viusal Studio can be
@@ -1746,7 +1746,10 @@
 
   - =number->string= and =string->number= do not support inexact
     numbers.
-  
+
+  - there is currently no implementation of floating-point
+    exponentiation (=expt=).
+
   The maximum number of arguments that can be passed to a procedure is
   currently 1024 + 9. You can change this by giving a different value
   for the =NUMBER_OF_NON_REGISTER_ARGUMENTS= in the =boneslib.s= file.
