@@ -341,6 +341,9 @@
 	((? symbol?)
 	 (cond ((lookup x e) =>
 		(match-lambda 
+		  ((0 . j)
+		   (lambda (v)
+		     (vector-ref (car v) j)))
 		  ((i . j)
 		   (lambda (v)
 		     (vector-ref (list-ref v i) j)))))
@@ -376,6 +379,10 @@
 	 (let ((x (compile x e)))
 	   (cond ((lookup var e) =>
 		  (match-lambda 
+		    ((0 . j)
+		     (lambda (v)
+		       (vector-set! (car v) j (x v))
+		       (void)))
 		    ((i . j)
 		     (lambda (v)
 		       (vector-set! (list-ref v i) j (x v))
