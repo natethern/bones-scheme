@@ -441,6 +441,30 @@
   RESTORE
 %endmacro
 
+;; library-call with 2 float argument
+%macro LIBCALL2_f 3
+  extern MANGLE(%1)
+  SAVE
+%ifdef FEATURE_WINDOWS
+  mov rcx, %2
+  movq xmm0, rcx		; silly
+  mov rdx, %3
+  movq xmm1, rdx
+%else
+  movsd xmm0, %2
+  movsd xmm1, %3
+%endif
+  ALIGN_STACK
+%ifdef FEATURE_WINDOWS
+  sub rsp, 32
+%else
+  mov rax, 2
+%endif
+  call MANGLE(%1) WRTPLT
+  RESTORE_STACK
+  RESTORE
+%endmacro
+
 %macro LIBCALL3 4
   extern MANGLE(%1)
   SAVE
@@ -464,6 +488,7 @@
   RESTORE
 %endmacro
 
+;; library-call with 3 integer and one float argument
 %macro LIBCALL3_1 4
   extern MANGLE(%1)
   SAVE
@@ -471,7 +496,7 @@
   mov rcx, %2
   mov rdx, %3
   mov r8, %4
-  movq xmm2, r8		; this is so silly...
+  movq xmm2, r8		; silly
 %else
   mov rdi, %2
   mov rsi, %3
