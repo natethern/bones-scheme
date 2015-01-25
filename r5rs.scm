@@ -395,13 +395,15 @@
      (%make-port
       #t #f
       (lambda (p) 0)
-      (lambda (p n) (eof-object))))
+      (lambda (p n) (eof-object))
+      #f))
 
    (define (%make-null-output-port)
      (%make-port
       #f #f
       (lambda (p) 0)
-      (lambda (p n) 0)))
+      (lambda (p n) 0)
+      #f))
 
    (define %standard-input-port (%make-null-input-port))
    (define %standard-output-port (%make-null-output-port))
