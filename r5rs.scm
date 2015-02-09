@@ -212,20 +212,13 @@
 
 (define-inline (sqrt x) (%ieee754-sqrt x))
 
-(cond-expand
-  (nolibc
-   (define-inline (expt x y)
-     (if (%eq? y 0) 
-	 1
-	 (cond ((and (exact? x) (exact? y) (positive? y) (%fx<? y 256)) ($inline "CALL fixnum_expt" x y))
-	       (else (%error "sorry, floating-point exponentiation is not implemented in `nolibc' mode"))))))
-  (else
-   (define-inline (expt x y)
-     (if (%eq? y 0) 
-	 1
-	 (cond ((and (inexact? y) (%= y 0.0)) 1.0)
-	       ((and (exact? x) (exact? y) (positive? y) (%fx<? y 256)) ($inline "CALL fixnum_expt" x y))
-	       (else ($inline "CALL flonum_expt" x y)))))))
+(define-inline (expt x y)
+  (if (%eq? y 0) 
+      1
+      (cond ((and (inexact? y) (%= y 0.0)) 1.0)
+	    ((and (exact? x) (exact? y) (positive? y) (%fx<? y 256)) ($inline "CALL fixnum_expt" x y))
+	    ((negative? y) (%/ 1 ($inline "CALL flonum_expt" x (%- y))))
+	    (else ($inline "CALL flonum_expt" x y)))))
 
 (let-syntax ((e 2.7182818284590452353602874))
   (define-inline (exp x) (expt e x)))
