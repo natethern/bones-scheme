@@ -1448,7 +1448,7 @@
 		     (let ((n2 (%ieee754-mask n (bitwise-not mask))))
 		       (if (%eq? 0 (%ieee754-sign n))
 			   n2
-			   (%- 1.0 n2))))))))))
+			   (%- (%- 1.0 n2)))))))))))
 
 (define-inline (round n)
   (if (exact? n)
