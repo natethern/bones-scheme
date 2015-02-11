@@ -2056,7 +2056,6 @@ flonum_expt:
   else
     fld qword [rax + CELLS(1)]
   endif
-  ;;XXX this doesn't work, if the first argument is negative
   fyl2x				; ST: 1
   ;; faster than adjusting the rounding mode and using x87 integer store
   fld st0			; ST: 2
