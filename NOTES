@@ -4,7 +4,7 @@ BONES                                                                     -*- Or
 
 * DONE Test fix for flonum-expt on OS X and Windows
   - and make new release.
-* TODO Propery integrate use as Xen microkernel
+* TODO Properly integrate use as Xen microkernel
   - or any OS-less platform.
   - code used for test:
     #+BEGIN_SRC scheme

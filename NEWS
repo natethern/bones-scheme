@@ -1,3 +1,13 @@
+Release 7:
+
+  Added note about "-no_pie" linker option on OpenBSD (Thanks to
+  Alexander Shendi.)
+
+  Fixed bug in "expt", which gave incorrect results with negative
+  exponents (noticed by Alexander Shendi)
+
+  Fixed bug in "floor".
+
 Release 6:
 
   The system has been ported to OpenBSD and should also run on FreeBSD
