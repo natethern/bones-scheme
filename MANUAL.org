@@ -125,7 +125,7 @@
     #+END_SRC
 
     At least on OpenBSD, you may need to invoke =gcc= with the
-    =-static= and =-no_pie= options to generate a working
+    =-static= and =-nopie= options to generate a working
     executable. Alternatively pass =-feature pic= to bones when
     compiling the Scheme code.
 
