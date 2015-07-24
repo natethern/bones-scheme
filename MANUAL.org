@@ -378,7 +378,7 @@
    | windows             | Operating system                                                 |
    | mac                 | Operating system                                                 |
    | lp64                | 64-bit data model (Linux, *BSD + Mac)                            |
-   | ilp64               | 64-bit data model (Windows)                                      |
+   | llp64               | 64-bit data model (Windows)                                      |
    | file-ports          | Primitives operating on file-ports are available                 |
    | file-system         | Primitives operating on file-system entitities are available     |
    | process-environment | Access to the process-environment and subprocesses are available |
@@ -1020,7 +1020,7 @@
 
     Bytevector-literals are self-evaluating and need not be quoted.
 
-**** Miscellaneous
+*** Miscellaneous
 
     - =(free)= :: Returns the number of currently available unused
         bytes in the heap as an exact integer.
@@ -1055,7 +1055,7 @@
     - =megalet.scm= :: The [[http://srfi.schemers.org/srfi-71/][SRFI-71]] reference implementation, extending
         =let= for convenient binding of multiple values. This also
         adds "curried" =define= syntax for toplevel definitions and
-        =let=/=letrec=.
+        =let/letrec=.
 
     - =records.scm= :: A record-definition-facility compatible to
         [[http://srfi.schemers.org/srfi-9/][SRFI-9]].
@@ -1178,16 +1178,16 @@
    The compiler performs the following passes over the source code:
 
    1. The source program is read into memory and the =program= form
-      of the configuration language are expanded, if it exists.
+      of the configuration language is expanded, if it exists.
    
-   2. Macros are expanded resulting in the code to be free of any
-      derived syntactic forms.
+   2. Macros are expanded resulting in code free of any derived
+      syntactic forms.
 
    3. The code is /canonicalized/, which means that some superficial
       simplifications are performed. Additional certain special forms
       are converted into simpler internal forms. Variables are
-      consistently renamed (called /alpha conversion/), to that every
-      variable is uniquely named.
+      consistently renamed (a transformation called /alpha
+      conversion/), to that every variable is uniquely named.
 
    4. The program is CPS-transformed.
 
@@ -1530,7 +1530,7 @@
   #+BEGIN_SRC scheme
   (string->copy <FLOAT>)  ==>  <a string containing the raw bytes of the IEEE double>
 
-  (vector->list '(1 . 2)) ==>  #(1 2)
+  (vector->list '(1 . 2)) ==>  (1 2)
   
   (define-values (make pred? data) (make-disjoint-type 'foo))
   (vector-copy (make 99))    ==>  #(foo 2 99)
@@ -1861,9 +1861,8 @@
     is more featureful and supports a nicer and more consistent
     assembler syntax.
 
-  - Other backends, say, [[http://asm-js.org][asm.js]] or LLVM. This can be quite a
-    challenge, as these languages do not support jumps to arbitrary
-    locations.
+  - Other backends, say, asm.js or LLVM. This is a challenge as well,
+    as these languages do not support jumps to arbitrary locations.
 
   - With a little work code compiled with BONES should be able to run
     without any library at all ("bare metal"), which would make it
