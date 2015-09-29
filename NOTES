@@ -1,9 +1,7 @@
-BONES                                                                     -*- Org -*-
+BONES                                                                 
 =====
 
 
-* DONE Test fix for flonum-expt on OS X and Windows
-  - and make new release.
 * TODO Properly integrate use as Xen microkernel
   - or any OS-less platform.
   - code used for test:

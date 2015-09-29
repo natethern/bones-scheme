@@ -1,3 +1,9 @@
+Release 8:
+
+  Fixed a bug in "fxremainder", reported by Alexander Shendi.
+
+  Minor updated in manual.
+
 Release 7:
 
   Added note about "-no_pie" linker option on OpenBSD (Thanks to

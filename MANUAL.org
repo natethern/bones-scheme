@@ -1,4 +1,4 @@
-/Release 7/
+/Release 8/
 
 * Introduction
 
@@ -82,8 +82,7 @@
 
   On Windows, [[http://www.visualstudio.com/en-us/downloads/download-visual-studio-vs.aspx][Microsoft Visual C]] and [[http://www.mingw.org][MINGW]] are supported.
 
-  On Mac OS, [[https://developer.apple.com/xcode/][Xcode]] needs to be installed, with =gcc= or =clang=
-  binaries in the =PATH=.
+  On Mac OS, [[https://developer.apple.com/xcode/][Xcode]] should be installed, with =gcc= or =clang= binaries in the =PATH=, or another C compiler that is able to link macho64 binaries.
 
 * Installation
 
