@@ -32,7 +32,7 @@
 (define-inline (fxabs x) (if (%fx<? x 0) (fx- x) x))
 
 (define-inline (fxremainder x y)
-  ($inline "FIX2INT rax; FIX2INT r11; push rdx; cdq; idiv r11; mov rax, rdx; pop rdx; INT2FIX rax" x y))
+  ($inline "FIX2INT rax; FIX2INT r11; push rdx; cqo; idiv r11; mov rax, rdx; pop rdx; INT2FIX rax" x y))
 
 (define-inline (fxmodulo x y)
   (let ((z (fxremainder x y)))
