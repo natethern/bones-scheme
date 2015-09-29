@@ -2,6 +2,8 @@ BONES
 =====
 
 
+* TODO Convert makefile.scm to normal makefile
+
 * TODO Properly integrate use as Xen microkernel
   - or any OS-less platform.
   - code used for test:
@@ -34,28 +36,40 @@ BONES
   (printk "BONES!\n")
   (printk (number->string (* 7 4)))))
     #+END_SRC
+
 * TODO loading "megalet" and "match" into si hangs when using match
   - strangely, this doesn't happen in grass.
   - may be caused by different handling of =letrec*= (CPS-transform)
+
 * TODO document file:bones-autocompile
+
 * TODO work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
     data by extracting the values as two words.
     - would be bones-specific, via =cond-expand=.
+
 * TODO test file:copy.scm
+
 * TODO add checks for copying of slots and bytes (bounds, types)
+
 * TODO add exact development system versions (xcode, mingw64, msvc)
+
 * TODO we need floating-point num/str conversion
+
 * TODO figure out more simplifications
+
 * TODO port embedded test with shared library to Windows
    - and add to file:scripts/check.bat
+
 * add f64vectors
    - FLOATVECTOR_TYPE (#x12)
    - would need proper alignment on 32-bit systems.
    - put API into file:fastmath.scm
    - adapt printer + reader and pp.
+
 * configuration form "(export VAR ...)"
   - makes global externally visible (+ PREFIX)
+
 * potential optimizations
 ** we could coalesce allocations inside a lambda
   - but will probably gain very little.
@@ -76,6 +90,7 @@ BONES
   - have local FA pass ("lfa") that expands $typed-case-lambda according to inferred
     types and convert "let"-bound flonum vars using a custom binding form
     - e.g. "($let-float ...)" or something like this.
+
 * issues
 ** "inexact->exact" uses "fisttp", so needs SSE3
 ** i don't fully trust that "integer?" handles all cases correctly
@@ -107,6 +122,7 @@ BONES
 ** embedded check doesn't work on Mac OS
    - linker complains when linking embedded2.o with "-bundle".
    - needs probably some terrible magic specific to shared libraries.
+
 * referencess
   - X86_64:
     - x87: http://www.website.masmforum.com/tutorials/fptute/index.html
@@ -116,14 +132,15 @@ BONES
     - x86-64 ABI: file:/archive/x86-64-abi.pdf
     - Syscalls: http://blog.rchapman.org/post/36801038863/linux-system-call-table-for-x86-64
   - "long mode", bootloader: http://wiki.osdev.org/Entering_Long_Mode_Directly
+
 * release steps:
-   1. update file:NEWS
-   2. update version in file:version.scm and file:MANUAL.org
+   1. update NEWS
+   2. update version in version.scm and MANUAL.org
    3. merge /develop/ into /master/
    4. "make check"
    5. "make dist"
    6. tag
    7. push, push tags
-   8. upload file:NEWS, file:MANUAL.html, file:bones.tar.gz, file:bones.zip, 
-      ev. file:index.html
+   8. "make upload"
+      (ev. index.html)
    9. (announce)
