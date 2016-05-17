@@ -550,7 +550,7 @@
 
     The special notation =|...|= can be used to enter symbols
     containing otherwise illegal identifiers, for example =|x y|=
-    would designate the symbol containing the characters =#\x?=,
+    would designate the symbol containing the characters =#\x=,
     =#\space= and =#\y=. =write= will print such symbols using this
     notation. The =|= (vertical bar) character itself can be escaped
     using =\= (backslash).
@@ -662,7 +662,7 @@
 
     A definition of the form =(define <expression>)= causes the
     expression to be evaluated at the conclusion of any enclosing set
-    of internal definitons.  That is, at top level, =(define
+    of internal definitions.  That is, at top level, =(define
     <expression>)= is equivalent to just plain =<expression>=.  As for
     internal definitions, the following are equivalent:
 
@@ -1511,7 +1511,7 @@
   allocated.
 
   Strings use a single-byte encoding, [[http://unicode.org][Unicode]] is not
-  supported. Characters-codes are not limited to 8-bit, though, but
+  supported. Character-codes are not limited to 8-bit, though, but
   when assigned or extracted to/from strings, only the least
   significant 8 bits are used.
 
@@ -1776,7 +1776,7 @@
   code, so extending this will be required. If no target feature is
   given on the command-line (currently =linux=, =bsd=, =mac= or
   =windows=), then a /default-target/ is selected, which is the
-  target, the compiler is currently running on, or more specifically:
+  target the compiler is currently running on, or more specifically:
   the target for which the currently executing compiler was
   configured. This feature will be named =default-linux=,
   =default-bsd=, =default-mac= or =default-windows=, depending on the
