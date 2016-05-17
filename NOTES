@@ -4,6 +4,8 @@ BONES
 
 * TODO Convert makefile.scm to normal makefile
 
+* TODO "string->number": return NaN if integer result doesn't fit
+
 * TODO Properly integrate use as Xen microkernel
   - or any OS-less platform.
   - code used for test:
@@ -41,7 +43,7 @@ BONES
   - strangely, this doesn't happen in grass.
   - may be caused by different handling of =letrec*= (CPS-transform)
 
-* TODO document file:bones-autocompile
+* TODO document bones-autocompile
 
 * TODO work around nasm-limitation in =__float64__= literals
   - nasm doesn't accept an integer, but we could output the raw ieee
