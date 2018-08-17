@@ -1,2 +1,2 @@
 #!/bin/sh
-exec scheme ~/.scheme/boot makefile.scm "$@"
+exec scheme /archive/grass/boot makefile.scm "$@"
