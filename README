@@ -23,6 +23,9 @@ commands in a shell:
   nasm -f elf64 bones-x86_64-linux.s -o bones.o
   gcc bones.o -o bones
 
+  If the gcc command above fails, try
+  gcc -no-pie bones.o -o bones
+
 (Windows)
 
   nasm -f win64 bones-x86_64-windows.s -o bones.obj
